@@ -1,80 +1,106 @@
-from typing import List, Dict, Union
+import re
+from typing import List, Dict, Union, Set
 
 from tools.utils.sql_utils import SQLUtils
 from dataclasses import dataclass
 
 
-@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-class GenerateTableOptions:
-    path: str
-    network_data_table_name: str
-    controller_data_table_name: str
-    aep_table_name: str
-    sim_table_name: str
-    iec_talbe_name: str
+class GenerateTables:
+    _options: 'GenerateTableOptions'
+    _access_base: SQLUtils.Connection
 
+    @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+    class GenerateTableOptions:
+        path: str
+        network_data_table_name: str
+        controller_data_table_name: str
+        aep_table_name: str
+        sim_table_name: str
+        iec_table_name: str
 
-@dataclass(init=False, repr=False, eq=False, order=False, frozen=False)
-class Signal:
-    object_typ: str
-    kks: str
-    part: str
-    module: str
-    rednd_intf: str
-    name_rus: str
-    full_name_rus: str
-    name_eng: str
-    full_name_eng: str
-    min: Union[float, None]
-    max: Union[float, None]
-    units: str
-    units_eng: str
-    in_level: str
-    cabinet: str
-    slot_mp: Union[int, None]
-    channel: Union[int, None]
-    connection: str
-    sensr_typ: str
-    cat_nam: str
-    location_mp: str
-    dname: str
-    kksp: str
+    @dataclass(init=False, repr=False, eq=False, order=False, frozen=False)
+    class Signal:
+        object_typ: str
+        kks: str
+        part: str
+        module: str
+        rednd_intf: str
+        name_rus: str
+        full_name_rus: str
+        name_eng: str
+        full_name_eng: str
+        min: Union[float, None]
+        max: Union[float, None]
+        units_rus: str
+        units_eng: str
+        in_level: str
+        cabinet: str
+        slot_mp: Union[int, None]
+        channel: Union[int, None]
+        connection: str
+        sensr_typ: str
+        cat_nam: str
+        location_mp: str
+        dname: str
+        kksp: str
 
+        def clone(self) -> 'GenerateTables.Signal':
+            new_signal: GenerateTables.Signal = GenerateTables.Signal()
+            new_signal.kks = self.kks
+            new_signal.object_typ = self.object_typ
+            new_signal.part = self.part
+            new_signal.module = self.module
+            new_signal.rednd_intf = self.rednd_intf
+            new_signal.full_name_rus = self.full_name_rus
+            new_signal.name_rus = self.name_rus
+            new_signal.full_name_eng = self.full_name_eng
+            new_signal.name_eng = self.name_eng
+            new_signal.min = self.min
+            new_signal.max = self.max
+            new_signal.units_rus = self.units_rus
+            new_signal.units_eng = self.units_eng
+            new_signal.in_level = self.in_level
+            new_signal.cabinet = self.cabinet
+            new_signal.slot_mp = self.slot_mp
+            new_signal.channel = self.channel
+            new_signal.connection = self.connection
+            new_signal.sensr_typ = self.sensr_typ
+            new_signal.cat_nam = self.cat_nam
+            new_signal.location_mp = self.location_mp
+            new_signal.dname = self.dname
+            new_signal.kksp = self.kksp
+            return new_signal
 
-@dataclass(init=False, repr=False, eq=False, order=False, frozen=False)
-class MMSDataContainer:
-    sp_index: int
-    dp_index: int
+    def __init__(self, options: GenerateTableOptions, access_base: SQLUtils.Connection):
+        self._options = options
+        self._access_base = access_base
 
-
-def _get_kksp_list(options: GenerateTableOptions, access_base: SQLUtils.Connection) -> List[str]:
-    values: List[Dict[str, str]] = access_base.retrieve_data(table_name=options.aep_table_name,
-                                                             fields=['KKSp'],
-                                                             key_names=None,
-                                                             key_values=None,
-                                                             uniq_values=True,
-                                                             sort_by=None,
-                                                             key_operator=None)
-    kksp_list: List[str] = []
-    for value in values:
-        kksp_list.append(value['KKSp'])
-    return kksp_list
-
-
-def _get_data_for_kksp(options: GenerateTableOptions, access_base: SQLUtils.Connection, kksp_list: List[str]):
-    for kksp in kksp_list:
-        values: list[dict[str, str]] = access_base.retrieve_data(table_name=options.aep_table_name,
-                                                                 fields=['OBJECT_TYP', 'KKS', 'PART', 'MODULE',
-                                                                          'REDND_INTF', 'FULL_NAME_RUS', 'NAME_RUS',
-                                                                          'FULL_NAME_ENG', 'NAME_ENG', 'MIN', 'MAX',
-                                                                          'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL',
-                                                                          'CABINET', 'SLOT_MP', 'CHANNEL', 'CONNECTION',
-                                                                          'SENSR_TYPE', 'CatNam', 'LOCATION_MP',
-                                                                          'DNAME'],
-                                                                 key_names=['KKSp'],
-                                                                 key_values=[kksp])
+    def _get_kksp_list(self) -> List[str]:
+        values: List[Dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.aep_table_name,
+                                                                       fields=['KKSp'],
+                                                                       key_names=None,
+                                                                       key_values=None,
+                                                                       uniq_values=True,
+                                                                       sort_by=None,
+                                                                       key_operator=None)
+        kksp_list: List[str] = []
         for value in values:
-            signal: Signal = Signal()
+            kksp_list.append(value['KKSp'])
+        return kksp_list
+
+    def _generate_tables(self, kksp: str):
+        values: list[dict[str, str]] = \
+            self._access_base.retrieve_data(table_name=self._options.aep_table_name,
+                                            fields=['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF',
+                                                    'FULL_NAME_RUS', 'NAME_RUS', 'FULL_NAME_ENG', 'NAME_ENG', 'MIN',
+                                                    'MAX', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL', 'CABINET',
+                                                    'SLOT_MP', 'CHANNEL', 'CONNECTION', 'SENSR_TYPE', 'CatNam',
+                                                    'LOCATION_MP', 'DNAME'],
+                                            key_names=['KKSp'],
+                                            key_values=[kksp])
+        sw_container: Dict[str, List[GenerateTables.Signal]] = {}
+        for value in values:
+            signal: GenerateTables.Signal = GenerateTables.Signal()
 
             signal.object_typ = value['OBJECT_TYP']
             signal.kks = value['KKS']
@@ -87,7 +113,7 @@ def _get_data_for_kksp(options: GenerateTableOptions, access_base: SQLUtils.Conn
             signal.full_name_eng = value['FULL_NAME_ENG']
             signal.min = None if value['MIN'] is None else float(value['MIN'])
             signal.max = None if value['MAX'] is None else float(value['MAX'])
-            signal.units = value['UNITS_RUS']
+            signal.units_rus = value['UNITS_RUS']
             signal.units_eng = value['UNITS_ENG']
             signal.in_level = value['IN_LEVEL']
             signal.cabinet = value['CABINET']
@@ -100,31 +126,137 @@ def _get_data_for_kksp(options: GenerateTableOptions, access_base: SQLUtils.Conn
             signal.dname = value['DNAME']
             signal.kksp = kksp
 
-            add_signal_to_sim_table(options=options, signal=signal, access_table=access_base)
-        access_base.commit()
+            if signal.module == '1623' or signal.module == '1631' or signal.module == '1661':
+                self._process_wired_signal(signal=signal, sw_container=sw_container)
+            elif signal.module == '1691':
+                self._process_digital_signal(signal)
 
+        self._access_base.commit()
 
-def add_signal_to_sim_table(options: GenerateTableOptions, access_table: SQLUtils.Connection, signal: Signal):
-    column_names: List[str] = ['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF', 'FULL_NAME_RUS', 'NAME_RUS',
-                               'FULL_NAME_ENG', 'NAME_ENG', 'Min', 'Max', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL',
-                               'CABINET', 'SLOT_MP', 'CHANNEL', 'CONNECTION', 'SENSR_TYPE', 'CatNam', 'KKSp',
-                               'LOCATION_MP', 'SCHEMA']
-    schema: Union[str, None] = '' if signal.module == '1691' else f'{signal.object_typ}_{signal.module}'
-    values: List[str] = [signal.object_typ, signal.kks, signal.part, signal.module, signal.rednd_intf,
-                         signal.full_name_rus, signal.name_rus, signal.full_name_eng, signal.name_eng,
-                         signal.min, signal.max, signal.units, signal.units_eng, signal.in_level,
-                         signal.cabinet, signal.slot_mp, signal.channel, signal.connection, signal.sensr_typ,
-                         signal.cat_nam, signal.kksp, signal.location_mp, schema]
-    access_table.insert_row(table_name=options.sim_table_name,
-                            column_names=column_names,
-                            values=values)
+    def _process_wired_signal(self, signal: 'GenerateTables.Signal', sw_container: Dict[str, List[Signal]]):
+        if signal.module == '1623' and signal.object_typ.casefold() == 'SW'.casefold():
+            self._process_sw_signals(sw_container=sw_container,
+                                     signal=signal)
+        else:
+            self._add_signal_to_sim_table(signal=signal)
 
+    def _process_digital_signal(self, signal: 'GenerateTables.Signal'):
+        if signal.part in ['XB01', 'XB02', 'XB21', 'XB22', 'XB31', 'XB32', 'XL01',
+                           'XL02', 'XA00', 'XA02', 'XL11', 'XL12', 'XL21', 'XL22'] \
+                and not signal.kks.startswith('00'):
+            signal.name_rus = self._process_signal_name(signal.name_rus)
+            signal.full_name_rus = self._process_signal_name(signal.full_name_rus)
+            signal.name_eng = self._process_signal_name(signal.name_eng)
+            signal.full_name_eng = self._process_signal_name(signal.full_name_eng)
 
-def run(options: GenerateTableOptions):
-    with SQLUtils.Connection.connect_to_mdb(options.path) as access_base:
-        access_base.clear_table(options.sim_table_name)
-        kssp_list: List[str] = _get_kksp_list(options=options,
-                                              access_base=access_base)
-        _get_data_for_kksp(options=options,
-                           access_base=access_base,
-                           kksp_list=kssp_list)
+        duplicate_parts: List[str] = ['XB00', 'XB20', 'XB30', 'XL00', 'XL10', 'XL20']
+        if signal.part in duplicate_parts:
+            self._duplicate_signal(signal)
+        else:
+            self._add_signal_to_iec_table(signal=signal)
+            self._add_signal_to_sim_table(signal=signal)
+
+    def _duplicate_signal(self, signal: 'GenerateTables.Signal'):
+        part_num_string: str = signal.part[2:]
+        part_num: int = int(part_num_string)
+        new_signal_1: GenerateTables.Signal = signal.clone()
+        new_signal_1.part = signal.part[:2] + str(part_num + 1)
+        new_signal_2: GenerateTables.Signal = signal.clone()
+        new_signal_2.part = signal.part[:2] + str(part_num + 2)
+        self._add_signal_to_iec_table(signal=new_signal_1)
+        self._add_signal_to_sim_table(signal=new_signal_1)
+        self._add_signal_to_iec_table(signal=new_signal_2)
+        self._add_signal_to_sim_table(signal=new_signal_2)
+
+    def _process_sw_signals(self, sw_container: Dict[str, List[Signal]], signal: Signal):
+        if signal.kks in sw_container:
+            sw_signals: List[GenerateTables.Signal] = sw_container[signal.kks]
+            if len(sw_signals) < 6:
+                sw_signals.append(signal)
+            if len(sw_signals) == 6:
+                parts_in_container: Set[str] = {item.part for item in sw_signals}
+                parts_set: Set[str] = {'XB01', 'XB02', 'XL01', 'XL02', 'XB07', 'XB08'}
+                if parts_set == parts_in_container:
+                    sw_signal: GenerateTables.Signal = signal.clone()
+                    sw_signal.part = 'XA01'
+                    sw_signal.name_rus = 'Выключатель'
+                    sw_signal.name_eng = 'CB'
+                    sw_signal.full_name_rus = 'Выключатель'
+                    sw_signal.full_name_eng = 'Curcuit breaker'
+                    self._add_signal_to_sim_table(sw_signal)
+                    del sw_container[signal.kks]
+                else:
+                    print('Неверный набор сигналов в группе SW')
+                    raise Exception('SignalGroupError')
+        else:
+            sw_container[signal.kks] = [signal]
+
+    def _add_signal_to_sim_table(self, signal: Signal):
+        column_names: List[str] = ['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF', 'FULL_NAME_RUS', 'NAME_RUS',
+                                   'FULL_NAME_ENG', 'NAME_ENG', 'Min', 'Max', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL',
+                                   'CABINET', 'SLOT_MP', 'CHANNEL', 'CONNECTION', 'SENSR_TYPE', 'CatNam', 'KKSp',
+                                   'LOCATION_MP', 'SCHEMA']
+        schema: Union[str, None] = '' if signal.module == '1691' else f'{signal.object_typ}_{signal.module}'
+        values: List[str] = [signal.object_typ, signal.kks, signal.part, signal.module, signal.rednd_intf,
+                             signal.full_name_rus, signal.name_rus, signal.full_name_eng, signal.name_eng,
+                             signal.min, signal.max, signal.units_rus, signal.units_eng, signal.in_level,
+                             signal.cabinet, signal.slot_mp, signal.channel, signal.connection, signal.sensr_typ,
+                             signal.cat_nam, signal.kksp, signal.location_mp, schema]
+        self._access_base.insert_row(table_name=self._options.sim_table_name,
+                                     column_names=column_names,
+                                     values=values)
+
+    def _add_signal_to_iec_table(self, signal: Signal):
+        column_names: List[str] = ['KKS', 'PART', 'KKSp', 'MODULE', 'REDND_INTF', 'CABINET', 'SLOT_MP', 'LOCATION_MP',
+                                   'FULL_NAME_RUS', 'NAME_RUS', 'FULL_NAME_ENG', 'NAME_ENG', 'Min', 'Max', 'UNITS_RUS',
+                                   'UNITS_ENG', 'SENSR_TYPE', 'AREA', 'DNAME', 'IP', 'IED_NAME', 'MMS', 'MMS_POS',
+                                   'MMS_COM']
+        ied_name: str = 'IED_' + signal.kks.replace('-', '_')
+        area: str = self._access_base.retrieve_data('TPTS', ['AREA'], ['CABINET'], [signal.cabinet])[0]['AREA']
+        ip: str = self._access_base.retrieve_data('[Network data]', ['IP'], ['KKSp'], [signal.kksp])[0]['IP']
+        values: List[str] = [signal.kks, signal.part, signal.kksp, signal.module, signal.rednd_intf, signal.cabinet,
+                             signal.slot_mp, signal.location_mp, signal.full_name_rus, signal.name_rus,
+                             signal.full_name_eng, signal.name_eng, signal.min, signal.max, signal.units_rus,
+                             signal.units_eng, signal.sensr_typ, area, signal.dname, ip, ied_name, '', '', '']
+
+        self._access_base.insert_row(table_name=self._options.iec_table_name,
+                                     column_names=column_names,
+                                     values=values)
+
+    @staticmethod
+    def _process_signal_name(signal_name: str) -> str:
+        key_words: List = ['вкл', 'откл', 'замкн', 'разомкн', 'ввод', 'вывод', 'введ',
+                           'close', 'trip', 'input', 'output', 'discon']
+        key_word: Union[str, None] = next((key for key in key_words if key.upper() in signal_name.upper()), None)
+        out_string: str
+        if key_word is not None:
+            start_index: int = signal_name.upper().find(key_word.upper())
+            end_index: int = signal_name[start_index:].find(' ') + start_index + 1
+            if start_index == end_index:
+                out_string = signal_name[:start_index]
+            else:
+                out_string = signal_name.replace(signal_name[start_index: end_index], '')
+        else:
+            out_string = signal_name
+        out_string = re.sub('(^on|on$|is on |is on$)', '', out_string, flags=re.I)
+        out_string = re.sub('(^off|off$|is off |is off$)', '', out_string, flags=re.I)
+        out_string = re.sub('( on | off )', ' ', out_string, flags=re.I)
+        out_string = out_string.replace('""', '').replace('  ', ' ')
+        if out_string.casefold() == signal_name.casefold():
+            raise Exception('SignalNameCorrectionFailed')
+        return out_string
+
+    def generate(self):
+        self._access_base.clear_table(self._options.sim_table_name)
+        self._access_base.clear_table(self._options.iec_table_name)
+
+        kksp_list: List[str] = self._get_kksp_list()
+        for kksp in kksp_list:
+            self._generate_tables(kksp=kksp)
+
+    @staticmethod
+    def run(options: GenerateTableOptions):
+        with SQLUtils.Connection.connect_to_mdb(options.path) as access_base:
+            generate_class: GenerateTables = GenerateTables(options=options,
+                                                            access_base=access_base)
+            generate_class.generate()

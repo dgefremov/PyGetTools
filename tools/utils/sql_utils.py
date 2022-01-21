@@ -158,6 +158,7 @@ class SQLUtils:
 
         def clear_table(self, table_name: str) -> None:
             self._cursor.execute(f'DELETE * From {table_name}')
+            # self._cursor.execute(f'ALTER TABLE {table_name} ALTER COLUMN ID COUNTER(1,1)')
             self._cursor.commit()
 
         def insert_row(self, table_name: str, column_names: List[str], values: List[Union[str, int, float]]) -> None:
