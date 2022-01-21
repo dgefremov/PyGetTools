@@ -71,6 +71,83 @@ class GenerateTables:
             new_signal.kksp = self.kksp
             return new_signal
 
+    class MMSGenerator:
+        sps_index: int
+        spc_index: int
+        dps_index: int
+        mv_index: int
+        bsc_index: int
+
+        dps_cb_container: Dict[str, str]
+        dps_alt_container: Dict[str, str]
+        bsc_contaier: Dict[str, str]
+        ied_name: str
+
+        MV_PREFIX = 'Device/GGIO1.AnIn'
+        MV_POSTFIX = '.mag.f'
+
+        SPS_PREFIX = 'Device/GGIO1.Alm'
+        SPS_POSTFIX = '.stVal'
+
+        SPC_PREFIX = 'Device/GGIO1.SPCSO'
+        SPC_POSTFIX = '.Oper'
+
+        BSC_PREFIX = 'Device/ATCC'
+        BSC_COMMAND_POSTFIX = '.TapChg.Oper'
+        BSC_POS_POSTFIX = 'TapChg.valWTr'
+
+        DPS_PREFIX = 'Device/GGIO1.DPCSO'
+        DPS_COMMAND_POSTFIX = '.Oper'
+        DPS_POS_POSTFIX = '.stVal'
+
+        DPS_CB_CONST: List[str] = ['XB01', 'XB02', 'XL01', 'XL02']
+        DPS_ALT_CONST: List[str] = ['XB21', 'XB22', 'XL21', 'XL22']
+        BSC_CONST: List[str] = ['XB10', 'XL11', 'XL12']
+
+        def __init__(self, kksp: str):
+            self.sps_index = 0
+            self.spc_index = 0
+            self.dps_index = 0
+            self.mv_index = 0
+            self.bsc_index = 0
+            self.dps_cb_container = {}
+            self.dps_alt_container = {}
+            self.bsc_contaier = {}
+            self.ied_name = 'IED_'+kksp.replace('-', '_')
+
+        def get_mms(self, kks: str, part: str):
+            if part in self.DPS_CB_CONST:
+                postfix: str = self.DPS_COMMAND_POSTFIX if part.upper().startswith('XL') else self.DPS_POS_POSTFIX
+                if kks not in self.dps_cb_container:
+                    self.dps_index += 1
+                    self.dps_cb_container[kks] = self.DPS_PREFIX + str(self.dps_index)
+                return self.ied_name + self.dps_cb_container[kks] + postfix
+
+            if part in self.DPS_ALT_CONST:
+                postfix: str = self.DPS_COMMAND_POSTFIX if part.upper().startswith('XL') else self.DPS_POS_POSTFIX
+                if kks not in self.dps_alt_container:
+                    self.dps_index += 1
+                    self.dps_alt_container[kks] = self.DPS_PREFIX + str(self.dps_index)
+                return self.ied_name + self.dps_alt_container[kks] + postfix
+
+            if part in self.BSC_CONST:
+                postfix: str = self.BSC_COMMAND_POSTFIX if part.upper().startswith('XL') else self.BSC_POS_POSTFIX
+                if kks not in self.bsc_contaier:
+                    self.bsc_index += 1
+                    self.bsc_contaier[kks] = self.BSC_PREFIX + str(self.bsc_index)
+                return self.ied_name + self.bsc_contaier[kks] + postfix
+
+            if part.upper().startswith('XL'):
+                self.sps_index += 1
+                return self.ied_name + self.SPC_PREFIX + str(self.spc_index) + self.SPC_POSTFIX
+
+            if part.upper().startswith('XQ'):
+                self.mv_index += 1
+                return self.ied_name + self.MV_PREFIX + str(self.mv_index) + self.MV_POSTFIX
+
+            self.sps_index += 1
+            return self.ied_name + self.SPS_PREFIX + str(self.sps_index) + self.SPS_POSTFIX
+
     def __init__(self, options: GenerateTableOptions, access_base: SQLUtils.Connection):
         self._options = options
         self._access_base = access_base
@@ -99,6 +176,7 @@ class GenerateTables:
                                             key_names=['KKSp'],
                                             key_values=[kksp])
         sw_container: Dict[str, List[GenerateTables.Signal]] = {}
+        mms_generator: GenerateTables.MMSGenerator = GenerateTables.MMSGenerator(kksp=kksp)
         for value in values:
             signal: GenerateTables.Signal = GenerateTables.Signal()
 
@@ -129,7 +207,7 @@ class GenerateTables:
             if signal.module == '1623' or signal.module == '1631' or signal.module == '1661':
                 self._process_wired_signal(signal=signal, sw_container=sw_container)
             elif signal.module == '1691':
-                self._process_digital_signal(signal)
+                self._process_digital_signal(signal=signal, mms_generator=mms_generator)
 
         self._access_base.commit()
 
@@ -140,9 +218,9 @@ class GenerateTables:
         else:
             self._add_signal_to_sim_table(signal=signal)
 
-    def _process_digital_signal(self, signal: 'GenerateTables.Signal'):
+    def _process_digital_signal(self, signal: 'GenerateTables.Signal', mms_generator: 'GenerateTables.MMSGenerator'):
         if signal.part in ['XB01', 'XB02', 'XB21', 'XB22', 'XB31', 'XB32', 'XL01',
-                           'XL02', 'XA00', 'XA02', 'XL11', 'XL12', 'XL21', 'XL22'] \
+                           'XL02', 'XA01', 'XA02', 'XL11', 'XL12', 'XL21', 'XL22'] \
                 and not signal.kks.startswith('00'):
             signal.name_rus = self._process_signal_name(signal.name_rus)
             signal.full_name_rus = self._process_signal_name(signal.full_name_rus)
@@ -151,21 +229,21 @@ class GenerateTables:
 
         duplicate_parts: List[str] = ['XB00', 'XB20', 'XB30', 'XL00', 'XL10', 'XL20']
         if signal.part in duplicate_parts:
-            self._duplicate_signal(signal)
+            self._duplicate_signal(signal=signal, mms_generator=mms_generator)
         else:
-            self._add_signal_to_iec_table(signal=signal)
+            self._add_signal_to_iec_table(signal=signal, mms_generator=mms_generator)
             self._add_signal_to_sim_table(signal=signal)
 
-    def _duplicate_signal(self, signal: 'GenerateTables.Signal'):
+    def _duplicate_signal(self, signal: 'GenerateTables.Signal', mms_generator: 'GenerateTables.MMSGenerator'):
         part_num_string: str = signal.part[2:]
         part_num: int = int(part_num_string)
         new_signal_1: GenerateTables.Signal = signal.clone()
         new_signal_1.part = signal.part[:2] + str(part_num + 1)
         new_signal_2: GenerateTables.Signal = signal.clone()
         new_signal_2.part = signal.part[:2] + str(part_num + 2)
-        self._add_signal_to_iec_table(signal=new_signal_1)
+        self._add_signal_to_iec_table(signal=new_signal_1, mms_generator=mms_generator)
         self._add_signal_to_sim_table(signal=new_signal_1)
-        self._add_signal_to_iec_table(signal=new_signal_2)
+        self._add_signal_to_iec_table(signal=new_signal_2, mms_generator=mms_generator)
         self._add_signal_to_sim_table(signal=new_signal_2)
 
     def _process_sw_signals(self, sw_container: Dict[str, List[Signal]], signal: Signal):
@@ -206,18 +284,29 @@ class GenerateTables:
                                      column_names=column_names,
                                      values=values)
 
-    def _add_signal_to_iec_table(self, signal: Signal):
+    def _add_signal_to_iec_table(self, signal: Signal, mms_generator: 'GenerateTables.MMSGenerator'):
         column_names: List[str] = ['KKS', 'PART', 'KKSp', 'MODULE', 'REDND_INTF', 'CABINET', 'SLOT_MP', 'LOCATION_MP',
                                    'FULL_NAME_RUS', 'NAME_RUS', 'FULL_NAME_ENG', 'NAME_ENG', 'Min', 'Max', 'UNITS_RUS',
                                    'UNITS_ENG', 'SENSR_TYPE', 'AREA', 'DNAME', 'IP', 'IED_NAME', 'MMS', 'MMS_POS',
                                    'MMS_COM']
-        ied_name: str = 'IED_' + signal.kks.replace('-', '_')
+        ied_name: str = 'IED_' + signal.kksp.replace('-', '_')
         area: str = self._access_base.retrieve_data('TPTS', ['AREA'], ['CABINET'], [signal.cabinet])[0]['AREA']
         ip: str = self._access_base.retrieve_data('[Network data]', ['IP'], ['KKSp'], [signal.kksp])[0]['IP']
+        mms_path: str = mms_generator.get_mms(signal.kks, signal.part)
+        mms: str = ''
+        mms_pos: str = ''
+        mms_com: str = ''
+        if signal.part.upper().startswith('XL'):
+            mms_com = mms_path
+        elif signal.part.upper().startswith('XB'):
+            mms_pos = mms_path
+        else:
+            mms = mms_path
         values: List[str] = [signal.kks, signal.part, signal.kksp, signal.module, signal.rednd_intf, signal.cabinet,
                              signal.slot_mp, signal.location_mp, signal.full_name_rus, signal.name_rus,
                              signal.full_name_eng, signal.name_eng, signal.min, signal.max, signal.units_rus,
-                             signal.units_eng, signal.sensr_typ, area, signal.dname, ip, ied_name, '', '', '']
+                             signal.units_eng, signal.sensr_typ, area, signal.dname, ip, ied_name, mms, mms_pos,
+                             mms_com]
 
         self._access_base.insert_row(table_name=self._options.iec_table_name,
                                      column_names=column_names,
