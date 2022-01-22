@@ -17,6 +17,34 @@ class GenerateTables:
         aep_table_name: str
         sim_table_name: str
         iec_table_name: str
+        dps_signals: List['GenerateTables.DPSSignal']
+        bsc_signals: List['GenerateTables.BSCSignal']
+        skip_duplicate_prefix: List[str]
+
+    @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+    class DPSSignal:
+        signal_part: Union[str, None]
+        signals_part_dupl: List[str]
+        command_part: Union[str, None]
+        command_part_dupl: List[str]
+
+        def is_command(self, value: str) -> bool:
+            return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
+
+        def is_signal(self, value: str) -> bool:
+            return value.upper() in (signal_part.upper() for signal_part in self.signals_part_dupl)
+
+    @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+    class BSCSignal:
+        signal_part: str
+        command_part: str
+        command_part_dupl: List[str]
+
+        def is_command(self, value: str) -> bool:
+            return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
+
+        def is_signal(self, value: str) -> bool:
+            return value.upper() == self.signal_part
 
     @dataclass(init=False, repr=False, eq=False, order=False, frozen=False)
     class Signal:
@@ -77,11 +105,10 @@ class GenerateTables:
         dps_index: int
         mv_index: int
         bsc_index: int
-
-        dps_cb_container: Dict[str, str]
-        dps_alt_container: Dict[str, str]
-        bsc_contaier: Dict[str, str]
         ied_name: str
+
+        dps_container: Dict['GenerateTables.DPSSignal', Dict[str, str]]
+        bsc_container: Dict['GenerateTables.BSCSignal', Dict[str, str]]
 
         MV_PREFIX = 'Device/GGIO1.AnIn'
         MV_POSTFIX = '.mag.f'
@@ -100,42 +127,43 @@ class GenerateTables:
         DPS_COMMAND_POSTFIX = '.Oper'
         DPS_POS_POSTFIX = '.stVal'
 
-        DPS_CB_CONST: List[str] = ['XB01', 'XB02', 'XL01', 'XL02']
-        DPS_ALT_CONST: List[str] = ['XB21', 'XB22', 'XL21', 'XL22']
-        BSC_CONST: List[str] = ['XB10', 'XL11', 'XL12']
+        # DPS_CB_CONST: List[str] = ['XB01', 'XB02', 'XL01', 'XL02']
+        # DPS_ALT_CONST: List[str] = ['XB21', 'XB22', 'XL21', 'XL22']
+        # BSC_CONST: List[str] = ['XB10', 'XL11', 'XL12']
 
-        def __init__(self, kksp: str):
+        def __init__(self, kksp: str, dps_signals: List['GenerateTables.DPSSignal'],
+                     bsc_signals: List['GenerateTables.BSCSignal']):
             self.sps_index = 0
             self.spc_index = 0
             self.dps_index = 0
             self.mv_index = 0
             self.bsc_index = 0
-            self.dps_cb_container = {}
-            self.dps_alt_container = {}
-            self.bsc_contaier = {}
-            self.ied_name = 'IED_'+kksp.replace('-', '_')
+            self.ied_name = 'IED_' + kksp.replace('-', '_')
+            self.dps_container = {}
+            self.bsc_container = {}
+            for dps_signal in dps_signals:
+                self.dps_container[dps_signal] = {}
+            for bsc_signal in bsc_signals:
+                self.bsc_container[bsc_signal] = {}
 
         def get_mms(self, kks: str, part: str):
-            if part in self.DPS_CB_CONST:
-                postfix: str = self.DPS_COMMAND_POSTFIX if part.upper().startswith('XL') else self.DPS_POS_POSTFIX
-                if kks not in self.dps_cb_container:
-                    self.dps_index += 1
-                    self.dps_cb_container[kks] = self.DPS_PREFIX + str(self.dps_index)
-                return self.ied_name + self.dps_cb_container[kks] + postfix
+            for dps_signal in self.dps_container:
+                if dps_signal.is_signal(part) or dps_signal.is_command(part):
+                    postfix: str = self.DPS_COMMAND_POSTFIX if dps_signal.is_command(part) else \
+                        self.DPS_POS_POSTFIX
+                    if kks not in self.dps_container[dps_signal]:
+                        self.dps_index += 1
+                        self.dps_container[dps_signal][kks] = self.DPS_PREFIX + str(self.dps_index)
+                    return self.ied_name + self.dps_container[dps_signal][kks] + postfix
 
-            if part in self.DPS_ALT_CONST:
-                postfix: str = self.DPS_COMMAND_POSTFIX if part.upper().startswith('XL') else self.DPS_POS_POSTFIX
-                if kks not in self.dps_alt_container:
-                    self.dps_index += 1
-                    self.dps_alt_container[kks] = self.DPS_PREFIX + str(self.dps_index)
-                return self.ied_name + self.dps_alt_container[kks] + postfix
-
-            if part in self.BSC_CONST:
-                postfix: str = self.BSC_COMMAND_POSTFIX if part.upper().startswith('XL') else self.BSC_POS_POSTFIX
-                if kks not in self.bsc_contaier:
-                    self.bsc_index += 1
-                    self.bsc_contaier[kks] = self.BSC_PREFIX + str(self.bsc_index)
-                return self.ied_name + self.bsc_contaier[kks] + postfix
+            for bsc_signal in self.bsc_container:
+                if bsc_signal.is_signal(part) or bsc_signal.is_command(part):
+                    postfix: str = self.BSC_COMMAND_POSTFIX if bsc_signal.is_command(part) else \
+                        self.BSC_POS_POSTFIX
+                    if kks not in self.bsc_container[bsc_signal]:
+                        self.bsc_index += 1
+                        self.bsc_container[bsc_signal][kks] = self.BSC_PREFIX + str(self.bsc_index)
+                    return self.ied_name + self.bsc_container[bsc_signal][kks] + postfix
 
             if part.upper().startswith('XL'):
                 self.sps_index += 1
@@ -176,7 +204,9 @@ class GenerateTables:
                                             key_names=['KKSp'],
                                             key_values=[kksp])
         sw_container: Dict[str, List[GenerateTables.Signal]] = {}
-        mms_generator: GenerateTables.MMSGenerator = GenerateTables.MMSGenerator(kksp=kksp)
+        mms_generator: GenerateTables.MMSGenerator = GenerateTables.MMSGenerator(kksp=kksp,
+                                                                                 dps_signals=self._options.dps_signals,
+                                                                                 bsc_signals=self._options.bsc_signals)
         for value in values:
             signal: GenerateTables.Signal = GenerateTables.Signal()
 
@@ -218,17 +248,35 @@ class GenerateTables:
         else:
             self._add_signal_to_sim_table(signal=signal)
 
-    def _process_digital_signal(self, signal: 'GenerateTables.Signal', mms_generator: 'GenerateTables.MMSGenerator'):
-        if signal.part in ['XB01', 'XB02', 'XB21', 'XB22', 'XB31', 'XB32', 'XL01',
-                           'XL02', 'XA01', 'XA02', 'XL11', 'XL12', 'XL21', 'XL22'] \
-                and not signal.kks.startswith('00'):
-            signal.name_rus = self._process_signal_name(signal.name_rus)
-            signal.full_name_rus = self._process_signal_name(signal.full_name_rus)
-            signal.name_eng = self._process_signal_name(signal.name_eng)
-            signal.full_name_eng = self._process_signal_name(signal.full_name_eng)
+    def _get_parts_to_duplicate(self) -> List[str]:
+        output: List[str] = []
+        for dps_signal in self._options.dps_signals:
+            if dps_signal.signal_part is not None:
+                output.append(dps_signal.signal_part)
+            if dps_signal.command_part is not None:
+                output.append(dps_signal.command_part)
+        for bsc_signal in self._options.bsc_signals:
+            output.append(bsc_signal.command_part)
+        return output
 
-        duplicate_parts: List[str] = ['XB00', 'XB20', 'XB30', 'XL00', 'XL10', 'XL20']
-        if signal.part in duplicate_parts:
+    def _get_duplicated_parts(self) -> List[str]:
+        output: List[str] = []
+        for dps_signal in self._options.dps_signals:
+            output.extend(dps_signal.signals_part_dupl)
+            output.extend(dps_signal.command_part_dupl)
+        for bsc_signal in self._options.bsc_signals:
+            output.extend(bsc_signal.command_part_dupl)
+        return output
+
+    def _process_digital_signal(self, signal: 'GenerateTables.Signal', mms_generator: 'GenerateTables.MMSGenerator'):
+        if signal.part in self._get_duplicated_parts():
+            signal.name_rus = self._sanitizate_signal_name(signal.name_rus)
+            signal.full_name_rus = self._sanitizate_signal_name(signal.full_name_rus)
+            signal.name_eng = self._sanitizate_signal_name(signal.name_eng)
+            signal.full_name_eng = self._sanitizate_signal_name(signal.full_name_eng)
+
+        if signal.part in self._get_parts_to_duplicate() and \
+                not any(signal.kks.upper().startswith(item.upper()) for item in self._options.skip_duplicate_prefix):
             self._duplicate_signal(signal=signal, mms_generator=mms_generator)
         else:
             self._add_signal_to_iec_table(signal=signal, mms_generator=mms_generator)
@@ -238,9 +286,9 @@ class GenerateTables:
         part_num_string: str = signal.part[2:]
         part_num: int = int(part_num_string)
         new_signal_1: GenerateTables.Signal = signal.clone()
-        new_signal_1.part = signal.part[:2] + str(part_num + 1)
+        new_signal_1.part = signal.part[:2] + str(part_num + 1).rjust(2, '0')
         new_signal_2: GenerateTables.Signal = signal.clone()
-        new_signal_2.part = signal.part[:2] + str(part_num + 2)
+        new_signal_2.part = signal.part[:2] + str(part_num + 2).rjust(2, '0')
         self._add_signal_to_iec_table(signal=new_signal_1, mms_generator=mms_generator)
         self._add_signal_to_sim_table(signal=new_signal_1)
         self._add_signal_to_iec_table(signal=new_signal_2, mms_generator=mms_generator)
@@ -313,14 +361,18 @@ class GenerateTables:
                                      values=values)
 
     @staticmethod
-    def _process_signal_name(signal_name: str) -> str:
+    def _sanitizate_signal_name(signal_name: str) -> str:
         key_words: List = ['вкл', 'откл', 'замкн', 'разомкн', 'ввод', 'вывод', 'введ',
                            'close', 'trip', 'input', 'output', 'discon']
         key_word: Union[str, None] = next((key for key in key_words if key.upper() in signal_name.upper()), None)
         out_string: str
         if key_word is not None:
             start_index: int = signal_name.upper().find(key_word.upper())
-            end_index: int = signal_name[start_index:].find(' ') + start_index + 1
+            end_index: int = next((index for index in range(start_index, len(signal_name)) if not
+                                  signal_name[index].isalpha()), start_index)
+            if key_word == 'откл' or key_word == 'вкл' and \
+                    signal_name[start_index - 3: start_index - 1].casefold() == 'на'.casefold():
+                start_index = start_index - 3
             if start_index == end_index:
                 out_string = signal_name[:start_index]
             else:
