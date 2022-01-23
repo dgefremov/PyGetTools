@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from utils.get_base_utils import Controller, Telegram, get_abonents
 from utils.sql_utils import SQLUtils
-from utils.utils import print_log
+from utils.common_utils import print_log
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -20,8 +20,8 @@ class Options:
 
 
 def run(options: Options):
-    with SQLUtils.connect_to_postgre(options.base, options.user, options.password, options.server, options.port) \
-            as _postgre_base:
+    with SQLUtils.Connection.connect_to_postgre(options.base, options.user, options.password, options.server,
+                                                options.port) as _postgre_base:
         _controllers_from_get1 = get_abonents(_postgre_base, options.project_1, options.complex_1)
         _controllers_from_get2 = get_abonents(_postgre_base, options.project_2, options.complex_2)
     abonents1: Set[int] = set(_controllers_from_get1.keys())

@@ -1,6 +1,6 @@
 from typing import Dict, List
 from sql_utils import SQLUtils
-from utils import print_log
+from common_utils import print_log
 
 
 class Telegram:

@@ -5,99 +5,103 @@ from tools.utils.sql_utils import SQLUtils
 from dataclasses import dataclass
 
 
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class GenerateTableOptions:
+    path: str
+    network_data_table_name: str
+    controller_data_table_name: str
+    aep_table_name: str
+    sim_table_name: str
+    iec_table_name: str
+    dps_signals: List['DPSSignal']
+    bsc_signals: List['BSCSignal']
+    skip_duplicate_prefix: List[str]
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class DPSSignal:
+    signal_part: Union[str, None]
+    signals_part_dupl: List[str]
+    command_part: Union[str, None]
+    command_part_dupl: List[str]
+
+    def is_command(self, value: str) -> bool:
+        return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
+
+    def is_signal(self, value: str) -> bool:
+        return value.upper() in (signal_part.upper() for signal_part in self.signals_part_dupl)
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class BSCSignal:
+    signal_part: str
+    command_part: str
+    command_part_dupl: List[str]
+
+    def is_command(self, value: str) -> bool:
+        return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
+
+    def is_signal(self, value: str) -> bool:
+        return value.upper() == self.signal_part
+
+
+@dataclass(init=False, repr=False, eq=False, order=False, frozen=False)
+class Signal:
+    object_typ: str
+    kks: str
+    part: str
+    module: str
+    rednd_intf: str
+    name_rus: str
+    full_name_rus: str
+    name_eng: str
+    full_name_eng: str
+    min: Union[float, None]
+    max: Union[float, None]
+    units_rus: str
+    units_eng: str
+    in_level: str
+    cabinet: str
+    slot_mp: Union[int, None]
+    channel: Union[int, None]
+    connection: str
+    sensr_typ: str
+    cat_nam: str
+    location_mp: str
+    dname: str
+    kksp: str
+
+    def clone(self) -> 'Signal':
+        new_signal: Signal = Signal()
+        new_signal.kks = self.kks
+        new_signal.object_typ = self.object_typ
+        new_signal.part = self.part
+        new_signal.module = self.module
+        new_signal.rednd_intf = self.rednd_intf
+        new_signal.full_name_rus = self.full_name_rus
+        new_signal.name_rus = self.name_rus
+        new_signal.full_name_eng = self.full_name_eng
+        new_signal.name_eng = self.name_eng
+        new_signal.min = self.min
+        new_signal.max = self.max
+        new_signal.units_rus = self.units_rus
+        new_signal.units_eng = self.units_eng
+        new_signal.in_level = self.in_level
+        new_signal.cabinet = self.cabinet
+        new_signal.slot_mp = self.slot_mp
+        new_signal.channel = self.channel
+        new_signal.connection = self.connection
+        new_signal.sensr_typ = self.sensr_typ
+        new_signal.cat_nam = self.cat_nam
+        new_signal.location_mp = self.location_mp
+        new_signal.dname = self.dname
+        new_signal.kksp = self.kksp
+        return new_signal
+
+
 class GenerateTables:
     _options: 'GenerateTableOptions'
     _access_base: SQLUtils.Connection
-
-    @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-    class GenerateTableOptions:
-        path: str
-        network_data_table_name: str
-        controller_data_table_name: str
-        aep_table_name: str
-        sim_table_name: str
-        iec_table_name: str
-        dps_signals: List['GenerateTables.DPSSignal']
-        bsc_signals: List['GenerateTables.BSCSignal']
-        skip_duplicate_prefix: List[str]
-
-    @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-    class DPSSignal:
-        signal_part: Union[str, None]
-        signals_part_dupl: List[str]
-        command_part: Union[str, None]
-        command_part_dupl: List[str]
-
-        def is_command(self, value: str) -> bool:
-            return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
-
-        def is_signal(self, value: str) -> bool:
-            return value.upper() in (signal_part.upper() for signal_part in self.signals_part_dupl)
-
-    @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-    class BSCSignal:
-        signal_part: str
-        command_part: str
-        command_part_dupl: List[str]
-
-        def is_command(self, value: str) -> bool:
-            return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
-
-        def is_signal(self, value: str) -> bool:
-            return value.upper() == self.signal_part
-
-    @dataclass(init=False, repr=False, eq=False, order=False, frozen=False)
-    class Signal:
-        object_typ: str
-        kks: str
-        part: str
-        module: str
-        rednd_intf: str
-        name_rus: str
-        full_name_rus: str
-        name_eng: str
-        full_name_eng: str
-        min: Union[float, None]
-        max: Union[float, None]
-        units_rus: str
-        units_eng: str
-        in_level: str
-        cabinet: str
-        slot_mp: Union[int, None]
-        channel: Union[int, None]
-        connection: str
-        sensr_typ: str
-        cat_nam: str
-        location_mp: str
-        dname: str
-        kksp: str
-
-        def clone(self) -> 'GenerateTables.Signal':
-            new_signal: GenerateTables.Signal = GenerateTables.Signal()
-            new_signal.kks = self.kks
-            new_signal.object_typ = self.object_typ
-            new_signal.part = self.part
-            new_signal.module = self.module
-            new_signal.rednd_intf = self.rednd_intf
-            new_signal.full_name_rus = self.full_name_rus
-            new_signal.name_rus = self.name_rus
-            new_signal.full_name_eng = self.full_name_eng
-            new_signal.name_eng = self.name_eng
-            new_signal.min = self.min
-            new_signal.max = self.max
-            new_signal.units_rus = self.units_rus
-            new_signal.units_eng = self.units_eng
-            new_signal.in_level = self.in_level
-            new_signal.cabinet = self.cabinet
-            new_signal.slot_mp = self.slot_mp
-            new_signal.channel = self.channel
-            new_signal.connection = self.connection
-            new_signal.sensr_typ = self.sensr_typ
-            new_signal.cat_nam = self.cat_nam
-            new_signal.location_mp = self.location_mp
-            new_signal.dname = self.dname
-            new_signal.kksp = self.kksp
-            return new_signal
 
     class MMSGenerator:
         sps_index: int
@@ -107,8 +111,8 @@ class GenerateTables:
         bsc_index: int
         ied_name: str
 
-        dps_container: Dict['GenerateTables.DPSSignal', Dict[str, str]]
-        bsc_container: Dict['GenerateTables.BSCSignal', Dict[str, str]]
+        dps_container: Dict[DPSSignal, Dict[str, str]]
+        bsc_container: Dict[BSCSignal, Dict[str, str]]
 
         MV_PREFIX = 'Device/GGIO1.AnIn'
         MV_POSTFIX = '.mag.f'
@@ -131,8 +135,8 @@ class GenerateTables:
         # DPS_ALT_CONST: List[str] = ['XB21', 'XB22', 'XL21', 'XL22']
         # BSC_CONST: List[str] = ['XB10', 'XL11', 'XL12']
 
-        def __init__(self, kksp: str, dps_signals: List['GenerateTables.DPSSignal'],
-                     bsc_signals: List['GenerateTables.BSCSignal']):
+        def __init__(self, kksp: str, dps_signals: List[DPSSignal],
+                     bsc_signals: List[BSCSignal]):
             self.sps_index = 0
             self.spc_index = 0
             self.dps_index = 0
@@ -203,12 +207,12 @@ class GenerateTables:
                                                     'LOCATION_MP', 'DNAME'],
                                             key_names=['KKSp'],
                                             key_values=[kksp])
-        sw_container: Dict[str, List[GenerateTables.Signal]] = {}
+        sw_container: Dict[str, List[Signal]] = {}
         mms_generator: GenerateTables.MMSGenerator = GenerateTables.MMSGenerator(kksp=kksp,
                                                                                  dps_signals=self._options.dps_signals,
                                                                                  bsc_signals=self._options.bsc_signals)
         for value in values:
-            signal: GenerateTables.Signal = GenerateTables.Signal()
+            signal: Signal = Signal()
 
             signal.object_typ = value['OBJECT_TYP']
             signal.kks = value['KKS']
@@ -241,7 +245,7 @@ class GenerateTables:
 
         self._access_base.commit()
 
-    def _process_wired_signal(self, signal: 'GenerateTables.Signal', sw_container: Dict[str, List[Signal]]):
+    def _process_wired_signal(self, signal: Signal, sw_container: Dict[str, List[Signal]]):
         if signal.module == '1623' and signal.object_typ.casefold() == 'SW'.casefold():
             self._process_sw_signals(sw_container=sw_container,
                                      signal=signal)
@@ -268,7 +272,7 @@ class GenerateTables:
             output.extend(bsc_signal.command_part_dupl)
         return output
 
-    def _process_digital_signal(self, signal: 'GenerateTables.Signal', mms_generator: 'GenerateTables.MMSGenerator'):
+    def _process_digital_signal(self, signal: Signal, mms_generator: MMSGenerator):
         if signal.part in self._get_duplicated_parts():
             signal.name_rus = self._sanitizate_signal_name(signal.name_rus)
             signal.full_name_rus = self._sanitizate_signal_name(signal.full_name_rus)
@@ -282,12 +286,12 @@ class GenerateTables:
             self._add_signal_to_iec_table(signal=signal, mms_generator=mms_generator)
             self._add_signal_to_sim_table(signal=signal)
 
-    def _duplicate_signal(self, signal: 'GenerateTables.Signal', mms_generator: 'GenerateTables.MMSGenerator'):
+    def _duplicate_signal(self, signal: Signal, mms_generator: MMSGenerator):
         part_num_string: str = signal.part[2:]
         part_num: int = int(part_num_string)
-        new_signal_1: GenerateTables.Signal = signal.clone()
+        new_signal_1: Signal = signal.clone()
         new_signal_1.part = signal.part[:2] + str(part_num + 1).rjust(2, '0')
-        new_signal_2: GenerateTables.Signal = signal.clone()
+        new_signal_2: Signal = signal.clone()
         new_signal_2.part = signal.part[:2] + str(part_num + 2).rjust(2, '0')
         self._add_signal_to_iec_table(signal=new_signal_1, mms_generator=mms_generator)
         self._add_signal_to_sim_table(signal=new_signal_1)
@@ -296,14 +300,14 @@ class GenerateTables:
 
     def _process_sw_signals(self, sw_container: Dict[str, List[Signal]], signal: Signal):
         if signal.kks in sw_container:
-            sw_signals: List[GenerateTables.Signal] = sw_container[signal.kks]
+            sw_signals: List[Signal] = sw_container[signal.kks]
             if len(sw_signals) < 6:
                 sw_signals.append(signal)
             if len(sw_signals) == 6:
                 parts_in_container: Set[str] = {item.part for item in sw_signals}
                 parts_set: Set[str] = {'XB01', 'XB02', 'XL01', 'XL02', 'XB07', 'XB08'}
                 if parts_set == parts_in_container:
-                    sw_signal: GenerateTables.Signal = signal.clone()
+                    sw_signal: Signal = signal.clone()
                     sw_signal.part = 'XA01'
                     sw_signal.name_rus = 'Выключатель'
                     sw_signal.name_eng = 'CB'
@@ -369,9 +373,9 @@ class GenerateTables:
         if key_word is not None:
             start_index: int = signal_name.upper().find(key_word.upper())
             end_index: int = next((index for index in range(start_index, len(signal_name)) if not
-                                  signal_name[index].isalpha()), start_index)
-            if key_word == 'откл' or key_word == 'вкл' and \
-                    signal_name[start_index - 3: start_index - 1].casefold() == 'на'.casefold():
+            signal_name[index].isalpha()), start_index)
+            if (key_word == 'откл' or key_word == 'вкл') and \
+                    signal_name[start_index - 3: start_index].casefold() == 'на '.casefold():
                 start_index = start_index - 3
             if start_index == end_index:
                 out_string = signal_name[:start_index]
