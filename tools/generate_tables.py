@@ -298,6 +298,23 @@ class GenerateTables:
         self._add_signal_to_iec_table(signal=new_signal_2, mms_generator=mms_generator)
         self._add_signal_to_sim_table(signal=new_signal_2)
 
+    @staticmethod
+    def _get_common_prefix(strings: List[str]) -> str:
+        min_length: int = len(min(strings, key=len))
+        stop_flag: bool = False
+        common_index: int = 0
+        for char_index in range(min_length):
+            for string_index in range(1, len(strings)):
+                if strings[string_index][char_index].upper() != strings[0][char_index].upper():
+                    stop_flag = True
+                    break
+            if stop_flag:
+                common_index = char_index
+                break
+        if not stop_flag:
+            common_index = min_length
+        return strings[0][:common_index].rstrip()
+
     def _process_sw_signals(self, sw_container: Dict[str, List[Signal]], signal: Signal):
         if signal.kks in sw_container:
             sw_signals: List[Signal] = sw_container[signal.kks]
@@ -309,10 +326,12 @@ class GenerateTables:
                 if parts_set == parts_in_container:
                     sw_signal: Signal = signal.clone()
                     sw_signal.part = 'XA01'
-                    sw_signal.name_rus = 'Выключатель'
-                    sw_signal.name_eng = 'CB'
-                    sw_signal.full_name_rus = 'Выключатель'
-                    sw_signal.full_name_eng = 'Curcuit breaker'
+                    sw_signal.name_rus = self._get_common_prefix(list(map(lambda item: item.name_rus, sw_signals)))
+                    sw_signal.name_eng = self._get_common_prefix(list(map(lambda item: item.name_eng, sw_signals)))
+                    sw_signal.full_name_rus = self._get_common_prefix(list(map(lambda item: item.full_name_rus,
+                                                                               sw_signals)))
+                    sw_signal.full_name_eng = self._get_common_prefix(list(map(lambda item: item.full_name_eng,
+                                                                               sw_signals)))
                     self._add_signal_to_sim_table(sw_signal)
                     del sw_container[signal.kks]
                 else:
@@ -372,8 +391,9 @@ class GenerateTables:
         out_string: str
         if key_word is not None:
             start_index: int = signal_name.upper().find(key_word.upper())
-            end_index: int = next((index for index in range(start_index, len(signal_name)) if not
-            signal_name[index].isalpha()), start_index)
+            end_index: int = next(
+                (index for index in range(start_index, len(signal_name)) if not signal_name[index].isalpha()),
+                start_index)
             if (key_word == 'откл' or key_word == 'вкл') and \
                     signal_name[start_index - 3: start_index].casefold() == 'на '.casefold():
                 start_index = start_index - 3
