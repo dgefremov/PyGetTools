@@ -38,7 +38,8 @@ class CopyCid:
                     file_name = file_name + file_extension
                 parameters: List[Tuple[ParameterData, str]] = [(Nodes.IP.value, value['IP']),
                                                                (Nodes.MASK.value, self._options.mask),
-                                                               (Nodes.IEDNAME.value, value['[IED].IED_NAME'])]
+                                                               (Nodes.IEDNAME.value, value['[IED].IED_NAME']),
+                                                               (Nodes.DESCR.value, value['[IED].SENSR_TYPE'])]
 
                 data_for_xml[file_name] = parameters
             return data_for_xml

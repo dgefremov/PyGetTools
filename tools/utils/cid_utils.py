@@ -25,6 +25,7 @@ class Nodes(Enum):
     IEDNAME = ParameterData([NodeDescription('/SCL/Header', 'id'),
                              NodeDescription('/SCL/Communication/SubNetwork/ConnectedAP', 'iedName'),
                              NodeDescription('/SCL/IED', 'name')])
+    DESCR = ParameterData([NodeDescription('/SCL/IED', 'desc')])
 
 
 def save_xml(xml_content: bytes, target_file_name: str):
