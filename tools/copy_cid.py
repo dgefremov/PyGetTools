@@ -1,7 +1,7 @@
 import os.path
 from typing import List, Dict, Tuple
 
-from tools.utils.sql_utils import SQLUtils
+from tools.utils.sql_utils import Connection
 from dataclasses import dataclass
 from tools.utils.cid_utils import ParameterData, Nodes, save_xml, get_updated_content
 
@@ -21,7 +21,7 @@ class CopyCid:
         self._options = options
 
     def _get_data_from_base(self) -> Dict[str, List[Tuple[ParameterData, str]]]:
-        with SQLUtils.Connection.connect_to_mdb(self._options.base_path) as access_base:
+        with Connection.connect_to_mdb(self._options.base_path) as access_base:
             data: List[Dict[str, str]] = access_base.retrieve_data_from_joined_table(
                 table_name1='[МЭК 61850]',
                 table_name2='[IED]',
