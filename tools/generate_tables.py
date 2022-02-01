@@ -201,7 +201,7 @@ class MMSGenerator:
 
     BSC_PREFIX = 'Device/ATCC'
     BSC_COMMAND_POSTFIX = '.TapChg.Oper'
-    BSC_POS_POSTFIX = 'TapChg.valWTr'
+    BSC_POS_POSTFIX = '.TapChg.valWTr'
 
     DPS_PREFIX = 'Device/GGIO1.DPCSO'
     DPS_COMMAND_POSTFIX = '.Oper'
@@ -287,6 +287,7 @@ class MMSGenerator:
                 raise Exception('DatasetError')
             if not self.dataset_container.__contains__(dataset):
                 self.dataset_container.append(dataset)
+        return self.ied_name + self.SPS_PREFIX + str(self.sps_index) + self.SPS_POSTFIX
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -658,7 +659,7 @@ class GenerateTables:
         mms: str = ''
         mms_pos: str = ''
         mms_com: str = ''
-        if signal.part.upper().startswith('XL'):
+        if signal.part.upper().startswith('XL') or signal.part.startswith('XA'):
             mms_com = mms_path
         elif signal.part.upper().startswith('XB'):
             mms_pos = mms_path
@@ -724,7 +725,7 @@ class GenerateTables:
 
         max_value: int = self._access_base.get_row_count(self._options.aep_table_name)
         logging.info('Заполнение таблиц...')
-        ProgressBar.config(max_value=max_value, step=1, prefix='Обработка таблиц', suffix='Завершено')
+        ProgressBar.config(max_value=max_value, step=1, prefix='Обработка таблиц', suffix='Завершено', length=50)
         kksp_list: List[str] = self._get_kksp_list()
         for kksp in kksp_list:
             self._generate_table_for_kksp(kksp=kksp)

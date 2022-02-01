@@ -77,5 +77,5 @@ def copy_cid():
 
 
 if __name__ == '__main__':
-    # fill_tables()
-    copy_cid()
+    fill_tables()
+    # copy_cid()
