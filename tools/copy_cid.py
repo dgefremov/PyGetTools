@@ -1,13 +1,18 @@
+import logging
 import os.path
 from typing import List, Dict, Tuple
-
-from tools.utils.sql_utils import Connection
 from dataclasses import dataclass
+
+from tools.utils.progress_utils import ProgressBar
 from tools.utils.cid_utils import ParameterData, Nodes, save_xml, get_updated_content
+from tools.utils.sql_utils import Connection
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class CopyCidOptions:
+    """
+    Класс настроек
+    """
     base_path: str
     source_cid: str
     target_path: str
@@ -15,12 +20,19 @@ class CopyCidOptions:
 
 
 class CopyCid:
+    """
+    Основной класс копирования CID файлов
+    """
     _options: CopyCidOptions
 
     def __init__(self, options: CopyCidOptions):
         self._options = options
 
     def _get_data_from_base(self) -> Dict[str, List[Tuple[ParameterData, str]]]:
+        """
+        Загрузка данных для генерации из базы
+        :return: Словарь со значениями из базы
+        """
         with Connection.connect_to_mdb(self._options.base_path) as access_base:
             data: List[Dict[str, str]] = access_base.retrieve_data_from_joined_table(
                 table_name1='[МЭК 61850]',
@@ -44,14 +56,33 @@ class CopyCid:
                 data_for_xml[file_name] = parameters
             return data_for_xml
 
-    def create_files(self, data_for_xml: Dict[str, List[Tuple[ParameterData, str]]]):
+    def create_files(self, data_for_xml: Dict[str, List[Tuple[ParameterData, str]]]) -> None:
+        """
+        Копирование файлов
+        :param data_for_xml: Данные из базы со значениями свойств
+        :return: None
+        """
+        ProgressBar.config(max_value=len(data_for_xml), step=1, prefix='Копирование файлов', suffix='Завершено')
         for file in data_for_xml:
             data: bytes = get_updated_content(source_file_name=self._options.source_cid,
                                               parameters=data_for_xml[file])
             save_xml(xml_content=data, target_file_name=file)
+            ProgressBar.update_progress()
 
     @staticmethod
-    def run(options: CopyCidOptions):
+    def run(options: CopyCidOptions) -> None:
+        """
+        Запуск скрипта
+        :param options: Настройки скрипта
+        :return: None
+        """
+        logging.info('Запуск скрипта...')
         copy_class: CopyCid = CopyCid(options)
+
+        logging.info('Загрузка данных из базы...')
         data_for_xml: Dict[str, List[Tuple[ParameterData, str]]] = copy_class._get_data_from_base()
+        logging.info('Загрузка завершена.')
+
+        logging.info('Запуск копирования файлов...')
         copy_class.create_files(data_for_xml=data_for_xml)
+        logging.info('Выполнение завершено.')

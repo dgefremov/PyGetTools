@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import List, Dict, Union, Set
+from typing import List, Dict, Union, Set, Tuple
 from dataclasses import dataclass
 
 from tools.utils.sql_utils import Connection
@@ -9,6 +9,9 @@ from tools.utils.progress_utils import ProgressBar
 
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
 class UncommonTemplate:
+    """
+    Класс хранения шаблонов для нетиповых сигналов
+    """
     signal_kks: str
     signal_part: str
     template: str
@@ -16,23 +19,33 @@ class UncommonTemplate:
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class DPCSignal:
+    """
+    Класс хранения двухпозицонного сигнала
+    """
     signal_part: Union[str, None]
-    signal_part_dupl: List[str]
+    signal_part_dupl: Union[Tuple[str, str], None]
     command_part: Union[str, None]
-    command_part_dupl: List[str]
+    command_part_dupl: Union[Tuple[str, str], None]
 
     def is_command(self, value: str) -> bool:
+        if self.command_part_dupl is None:
+            return False
         return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
 
     def is_signal(self, value: str) -> bool:
+        if self.signal_part_dupl is None:
+            return False
         return value.upper() in (signal_part.upper() for signal_part in self.signal_part_dupl)
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class BSCSignal:
+    """
+    Класс хранения сигнала РПН типа BSC
+    """
     signal_part: str
     command_part: str
-    command_part_dupl: List[str]
+    command_part_dupl: Union[Tuple[str, str], None]
 
     def is_command(self, value: str) -> bool:
         return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
@@ -43,6 +56,9 @@ class BSCSignal:
 
 @dataclass(init=False, repr=False, eq=False, order=False, frozen=False)
 class Signal:
+    """
+    Класс хранения строки с сигналом
+    """
     object_typ: str
     kks: str
     part: str
@@ -97,12 +113,18 @@ class Signal:
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class SignalRange:
+    """
+    Класс хранения диапазона MMS адресов для типа сигнала в CID файле
+    """
     low: int
     high: int
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class DatasetDescription:
+    """
+    Класс хранения описания Dataset в CID файле
+    """
     name: str
     path: str
     rcb_main: str
@@ -116,6 +138,9 @@ class DatasetDescription:
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=False)
 class DatasetDescriptionList:
+    """
+    Класс хранения списков Dataset
+    """
     dataset_list: List[DatasetDescription]
 
     def get_by_spc_index(self, spc_index) -> Union[DatasetDescription, None]:
@@ -150,6 +175,9 @@ class DatasetDescriptionList:
 
 
 class MMSGenerator:
+    """
+    Класс генератора MMS адресов для сигналов
+    """
     sps_index: int
     spc_index: int
     dpc_index: int
@@ -207,6 +235,7 @@ class MMSGenerator:
                     if self.dataset_descriptions is not None:
                         dataset: DatasetDescription = self.dataset_descriptions.get_by_dpc_index(self.dpc_index)
                         if dataset is None:
+                            logging.error(f'Не найден Dataset для DPS {self.dpc_index}')
                             raise Exception('DatasetError')
                         if not self.dataset_container.__contains__(dataset):
                             self.dataset_container.append(dataset)
@@ -222,6 +251,7 @@ class MMSGenerator:
                     if self.dataset_descriptions is not None:
                         dataset: DatasetDescription = self.dataset_descriptions.get_by_bsc_index(self.bsc_index)
                         if dataset is None:
+                            logging.error(f'Не найден Dataset для BSC {self.bsc_index}')
                             raise Exception('DatasetError')
                         if not self.dataset_container.__contains__(dataset):
                             self.dataset_container.append(dataset)
@@ -232,6 +262,7 @@ class MMSGenerator:
             if self.dataset_descriptions is not None:
                 dataset: DatasetDescription = self.dataset_descriptions.get_by_spc_index(self.spc_index)
                 if dataset is None:
+                    logging.error(f'Не найден Dataset для SPC {self.spc_index}')
                     raise Exception('DatasetError')
                 if not self.dataset_container.__contains__(dataset):
                     self.dataset_container.append(dataset)
@@ -242,6 +273,7 @@ class MMSGenerator:
             if self.dataset_descriptions is not None:
                 dataset: DatasetDescription = self.dataset_descriptions.get_by_mv_index(self.mv_index)
                 if dataset is None:
+                    logging.error(f'Не найден Dataset для MV {self.mv_index}')
                     raise Exception('DatasetError')
                 if not self.dataset_container.__contains__(dataset):
                     self.dataset_container.append(dataset)
@@ -251,6 +283,7 @@ class MMSGenerator:
         if self.dataset_descriptions is not None:
             dataset: DatasetDescription = self.dataset_descriptions.get_by_sps_index(self.sps_index)
             if dataset is None:
+                logging.error(f'Не найден Dataset для SPS {self.sps_index}')
                 raise Exception('DatasetError')
             if not self.dataset_container.__contains__(dataset):
                 self.dataset_container.append(dataset)
@@ -258,6 +291,9 @@ class MMSGenerator:
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class GenerateTableOptions:
+    """
+    Класс настроек
+    """
     path: str
     network_data_table_name: str
     controller_data_table_name: str
@@ -273,6 +309,9 @@ class GenerateTableOptions:
 
 
 class GenerateTables:
+    """
+    Основной класс генерации таблиц
+    """
     _options: 'GenerateTableOptions'
     _access_base: Connection
 
@@ -281,6 +320,10 @@ class GenerateTables:
         self._access_base = access_base
 
     def _get_kksp_list(self) -> List[str]:
+        """
+        Функция загрузки списка KKSp из БД
+        :return: Список KKSp
+        """
         values: List[Dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.aep_table_name,
                                                                        fields=['KKSp'],
                                                                        key_names=None,
@@ -293,7 +336,12 @@ class GenerateTables:
             kksp_list.append(value['KKSp'])
         return kksp_list
 
-    def _generate_tables(self, kksp: str):
+    def _generate_table_for_kksp(self, kksp: str) -> None:
+        """
+        Функция запуска генерации таблиц для одного KKSp
+        :param kksp: KKSp для генерации
+        :return: None
+        """
         values: list[dict[str, str]] = \
             self._access_base.retrieve_data(table_name=self._options.aep_table_name,
                                             fields=['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF',
@@ -304,6 +352,7 @@ class GenerateTables:
                                             key_names=['KKSp'],
                                             key_values=[kksp])
         sw_container: Dict[str, List[Signal]] = {}
+        undubled_container: List[Signal] = []
         mms_generator: MMSGenerator = MMSGenerator(kksp=kksp,
                                                    dpc_signals=self._options.dpc_signals,
                                                    bsc_signals=self._options.bsc_signals,
@@ -340,12 +389,20 @@ class GenerateTables:
             if signal.module == '1623' or signal.module == '1631' or signal.module == '1661':
                 self._process_wired_signal(signal=signal, sw_container=sw_container)
             elif signal.module == '1691':
-                self._process_digital_signal(signal=signal, mms_generator=mms_generator)
+                self._process_digital_signal(signal=signal, mms_generator=mms_generator,
+                                             undubled_signal_container=undubled_container)
         if self._options.datasets is not None and len(mms_generator.dataset_container) > 0:
             self._add_ied_record(mms_generator=mms_generator)
+        self._check_undubled_signals(undubled_signal_container=undubled_container, mms_generator=mms_generator)
         self._access_base.commit()
 
-    def _process_wired_signal(self, signal: Signal, sw_container: Dict[str, List[Signal]]):
+    def _process_wired_signal(self, signal: Signal, sw_container: Dict[str, List[Signal]]) -> None:
+        """
+        Обработка проводного сигнала
+        :param signal: Сигнал (строка таблицы)
+        :param sw_container: Контейнер для хранения групп SW сигналов
+        :return: None
+        """
         if signal.module == '1623' and signal.object_typ.casefold() == 'SW'.casefold():
             self._process_sw_signals(sw_container=sw_container,
                                      signal=signal)
@@ -353,6 +410,11 @@ class GenerateTables:
             self._add_signal_to_sim_table(signal=signal)
 
     def _add_ied_record(self, mms_generator: MMSGenerator):
+        """
+        Функция добавления (редактирования) записи в таблице IED
+        :param mms_generator: Экземпляр класса генератора MMS сигналов (в нем хранятся Dataset)
+        :return:
+        """
         ied_record_exists: bool = len(self._access_base.retrieve_data(table_name=self._options.ied_table_name,
                                                                       fields=['IED_NAME'],
                                                                       key_names=['IED_NAME'],
@@ -372,6 +434,10 @@ class GenerateTables:
                                          values=[dataset_list, rb_master_list, rb_slave_list])
 
     def _get_parts_to_duplicate(self) -> List[str]:
+        """
+        Получение списка PART для сигналов, которые требуется раздвоить
+        :return: Список PART для сигналов, которые требуется раздвоить
+        """
         output: List[str] = []
         for dps_signal in self._options.dpc_signals:
             if dps_signal.signal_part is not None:
@@ -383,20 +449,83 @@ class GenerateTables:
         return output
 
     def _get_duplicated_parts(self) -> List[str]:
+        """
+        Получение списка PART для раздвоенных сигналов
+        :return: Список PART для раздвоенных сигналов
+        """
         output: List[str] = []
-        for dps_signal in self._options.dpc_signals:
-            output.extend(dps_signal.signal_part_dupl)
-            output.extend(dps_signal.command_part_dupl)
+        for dpc_signal in self._options.dpc_signals:
+            if dpc_signal.signal_part_dupl is not None:
+                output.extend(dpc_signal.signal_part_dupl)
+            if dpc_signal.command_part_dupl is not None:
+                output.extend(dpc_signal.command_part_dupl)
         for bsc_signal in self._options.bsc_signals:
-            output.extend(bsc_signal.command_part_dupl)
+            if bsc_signal.command_part_dupl is not None:
+                output.extend(bsc_signal.command_part_dupl)
         return output
 
-    def _process_digital_signal(self, signal: Signal, mms_generator: MMSGenerator):
+    def _get_part_pair(self, part: str) -> str:
+        """
+        Получение ответный part для раздвоенных сигналов
+        :param part: Part, для которой ищется пара
+        :return: Ответный part для развдоенного сигнала
+        """
+        for dpc_signal in self._options.dpc_signals:
+            if dpc_signal.signal_part_dupl is not None:
+                if dpc_signal.signal_part_dupl[0].casefold() == part.casefold():
+                    return dpc_signal.signal_part_dupl[1]
+                if dpc_signal.signal_part_dupl[1].casefold() == part.casefold():
+                    return dpc_signal.signal_part_dupl[0]
+            if dpc_signal.command_part_dupl is not None:
+                if dpc_signal.command_part_dupl[0].casefold() == part.casefold():
+                    return dpc_signal.command_part_dupl[1]
+                if dpc_signal.command_part_dupl[1].casefold() == part.casefold():
+                    return dpc_signal.command_part_dupl[0]
+        for bsc_signal in self._options.bsc_signals:
+            if bsc_signal.command_part_dupl is not None:
+                if bsc_signal.command_part_dupl[0].casefold() == part.casefold():
+                    return bsc_signal.command_part_dupl[1]
+                if bsc_signal.command_part_dupl[1].casefold() == part.casefold():
+                    return bsc_signal.command_part_dupl[0]
+
+    def _check_undubled_signals(self, undubled_signal_container: List[Signal], mms_generator: MMSGenerator) -> None:
+        """
+        Проверка пар для раздвоенных сигналов (которые изначально были в базе). Для сигналов без пары создается сигнал
+        :param undubled_signal_container: Хранилище для раздвоенных сигналов
+        :param mms_generator: Экземпляр класса генератора MMS адресов
+        :return: None
+        """
+        dict_with_status: Dict[Signal, bool] = {signal: False for signal in undubled_signal_container}
+        for signal in dict_with_status:
+            if dict_with_status[signal]:
+                continue
+            paired_part: str = self._get_part_pair(signal.part)
+            paired_signal: Signal = next((signal for signal in list(dict_with_status.keys())
+                                          if signal.part.casefold() == paired_part.casefold()), None)
+            if paired_signal is not None:
+                dict_with_status[paired_signal] = True
+                continue
+            else:
+                new_signal: Signal = signal.clone()
+                new_signal.part = paired_part
+                self._add_signal_to_iec_table(signal=new_signal, mms_generator=mms_generator)
+                self._add_signal_to_sim_table(signal=new_signal)
+
+    def _process_digital_signal(self, signal: Signal, mms_generator: MMSGenerator,
+                                undubled_signal_container: List[Signal]) -> None:
+        """
+        Обработка цифрового сигнала
+        :param signal: Сигнал (строка из базы)
+        :param mms_generator: Экземпляр для класса генератора MMS адресов
+        :param undubled_signal_container: хранилище для раздвоенных сигналов (которые изначально были в базе)
+        :return: None
+        """
         if signal.part in self._get_duplicated_parts():
             signal.name_rus = self._sanitizate_signal_name(signal.name_rus)
             signal.full_name_rus = self._sanitizate_signal_name(signal.full_name_rus)
             signal.name_eng = self._sanitizate_signal_name(signal.name_eng)
             signal.full_name_eng = self._sanitizate_signal_name(signal.full_name_eng)
+            undubled_signal_container.append(signal)
 
         if signal.part in self._get_parts_to_duplicate() and \
                 not any(signal.kks.upper().startswith(item.upper()) for item in self._options.skip_duplicate_prefix):
@@ -405,7 +534,13 @@ class GenerateTables:
             self._add_signal_to_iec_table(signal=signal, mms_generator=mms_generator)
             self._add_signal_to_sim_table(signal=signal)
 
-    def _duplicate_signal(self, signal: Signal, mms_generator: MMSGenerator):
+    def _duplicate_signal(self, signal: Signal, mms_generator: MMSGenerator) -> None:
+        """
+        Раздвоение сигнала
+        :param signal: Исходный сигнал
+        :param mms_generator: Экземпляр для класса генератора MMS адреса
+        :return: None
+        """
         part_num_string: str = signal.part[2:]
         part_num: int = int(part_num_string)
         new_signal_1: Signal = signal.clone()
@@ -419,6 +554,11 @@ class GenerateTables:
 
     @staticmethod
     def _get_common_prefix(strings: List[str]) -> str:
+        """
+        Класс выделения общей части для группы строк
+        :param strings: Группа строк
+        :return: Общая часть группы строк
+        """
         min_length: int = len(min(strings, key=len))
         stop_flag: bool = False
         common_index: int = 0
@@ -434,7 +574,13 @@ class GenerateTables:
             common_index = min_length
         return strings[0][:common_index].rstrip()
 
-    def _process_sw_signals(self, sw_container: Dict[str, List[Signal]], signal: Signal):
+    def _process_sw_signals(self, sw_container: Dict[str, List[Signal]], signal: Signal) -> None:
+        """
+        Обработка SW сигналов (объединения группы сигналов в один)
+        :param sw_container: Хранилище для SW сигналов
+        :param signal: Текущий SW сигнал
+        :return: None
+        """
         if signal.kks in sw_container:
             sw_signals: List[Signal] = sw_container[signal.kks]
             if len(sw_signals) < 6:
@@ -454,17 +600,21 @@ class GenerateTables:
                     self._add_signal_to_sim_table(sw_signal)
                     del sw_container[signal.kks]
                 else:
-                    print('Неверный набор сигналов в группе SW')
+                    logging.error('Неверный набор сигналов в группе SW')
                     raise Exception('SignalGroupError')
         else:
             sw_container[signal.kks] = [signal]
 
-    def _add_signal_to_sim_table(self, signal: Signal):
+    def _add_signal_to_sim_table(self, signal: Signal) -> None:
+        """
+        Добавление сигнала в таблицу СиМ
+        :param signal: Сигнал для добавления в таблицу
+        :return: None
+        """
         column_names: List[str] = ['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF', 'FULL_NAME_RUS', 'NAME_RUS',
                                    'FULL_NAME_ENG', 'NAME_ENG', 'Min', 'Max', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL',
                                    'CABINET', 'SLOT_MP', 'CHANNEL', 'CONNECTION', 'SENSR_TYPE', 'CatNam', 'KKSp',
                                    'LOCATION_MP', 'SCHEMA']
-        # template: Union[str, None] = '' if signal.module == '1691' else f'{signal.object_typ}_{signal.module}'
         template: str
         if signal.module == '1691':
             template = ''
@@ -490,7 +640,13 @@ class GenerateTables:
                                      column_names=column_names,
                                      values=values)
 
-    def _add_signal_to_iec_table(self, signal: Signal, mms_generator: MMSGenerator):
+    def _add_signal_to_iec_table(self, signal: Signal, mms_generator: MMSGenerator) -> None:
+        """
+        Добавление сигнала в таблицу МЭК
+        :param signal: Сигнал (запись в базе)
+        :param mms_generator: Экземпляр класса генератора MMS адресов
+        :return: None
+        """
         column_names: List[str] = ['KKS', 'PART', 'KKSp', 'MODULE', 'REDND_INTF', 'CABINET', 'SLOT_MP', 'LOCATION_MP',
                                    'FULL_NAME_RUS', 'NAME_RUS', 'FULL_NAME_ENG', 'NAME_ENG', 'Min', 'Max', 'UNITS_RUS',
                                    'UNITS_ENG', 'SENSR_TYPE', 'AREA', 'DNAME', 'IP', 'IED_NAME', 'MMS', 'MMS_POS',
@@ -520,6 +676,12 @@ class GenerateTables:
 
     @staticmethod
     def _sanitizate_signal_name(signal_name: str) -> str:
+        """
+        Функция очистки имени сигнала (для раздвоенных изначально сигналов убирается признак сигнала, такой как: вкл,
+        откл, ввод, вывод и пр.
+        :param signal_name: Очищаемое имя сигнала
+        :return: Очищенное имя сигнала
+        """
         key_words: List = ['вкл', 'откл', 'замкн', 'разомкн', 'ввод', 'вывод', 'введ',
                            'close', 'trip', 'input', 'output', 'discon']
         key_word: Union[str, None] = next((key for key in key_words if key.upper() in signal_name.upper()), None)
@@ -547,7 +709,11 @@ class GenerateTables:
             raise Exception('SignalNameCorrectionFailed')
         return out_string
 
-    def generate(self):
+    def generate(self) -> None:
+        """
+        Основная функция генерации таблиц
+        :return: None
+        """
         logging.info(f'Очистка таблицы {self._options.sim_table_name}...')
         self._access_base.clear_table(self._options.sim_table_name)
         logging.info('Завершено.')
@@ -561,12 +727,16 @@ class GenerateTables:
         ProgressBar.config(max_value=max_value, step=1, prefix='Обработка таблиц', suffix='Завершено')
         kksp_list: List[str] = self._get_kksp_list()
         for kksp in kksp_list:
-            self._generate_tables(kksp=kksp)
+            self._generate_table_for_kksp(kksp=kksp)
         logging.info('Завершено.')
 
     @staticmethod
-    def run(options: GenerateTableOptions):
-        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s - %(message)s')
+    def run(options: GenerateTableOptions) -> None:
+        """
+        Запуск скрипта
+        :param options: Настройки для скрипта
+        :return: None
+        """
         logging.info('Запуск скрипта...')
         with Connection.connect_to_mdb(options.path) as access_base:
             generate_class: GenerateTables = GenerateTables(options=options,

@@ -1,34 +1,37 @@
+import logging
 from typing import List
 
 from tools.generate_tables import GenerateTables, DPCSignal, BSCSignal, GenerateTableOptions, DatasetDescriptionList, \
     DatasetDescription, SignalRange
 from tools.copy_cid import CopyCid, CopyCidOptions
 
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s - %(message)s')
+
 
 def fill_tables():
     dps_signal_cb = DPCSignal(signal_part='XB00',
-                              signal_part_dupl=['XB01', 'XB02'],
+                              signal_part_dupl=('XB01', 'XB02'),
                               command_part='XL00',
-                              command_part_dupl=['XL01', 'XL02'])
+                              command_part_dupl=('XL01', 'XL02'))
 
     dps_signal_alt = DPCSignal(signal_part='XB20',
-                               signal_part_dupl=['XB21', 'XB22'],
+                               signal_part_dupl=('XB21', 'XB22'),
                                command_part='XL20',
-                               command_part_dupl=['XL21', 'XL22'])
+                               command_part_dupl=('XL21', 'XL22'))
 
     dps_signal_gb = DPCSignal(signal_part='XB30',
-                              signal_part_dupl=['XB31', 'XB32'],
+                              signal_part_dupl=('XB31', 'XB32'),
                               command_part=None,
-                              command_part_dupl=[])
+                              command_part_dupl=None)
 
     dps_signal_cb2 = DPCSignal(signal_part=None,
-                               signal_part_dupl=[],
+                               signal_part_dupl=None,
                                command_part=None,
-                               command_part_dupl=['XA01', 'XA02'])
+                               command_part_dupl=('XA01', 'XA02'))
 
     bsc_signal = BSCSignal(signal_part='XB10',
                            command_part='XL10',
-                           command_part_dupl=['XL11', 'XL12'])
+                           command_part_dupl=('XL11', 'XL12'))
 
     dataset_1: DatasetDescription = DatasetDescription(name='Dataset01',
                                                        sps_range=SignalRange(1, 50),
@@ -74,5 +77,5 @@ def copy_cid():
 
 
 if __name__ == '__main__':
-    fill_tables()
-    # copy_cid()
+    # fill_tables()
+    copy_cid()
