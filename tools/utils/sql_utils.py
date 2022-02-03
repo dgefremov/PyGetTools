@@ -156,9 +156,9 @@ class Connection:
         elif self._base_type == _BaseType.POSTGRES:
             raise Exception('Неподдерживаемый тип базы')
 
-    def clear_table(self, table_name: str) -> None:
+    def clear_table(self, table_name: str, drop_index: bool = False) -> None:
         self._cursor.execute(f'DELETE * From {table_name}')
-        if self._base_type == _BaseType.ACCESS:
+        if self._base_type == _BaseType.ACCESS and drop_index:
             self._cursor.execute(f'ALTER TABLE {table_name} ALTER COLUMN ID COUNTER(1,1)')
         self._cursor.commit()
 

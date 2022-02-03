@@ -56,13 +56,15 @@ def fill_tables():
 
     dpc_signals: List[DPCSignal] = [dps_signal_cb, dps_signal_cb2, dps_signal_alt, dps_signal_gb]
 
-    GenerateTables.run(GenerateTableOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.06.accdb',
+    GenerateTables.run(GenerateTableOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.07.accdb',
                                             network_data_table_name='[Network Data]',
                                             controller_data_table_name='TPTS',
                                             aep_table_name='[Сигналы и механизмы АЭП]',
                                             sim_table_name='[Сигналы и механизмы]',
                                             iec_table_name='[МЭК 61850]',
                                             ied_table_name='[IED]',
+                                            ref_table_name='[REF]',
+                                            signalization_table_name='[DIAG]',
                                             skip_duplicate_prefix=['00BCE'],
                                             dpc_signals=dpc_signals,
                                             bsc_signals=[bsc_signal],
@@ -70,7 +72,7 @@ def fill_tables():
 
 
 def copy_cid():
-    CopyCid.run(CopyCidOptions(base_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.06.accdb',
+    CopyCid.run(CopyCidOptions(base_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.07.accdb',
                                source_cid='c:\\User data\\All_in_one.cid',
                                target_path='c:\\User data\\2\\',
                                mask='255.255.255.0'))

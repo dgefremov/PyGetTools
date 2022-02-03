@@ -80,8 +80,44 @@ class Signal:
     sensr_typ: str
     cat_nam: str
     location_mp: str
-    dname: str
+    dname: Union[str, None]
     kksp: str
+    template: Union[str, None]
+
+    @staticmethod
+    def create_from_row(value: Dict[str, str]) -> 'Signal':
+        signal: Signal = Signal()
+        signal.object_typ = value['OBJECT_TYP']
+        signal.kks = value['KKS']
+        signal.part = value['PART']
+        signal.module = value['MODULE']
+        signal.rednd_intf = value['REDND_INTF']
+        signal.name_rus = value['NAME_RUS']
+        signal.full_name_rus = value['FULL_NAME_RUS']
+        signal.name_eng = value['NAME_ENG']
+        signal.full_name_eng = value['FULL_NAME_ENG']
+        signal.min = None if value['MIN'] is None else float(value['MIN'])
+        signal.max = None if value['MAX'] is None else float(value['MAX'])
+        signal.units_rus = value['UNITS_RUS']
+        signal.units_eng = value['UNITS_ENG']
+        signal.in_level = value['IN_LEVEL']
+        signal.cabinet = value['CABINET']
+        signal.slot_mp = None if value['SLOT_MP'] is None else int(value['SLOT_MP'])
+        signal.channel = None if value['CHANNEL'] is None else int(value['CHANNEL'])
+        signal.connection = value['CONNECTION']
+        signal.sensr_typ = value['SENSR_TYPE']
+        signal.cat_nam = value['CatNam']
+        signal.location_mp = value['LOCATION_MP']
+        if 'DNAME' in value:
+            signal.dname = value['DNAME']
+        else:
+            signal.dname = None
+        signal.kksp = value['KKSp']
+        if 'SCHEMA' in value:
+            signal.template = value['SCHEMA']
+        else:
+            signal.template = None
+        return signal
 
     def clone(self) -> 'Signal':
         new_signal: Signal = Signal()
@@ -108,6 +144,7 @@ class Signal:
         new_signal.location_mp = self.location_mp
         new_signal.dname = self.dname
         new_signal.kksp = self.kksp
+        new_signal.template = self.template
         return new_signal
 
 
@@ -302,6 +339,8 @@ class GenerateTableOptions:
     sim_table_name: str
     iec_table_name: str
     ied_table_name: str
+    ref_table_name: str
+    signalization_table_name: str
     dpc_signals: List[DPCSignal]
     bsc_signals: List[BSCSignal]
     skip_duplicate_prefix: List[str]
@@ -349,7 +388,7 @@ class GenerateTables:
                                                     'FULL_NAME_RUS', 'NAME_RUS', 'FULL_NAME_ENG', 'NAME_ENG', 'MIN',
                                                     'MAX', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL', 'CABINET',
                                                     'SLOT_MP', 'CHANNEL', 'CONNECTION', 'SENSR_TYPE', 'CatNam',
-                                                    'LOCATION_MP', 'DNAME'],
+                                                    'LOCATION_MP', 'DNAME', 'KKSp'],
                                             key_names=['KKSp'],
                                             key_values=[kksp])
         sw_container: Dict[str, List[Signal]] = {}
@@ -361,32 +400,7 @@ class GenerateTables:
                                                    _options.datasets)
         for value in values:
             ProgressBar.update_progress()
-            signal: Signal = Signal()
-
-            signal.object_typ = value['OBJECT_TYP']
-            signal.kks = value['KKS']
-            signal.part = value['PART']
-            signal.module = value['MODULE']
-            signal.rednd_intf = value['REDND_INTF']
-            signal.name_rus = value['NAME_RUS']
-            signal.full_name_rus = value['FULL_NAME_RUS']
-            signal.name_eng = value['NAME_ENG']
-            signal.full_name_eng = value['FULL_NAME_ENG']
-            signal.min = None if value['MIN'] is None else float(value['MIN'])
-            signal.max = None if value['MAX'] is None else float(value['MAX'])
-            signal.units_rus = value['UNITS_RUS']
-            signal.units_eng = value['UNITS_ENG']
-            signal.in_level = value['IN_LEVEL']
-            signal.cabinet = value['CABINET']
-            signal.slot_mp = None if value['SLOT_MP'] is None else int(value['SLOT_MP'])
-            signal.channel = None if value['CHANNEL'] is None else int(value['CHANNEL'])
-            signal.connection = value['CONNECTION']
-            signal.sensr_typ = value['SENSR_TYPE']
-            signal.cat_nam = value['CatNam']
-            signal.location_mp = value['LOCATION_MP']
-            signal.dname = value['DNAME']
-            signal.kksp = kksp
-
+            signal: Signal = Signal.create_from_row(value)
             if signal.module == '1623' or signal.module == '1631' or signal.module == '1661':
                 self._process_wired_signal(signal=signal, sw_container=sw_container)
             elif signal.module == '1691':
@@ -616,16 +630,16 @@ class GenerateTables:
                                    'FULL_NAME_ENG', 'NAME_ENG', 'Min', 'Max', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL',
                                    'CABINET', 'SLOT_MP', 'CHANNEL', 'CONNECTION', 'SENSR_TYPE', 'CatNam', 'KKSp',
                                    'LOCATION_MP', 'SCHEMA']
-        template: str
         if signal.module == '1691':
-            template = ''
+            signal.template = ''
         else:
-            uncommon_template: [UncommonTemplate, None] = None
-            if self._options.uncommon_templates is not None:
-                uncommon_template = next(item for item in self._options.uncommon_templates if
-                                         item.signal_kks == signal.kks and item.signal_part == signal.part)
-            template: Union[str, None] = f'{signal.object_typ}_{signal.module}' \
-                if uncommon_template is None else uncommon_template.template
+            if signal.template is None:
+                uncommon_template: [UncommonTemplate, None] = None
+                if self._options.uncommon_templates is not None:
+                    uncommon_template = next(item for item in self._options.uncommon_templates if
+                                             item.signal_kks == signal.kks and item.signal_part == signal.part)
+                signal.template = f'{signal.object_typ}_{signal.module}' \
+                    if uncommon_template is None else uncommon_template.template
 
         channel: int
         if signal.module == '1623' and signal.object_typ != 'SW':
@@ -636,7 +650,7 @@ class GenerateTables:
                              signal.full_name_rus, signal.name_rus, signal.full_name_eng, signal.name_eng,
                              signal.min, signal.max, signal.units_rus, signal.units_eng, signal.in_level,
                              signal.cabinet, signal.slot_mp, channel, signal.connection, signal.sensr_typ,
-                             signal.cat_nam, signal.kksp, signal.location_mp, template]
+                             signal.cat_nam, signal.kksp, signal.location_mp, signal.template]
         self._access_base.insert_row(table_name=self._options.sim_table_name,
                                      column_names=column_names,
                                      values=values)
@@ -706,9 +720,57 @@ class GenerateTables:
         out_string = re.sub('( on | off )', ' ', out_string, flags=re.I)
         out_string = out_string.replace('""', '').replace('  ', ' ')
         if out_string.casefold() == signal_name.casefold():
-            logging.error('')
+            logging.error(f'Не удалось очистить строку {signal_name}')
             raise Exception('SignalNameCorrectionFailed')
         return out_string
+
+    def _add_ref_record(self, kks: str, part: str, ref: str) -> None:
+        """
+        Функция добавления записи в таблицу REF
+        :param kks: KKS сигнала
+        :param part: Part сигнала
+        :param ref: Ссылка
+        :return: None
+        """
+        ref_record_exists: bool = len(self._access_base.retrieve_data(table_name=self._options.ref_table_name,
+                                                                      fields=['KKS', 'PART'],
+                                                                      key_names=['KKS', 'PART'],
+                                                                      key_values=[kks, part])) == 1
+        if ref_record_exists:
+            self._access_base.update_field(table_name=self._options.ref_table_name,
+                                           fields=['REF'],
+                                           values=[ref],
+                                           key_names=['KKS', 'PART'],
+                                           key_values=[kks, part])
+        else:
+            self._access_base.insert_row(table_name=self._options.ref_table_name,
+                                         column_names=['KKS', 'PART', 'REF'],
+                                         values=[kks, part, ref])
+
+    def _read_signalization_table(self) -> None:
+        """
+        Функция чтения строк таблицы SIGNAL и запись в таблицы СиМ и REF
+        :return: None
+        """
+        values: list[dict[str, str]] = \
+            self._access_base.retrieve_data(table_name=self._options.signalization_table_name,
+                                            fields=['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF',
+                                                    'FULL_NAME_RUS', 'NAME_RUS', 'FULL_NAME_ENG', 'NAME_ENG', 'MIN',
+                                                    'MAX', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL', 'CABINET',
+                                                    'SLOT_MP', 'CHANNEL', 'CONNECTION', 'SENSR_TYPE', 'CatNam',
+                                                    'LOCATION_MP', 'KKSp', 'SCHEMA', 'REF'],
+                                            key_names=None,
+                                            key_values=None)
+        ProgressBar.config(max_value=len(values), length=50, step=1,
+                           prefix=f'Добавление диагностических сигналов', suffix='Завершено')
+        for value in values:
+            signal: Signal = Signal.create_from_row(value)
+            self._add_signal_to_sim_table(signal=signal)
+            if value['REF'] is not None and value['REF'] != '':
+                self._add_ref_record(kks=signal.kks,
+                                     part=signal.part,
+                                     ref=value['REF'])
+            ProgressBar.update_progress()
 
     def generate(self) -> None:
         """
@@ -725,11 +787,13 @@ class GenerateTables:
 
         max_value: int = self._access_base.get_row_count(self._options.aep_table_name)
         logging.info('Заполнение таблиц...')
-        ProgressBar.config(max_value=max_value, step=1, prefix='Обработка таблиц', suffix='Завершено', length=50)
+        ProgressBar.config(max_value=max_value, step=1, prefix='Обработка таблицы АЭП', suffix='Завершено', length=50)
         kksp_list: List[str] = self._get_kksp_list()
         for kksp in kksp_list:
             self._generate_table_for_kksp(kksp=kksp)
-        logging.info('Завершено.')
+
+        self._read_signalization_table()
+        logging.info('Завершено')
 
     @staticmethod
     def run(options: GenerateTableOptions) -> None:
