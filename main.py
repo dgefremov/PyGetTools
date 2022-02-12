@@ -4,6 +4,7 @@ from typing import List
 from tools.generate_tables import GenerateTables, DPCSignal, BSCSignal, GenerateTableOptions, DatasetDescriptionList, \
     DatasetDescription, SignalRange
 from tools.copy_cid import CopyCid, CopyCidOptions
+from tools.find_schemas import FindSchemas, FindSchemasOptions, Schema
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s - %(message)s')
 
@@ -78,6 +79,16 @@ def copy_cid():
                                mask='255.255.255.0'))
 
 
+def find_schemas():
+    schema1: Schema = Schema(name="Управление выключателем",
+                             command_parts=['XL01', 'XL02'],
+                             signal_parts=['XB01', 'XB02', 'XB07', 'XB08', 'XF19', 'XF27'])
+    FindSchemas.run(FindSchemasOptions(database_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.07.accdb',
+                                       sim_table_name='[Сигналы и механизмы]',
+                                       schemas=[schema1]))
+
+
 if __name__ == '__main__':
     fill_tables()
     # copy_cid()
+    # find_schemas()

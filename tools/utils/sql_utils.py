@@ -27,8 +27,8 @@ class Connection:
         self._connection.close()
 
     def retrieve_data(self, table_name: str, fields: List[str],
-                      key_names: Union[List[str], None],
-                      key_values: Union[List[str], None],
+                      key_names: Union[List[str], None] = None,
+                      key_values: Union[List[str], None] = None,
                       uniq_values: bool = False,
                       sort_by: Union[List[str], None] = None,
                       key_operator: Union[List[str], None] = None) -> List[Dict[str, str]]:
@@ -155,6 +155,25 @@ class Connection:
 
         elif self._base_type == _BaseType.POSTGRES:
             raise Exception('Неподдерживаемый тип базы')
+
+    def retrive_data_with_having(self, table_name: str, fields: List[str], key_column: str,
+                                 key_values: List[str]):
+        condition_placeholder: str = ' OR '.join([f"{table_name}.{key_column} = ?" for _ in range(len(key_values))])
+        fields_placeholder: str = ', '.join([f'{table_name}.{field}' for field in fields])
+        having_placeholder: str = 'COUNT({0}.{1})={2}'.format(table_name, key_column, len(key_values))
+        query = 'SELECT {0} FROM {1} WHERE {2} GROUP BY {0} HAVING {3}'.format(fields_placeholder,
+                                                                               table_name,
+                                                                               condition_placeholder,
+                                                                               having_placeholder)
+
+        self._cursor.execute(query, key_values)
+        out_list = []
+        for row in self._cursor.fetchall():
+            out_row = {}
+            for column_index in range(len(fields)):
+                out_row[fields[column_index]] = None if row[column_index] is None else str(row[column_index])
+            out_list.append(out_row)
+        return out_list
 
     def clear_table(self, table_name: str, drop_index: bool = False) -> None:
         self._cursor.execute(f'DELETE * From {table_name}')
