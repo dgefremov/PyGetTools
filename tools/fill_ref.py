@@ -6,21 +6,30 @@ from tools.utils.sql_utils import Connection
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class TemplateVariant:
+    """
+    Класс хранения данных по вариантам схемы
+    """
     name: str
     signal_parts: dict[str, tuple[str, str, str | None]]
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class VirtualTemplate:
+    """
+    Класс хранения данных по шаблону для виртаульных схем
+    """
     name: str
     part: str
     has_channel: bool
-    commands_parts_list: dict[str, str]
+    commands_parts_list: list[dict[str, str]]
     variants: list[TemplateVariant]
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class FillRefOptions:
+    """
+    Класс для хранения настроек
+    """
     path: str
     sim_table_name: str
     ref_table_name: str
@@ -32,6 +41,9 @@ class FillRefOptions:
 
 
 class FillRef:
+    """
+    Основной класс расстановки ссылок
+    """
     _options: FillRefOptions
     _access: Connection
 
@@ -40,6 +52,16 @@ class FillRef:
         self._access = access
 
     def _get_part_list(self, kks: str, kksp: str, cabinet: str, kks_shemas: list[str]) -> dict[str, str]:
+        """
+        Функция получения списка part для использования их в поиске схемы управления. Поиск осуществляется сначала
+        по ККС, потом по KKSp.
+        :param kks: ККС, для которого осуществляется поиск Part
+        :param kksp: KKSp для которого осуществляется поиск Part
+        :param cabinet: Имя шкафа для сужения поиска
+        :param kks_shemas: Список ККС для схем управления. Part с такими ККС игнорируются (для исключения пересечений
+        при наличии в пределах KKSp двух схем управления
+        :return: Список PART с их KKS
+        """
         parts_dict: dict[str] = {}
         values_from_kks: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table_name,
                                                                            fields=['PART'],
@@ -68,6 +90,13 @@ class FillRef:
 
     @staticmethod
     def _get_template_variant(template: VirtualTemplate, parts: dict[str, str], kks: str) -> TemplateVariant:
+        """
+        Фунция поиска варианты схемы
+        :param template: Шаблон, для которого ищутся варианты схемы
+        :param parts: Список PART для текущего ККС и KKSp
+        :param kks: ККС для даннной схемы управления
+        :return: Вариант схемы
+        """
         for template_variant in sorted(template.variants, key=lambda item: len(item.signal_parts.keys()), reverse=True):
             parts_in_template: list[str] = list(template_variant.signal_parts.keys())
             if all(item in parts.keys() for item in parts_in_template):
@@ -75,7 +104,15 @@ class FillRef:
         logging.error(f'Не найдена схема {template.name} для KKS:{kks}')
         raise Exception('TemplateVariantNotFound')
 
-    def _update_ref(self, ref: str, unrel_ref: str | None, kks: str, part: str):
+    def _update_ref(self, ref: str, unrel_ref: str | None, kks: str, part: str) -> None:
+        """
+        Функция добавление записи в таблицу REF с учетом проверки существования записи
+        :param ref: Ссылка
+        :param unrel_ref: Ссылка сигнала недостоверности
+        :param kks: ККС источника сигнала
+        :param part: PART источника сигнала
+        :return: None
+        """
         exist_data: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ref_table_name,
                                                                       fields=['REF', 'UNREL_REF'],
                                                                       key_names=['KKS', 'PART'],
@@ -102,7 +139,11 @@ class FillRef:
             logging.error('Неверный результат запроса')
             raise Exception('TooManyValues')
 
-    def _fill_wired_ref(self):
+    def _fill_wired_ref(self) -> None:
+        """
+        Функция заполнения ссылок для проводных схем управления
+        :return: None
+        """
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table_name,
                                                                   fields=['KKS', 'PART', 'KKSp', 'SCHEMA'],
                                                                   key_names=['OBJECT_TYP'],
@@ -135,7 +176,11 @@ class FillRef:
                     self._update_ref(ref, None, signal_kks, signal_part)
             self._access.commit()
 
-    def _fill_sign_ref(self):
+    def _fill_sign_ref(self) -> None:
+        """
+        Функция копирования данных (ссылок и схем управления) для диагностических сигналов
+        :return: None
+        """
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sign_table_name,
                                                                   fields=['KKS', 'PART', 'REF'])
         for value in values:
@@ -170,45 +215,54 @@ class FillRef:
                                     values=[vs_kks, cabinet, vs_schema, vs_channel, vs_part, descr])
         self._access.commit()
 
-    def _fill_virtual_ref(self):
+    def _fill_virtual_ref(self) -> None:
+        """
+        Функция заполнения ссылок и схем управления для виртуальных схем
+        :return: None
+        """
         channel_container: dict[str, int] = {}
         for template in self._options.virtual_templates:
-            values_list: list[dict[str, str]] = self._access.retrive_data_with_having(
-                table_name=self._options.sim_table_name,
-                fields=['KKS', 'CABINET', 'KKSp'],
-                key_column='PART',
-                key_values=list(template.commands_parts_list.keys()))
+            for command_list in template.commands_parts_list:
+                values_list: list[dict[str, str]] = self._access.retrive_data_with_having(
+                    table_name=self._options.sim_table_name,
+                    fields=['KKS', 'CABINET', 'KKSp'],
+                    key_column='PART',
+                    key_values=list(command_list.keys()))
 
-            kks_schemas_list: list[str] = [value['KKS'] for value in values_list]
-            for value in values_list:
-                kks: str = value['KKS']
-                kksp: str = value['KKSp']
-                cabinet: str = value['CABINET']
+                kks_schemas_list: list[str] = [value['KKS'] for value in values_list]
+                for value in values_list:
+                    kks: str = value['KKS']
+                    kksp: str = value['KKSp']
+                    cabinet: str = value['CABINET']
 
-                current_channel: int = 0
-                if template.has_channel:
-                    if cabinet in channel_container:
-                        channel_container[cabinet] = channel_container[cabinet] + 1
-                        current_channel = channel_container[cabinet]
-                    else:
-                        channel_container[cabinet] = 1
-                        current_channel = 1
+                    current_channel: int = 0
+                    if template.has_channel:
+                        if cabinet in channel_container:
+                            channel_container[cabinet] = channel_container[cabinet] + 1
+                            current_channel = channel_container[cabinet]
+                        else:
+                            channel_container[cabinet] = 1
+                            current_channel = 1
 
-                part_dict: dict[str, str] = self._get_part_list(kks=kks, kksp=kksp, cabinet=cabinet,
-                                                                kks_shemas=kks_schemas_list)
-                variant: TemplateVariant = self._get_template_variant(template=template, parts=part_dict,
-                                                                      kks=kks)
-                self._fill_ref_for_variant(template=template,
-                                           variant=variant,
-                                           part_dict=part_dict,
-                                           template_kks=kks,
-                                           template_part=template.part)
-                self._access.insert_row(table_name=self._options.virtual_schemas_table_name,
-                                        column_names=['VS_KKS', 'CABINET', 'VS_SCHEMA', 'VS_CHANNEL', 'VS_PART'],
-                                        values=[kks, cabinet, variant.name, current_channel, template.part])
+                    part_dict: dict[str, str] = self._get_part_list(kks=kks, kksp=kksp, cabinet=cabinet,
+                                                                    kks_shemas=kks_schemas_list)
+                    variant: TemplateVariant = self._get_template_variant(template=template, parts=part_dict,
+                                                                          kks=kks)
+                    self._fill_ref_for_virtaul_template_variant(variant=variant,
+                                                                part_dict=part_dict,
+                                                                template_kks=kks,
+                                                                template_part=template.part,
+                                                                commands_parts_list=command_list)
+                    self._access.insert_row(table_name=self._options.virtual_schemas_table_name,
+                                            column_names=['VS_KKS', 'CABINET', 'VS_SCHEMA', 'VS_CHANNEL', 'VS_PART'],
+                                            values=[kks, cabinet, variant.name, current_channel, template.part])
             self._access.commit()
 
-    def _fill_ref(self):
+    def _fill_ref(self) -> None:
+        """
+        Функция запуска заполнения ссылок и схем управления
+        :return: None
+        """
         logging.info(f'Очистка таблицы {self._options.ref_table_name}...')
         self._access.clear_table(table_name=self._options.ref_table_name, drop_index=False)
         logging.info('Очистка завершена.')
@@ -220,8 +274,18 @@ class FillRef:
         self._fill_wired_ref()
         self._fill_sign_ref()
 
-    def _fill_ref_for_variant(self, template: VirtualTemplate, variant: TemplateVariant, part_dict: dict[str, str],
-                              template_kks: str, template_part: str):
+    def _fill_ref_for_virtaul_template_variant(self, variant: TemplateVariant, part_dict: dict[str, str],
+                                               template_kks: str, template_part: str,
+                                               commands_parts_list: dict[str, str]):
+        """
+        Функция заполнения ссылок для варианта схемы
+        :param variant: Вариант схемы
+        :param part_dict: Список Part (с ККС) для данной схемы
+        :param template_kks: ККС схемы
+        :param template_part: PART схемы
+        :param commands_parts_list: Список команд схемы
+        :return:
+        """
         for part in variant.signal_parts:
             kks: str = part_dict[part]
             page: str = variant.signal_parts[part][0]
@@ -235,8 +299,8 @@ class FillRef:
                              unrel_ref=unrel_ref,
                              kks=kks,
                              part=part)
-            command_ref: str = ';'.join([f'{template.commands_parts_list[command_part]}:{template_kks}_{command_part}'
-                                         for command_part in template.commands_parts_list])
+            command_ref: str = ';'.join([f'{commands_parts_list[command_part]}:{template_kks}_{command_part}'
+                                         for command_part in commands_parts_list])
             self._update_ref(ref=command_ref,
                              unrel_ref=None,
                              kks=template_kks,

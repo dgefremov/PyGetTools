@@ -125,15 +125,68 @@ def find_schemas():
 
 
 def fill_ref():
-    template1_var1 = TemplateVariant(name='DSW1',
-                                     signal_parts={'XB01': ('3', '10', '20'),
-                                                   'XB02': ('3', '11', None)})
     template1: VirtualTemplate = VirtualTemplate(name='Управление выключателем',
                                                  part='XA00',
                                                  has_channel=True,
-                                                 commands_parts_list={'XL01': 'Port1', 'XL02': 'Port2'},
-                                                 variants=[template1_var1])
-
+                                                 commands_parts_list=[{'XL01': 'Port1', 'XL02': 'Port2'}],
+                                                 variants=[TemplateVariant(name='DSW1',
+                                                                           signal_parts={'XB01': ('3', '3', '15'),
+                                                                                         'XB02': ('3', '4', None)}),
+                                                           TemplateVariant(name='DSW2',
+                                                                           signal_parts={'XB01': ('3', '3', '15'),
+                                                                                         'XB02': ('3', '4', None),
+                                                                                         'XB07': ('3', '5', '16'),
+                                                                                         'XB08': ('3', '6', '17')}),
+                                                           TemplateVariant(name='DSW3',
+                                                                           signal_parts={'XB01': ('3', '3', '15'),
+                                                                                         'XB02': ('3', '4', None),
+                                                                                         'XB07': ('3', '5', '16'),
+                                                                                         'XB08': ('3', '6', '17'),
+                                                                                         'XF19': ('3', '7', '18')}),
+                                                           TemplateVariant(name='DSW4',
+                                                                           signal_parts={'XB01': ('3', '3', '15'),
+                                                                                         'XB02': ('3', '4', None),
+                                                                                         'XB07': ('3', '5', '16'),
+                                                                                         'XB08': ('3', '6', '17'),
+                                                                                         'XF27': ('3', '8', '19')}),
+                                                           ])
+    template2: VirtualTemplate = VirtualTemplate(name='Управление АВР',
+                                                 part='XA10',
+                                                 has_channel=True,
+                                                 commands_parts_list=[{'XL21': 'Port1', 'XL22': 'Port2'}],
+                                                 variants=[TemplateVariant(name='DAVR',
+                                                                           signal_parts={'XB21': ('3', '3', '15'),
+                                                                                         'XB22': ('3', '4', None)}),
+                                                           ])
+    template3: VirtualTemplate = VirtualTemplate(name='Управление РПН',
+                                                 part='XA20',
+                                                 has_channel=True,
+                                                 commands_parts_list=[{'XL11': 'Port1', 'XL12': 'Port2'}],
+                                                 variants=[TemplateVariant(name='DLTC',
+                                                                           signal_parts={'XB10': ('3', '3', '7')}),
+                                                           ])
+    template4: VirtualTemplate = VirtualTemplate(name='Пуск ДГ',
+                                                 part='XA30',
+                                                 has_channel=True,
+                                                 commands_parts_list=[{'XL04': 'Port1'}],
+                                                 variants=[TemplateVariant(name='DDGS',
+                                                                           signal_parts={}),
+                                                           ])
+    template5: VirtualTemplate = VirtualTemplate(name='Пуск АСП',
+                                                 part='XA40',
+                                                 has_channel=True,
+                                                 commands_parts_list=[{'XL08': 'Port1'}],
+                                                 variants=[TemplateVariant(name='DACNPS',
+                                                                           signal_parts={}),
+                                                           ])
+    template6: VirtualTemplate = VirtualTemplate(name='Квитирование сигнализации',
+                                                 part='XA50',
+                                                 has_channel=True,
+                                                 commands_parts_list=[{'XL50': 'Port1'},
+                                                                      {'XL51': 'Port1'}],
+                                                 variants=[TemplateVariant(name='DSIGN',
+                                                                           signal_parts={}),
+                                                           ])
     wired_template_1: TemplateVariant = TemplateVariant(name='SW_1623_1',
                                                         signal_parts={'XF27': ('3', '10', None)})
     wired_template_2: TemplateVariant = TemplateVariant(name='SW_1623_2',
@@ -143,13 +196,13 @@ def fill_ref():
                                ref_table_name='[REF]',
                                sign_table_name='DIAG',
                                vs_sign_table_name='[DIAG_VS]',
-                               virtual_templates=[template1],
+                               virtual_templates=[template1, template2, template3, template4, template5, template6],
                                virtual_schemas_table_name='[VIRTUAL SCHEMAS]',
                                wired_template_variants=[wired_template_1, wired_template_2]))
 
 
 if __name__ == '__main__':
-    # fill_tables()
+    fill_tables()
     # fill_mms()
     # copy_cid()
     # find_schemas()

@@ -6,6 +6,9 @@ from tools.utils.sql_utils import Connection
 
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
 class Schema:
+    """
+    Класс хранения описания схемы
+    """
     name: str
     command_parts: list[str] = field(compare=False)
     signal_parts: list[str] = field(compare=False)
@@ -13,12 +16,18 @@ class Schema:
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class FindSchemasOptions:
+    """
+    Класс хранения настроек
+    """
     database_path: str
     sim_table_name: str
     schemas: list[Schema]
 
 
 class FindSchemas:
+    """
+    Основной класс для поиска вариантов схем управления
+    """
     _options: FindSchemasOptions
     _access: Connection
 
@@ -27,6 +36,10 @@ class FindSchemas:
         self._access = access
 
     def find_schemas_variants(self) -> dict[Schema, list[list[bool]]]:
+        """
+        Функция поиска схем вариантов управления
+        :return: Список схем с набором используемых сигналов
+        """
         schema_variants: dict[Schema, list[list[bool]]] = {}
         for schema in self._options.schemas:
             variants: list[list[bool]] = []
@@ -47,12 +60,25 @@ class FindSchemas:
 
     @staticmethod
     def _variant_exists(variants: list[list[bool]], new_variant: list[bool]):
+        """
+        Сравнение двух наборов сигналов
+        :param variants:
+        :param new_variant:
+        :return:
+        """
         for variant in variants:
             if next((False for item1, item2 in zip(variant, new_variant) if item1 != item2), True):
                 return True
         return False
 
     def _get_part_list(self, kks: str, kksp: str, cabinet: str) -> list[str]:
+        """
+        Функция поиска PART для данного ККС и KKSp
+        :param kks: ККС сигналов управления
+        :param kksp: KKSp сигналов управления
+        :param cabinet: Имя шкафа для сужения поиска
+        :return: Список Part
+        """
         parts_list: list[str] = []
         values_from_kks: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table_name,
                                                                            fields=['PART'],
@@ -74,6 +100,11 @@ class FindSchemas:
 
     @staticmethod
     def _print_schemas_variants(schemas_variants: dict[Schema, list[list[bool]]]) -> None:
+        """
+        Вывод на экран списков вариантов схем
+        :param schemas_variants:
+        :return: None
+        """
         for schema in schemas_variants:
             logging.info(f'Схема {schema.name}')
             for index in range(len(schemas_variants[schema])):
@@ -84,6 +115,12 @@ class FindSchemas:
 
     @staticmethod
     def _get_schema_variant(schema: Schema, parts_list: list[str]) -> list[bool]:
+        """
+        Функция поиска вариантов схемы
+        :param schema: Схема, для которой ищутся варианты
+        :param parts_list: Список Part, на основе которых определяется вариант схемы
+        :return: Список найденных сигналов для данной схемы
+        """
         schema_variant: list[bool] = []
         for signal_part in schema.signal_parts:
             schema_variant.append(signal_part in parts_list)
