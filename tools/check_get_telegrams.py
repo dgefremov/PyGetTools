@@ -1,9 +1,7 @@
-from typing import Set
 from dataclasses import dataclass
 
 from utils.get_base_utils import Controller, Telegram, get_abonents
-from utils.sql_utils import SQLUtils
-from utils.common_utils import print_log
+from utils.sql_utils import Connection
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -20,15 +18,15 @@ class Options:
 
 
 def run(options: Options):
-    with SQLUtils.Connection.connect_to_postgre(options.base, options.user, options.password, options.server,
-                                                options.port) as _postgre_base:
+    with Connection.connect_to_postgre(options.base, options.user, options.password, options.server,
+                                       options.port) as _postgre_base:
         _controllers_from_get1 = get_abonents(_postgre_base, options.project_1, options.complex_1)
         _controllers_from_get2 = get_abonents(_postgre_base, options.project_2, options.complex_2)
-    abonents1: Set[int] = set(_controllers_from_get1.keys())
-    abonents2: Set[int] = set(_controllers_from_get2.keys())
-    abonents_diff_1: Set[int] = abonents1.difference(abonents2)
-    abonents_diff_2: Set[int] = abonents2.difference(abonents1)
-    abonents_inters: Set[int] = abonents1.intersection(abonents2)
+    abonents1: set[int] = set(_controllers_from_get1.keys())
+    abonents2: set[int] = set(_controllers_from_get2.keys())
+    abonents_diff_1: set[int] = abonents1.difference(abonents2)
+    abonents_diff_2: set[int] = abonents2.difference(abonents1)
+    abonents_inters: set[int] = abonents1.intersection(abonents2)
 
     if len(abonents_diff_1) > 0:
         [print('Абонент {} присутствует только в проекте {}'.format(item, options.project_1)) for item in
@@ -40,11 +38,11 @@ def run(options: Options):
         controller1: Controller = _controllers_from_get1[abonent_id]
         controller2: Controller = _controllers_from_get2[abonent_id]
 
-        telegram_names1: Set[str] = set(controller1.telegrams.keys())
-        telegram_names2: Set[str] = set(controller2.telegrams.keys())
-        telegram_names_diff_1: Set[str] = telegram_names1.difference(telegram_names2)
-        telegram_names_diff_2: Set[str] = telegram_names2.difference(telegram_names1)
-        telegram_names_inters: Set[str] = telegram_names1.intersection(telegram_names2)
+        telegram_names1: set[str] = set(controller1.telegrams.keys())
+        telegram_names2: set[str] = set(controller2.telegrams.keys())
+        telegram_names_diff_1: set[str] = telegram_names1.difference(telegram_names2)
+        telegram_names_diff_2: set[str] = telegram_names2.difference(telegram_names1)
+        telegram_names_inters: set[str] = telegram_names1.intersection(telegram_names2)
 
         if len(telegram_names_diff_1) > 0:
             [print('Телеграмма {} присутствует только в проекте {}'.format(item, options.project_1)) for item in
@@ -57,10 +55,10 @@ def run(options: Options):
             telegram1: Telegram = controller1.telegrams[telegram_name]
             telegram2: Telegram = controller2.telegrams[telegram_name]
 
-            telegram_channels1: Set[int] = set(telegram1.channels.keys())
-            telegram_channels2: Set[int] = set(telegram2.channels.keys())
-            telegram_channels_diff_1: Set[int] = telegram_channels1.difference(telegram_channels2)
-            telegram_channels_diff_2: Set[int] = telegram_channels2.difference(telegram_channels1)
+            telegram_channels1: set[int] = set(telegram1.channels.keys())
+            telegram_channels2: set[int] = set(telegram2.channels.keys())
+            telegram_channels_diff_1: set[int] = telegram_channels1.difference(telegram_channels2)
+            telegram_channels_diff_2: set[int] = telegram_channels2.difference(telegram_channels1)
 
             if len(telegram_channels_diff_1) > 0:
                 [print('Канал {} телеграммы {} для контроллера {} присутствует только в проекте {}'

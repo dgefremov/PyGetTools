@@ -1,6 +1,5 @@
 import logging
 import os.path
-from typing import List, Dict, Tuple
 from dataclasses import dataclass
 
 from tools.utils.progress_utils import ProgressBar
@@ -28,13 +27,13 @@ class CopyCid:
     def __init__(self, options: CopyCidOptions):
         self._options = options
 
-    def _get_data_from_base(self) -> Dict[str, List[Tuple[ParameterData, str]]]:
+    def _get_data_from_base(self) -> dict[str, list[tuple[ParameterData, str]]]:
         """
         Загрузка данных для генерации из базы
         :return: Словарь со значениями из базы
         """
         with Connection.connect_to_mdb(self._options.base_path) as access_base:
-            data: List[Dict[str, str]] = access_base.retrieve_data_from_joined_table(
+            data: list[dict[str, str]] = access_base.retrieve_data_from_joined_table(
                 table_name1='[МЭК 61850]',
                 table_name2='[IED]',
                 joined_fields=['IED_NAME'],
@@ -42,13 +41,13 @@ class CopyCid:
                 key_names=None,
                 key_values=None,
                 uniq_values=True)
-            data_for_xml: Dict[str, List[Tuple[ParameterData, str]]] = {}
+            data_for_xml: dict[str, list[tuple[ParameterData, str]]] = {}
             _, file_extension = os.path.splitext(self._options.source_cid)
             for value in data:
                 file_name: str = self._options.target_path + value['ICD_PATH']
                 if file_name[-4:].upper() not in ('.CID', '.ICD', 'SCD'):
                     file_name = file_name + file_extension
-                parameters: List[Tuple[ParameterData, str]] = [(Nodes.IP.value, value['IP']),
+                parameters: list[tuple[ParameterData, str]] = [(Nodes.IP.value, value['IP']),
                                                                (Nodes.MASK.value, self._options.mask),
                                                                (Nodes.IEDNAME.value, value['[IED].IED_NAME']),
                                                                (Nodes.DESCR.value, value['[IED].SENSR_TYPE'])]
@@ -56,7 +55,7 @@ class CopyCid:
                 data_for_xml[file_name] = parameters
             return data_for_xml
 
-    def create_files(self, data_for_xml: Dict[str, List[Tuple[ParameterData, str]]]) -> None:
+    def create_files(self, data_for_xml: dict[str, list[tuple[ParameterData, str]]]) -> None:
         """
         Копирование файлов
         :param data_for_xml: Данные из базы со значениями свойств
@@ -80,7 +79,7 @@ class CopyCid:
         copy_class: CopyCid = CopyCid(options)
 
         logging.info('Загрузка данных из базы...')
-        data_for_xml: Dict[str, List[Tuple[ParameterData, str]]] = copy_class._get_data_from_base()
+        data_for_xml: dict[str, list[tuple[ParameterData, str]]] = copy_class._get_data_from_base()
         logging.info('Загрузка завершена.')
 
         logging.info('Запуск копирования файлов...')

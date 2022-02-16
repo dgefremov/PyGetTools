@@ -1,15 +1,20 @@
 import logging
-from typing import List
 
-from tools.generate_tables import GenerateTables, DPCSignal, BSCSignal, GenerateTableOptions, DatasetDescriptionList, \
+from tools.generate_tables import GenerateTables, GenerateTableOptions, DoublePointSignal, SWTemplate
+
+from tools.fill_mms_address import FillMMSAdress, FillMMSAddressOptions, DPCSignal, BSCSignal, DatasetDescriptionList, \
     DatasetDescription, SignalRange
+
 from tools.copy_cid import CopyCid, CopyCidOptions
+
+from tools.fill_ref import VirtualTemplate, TemplateVariant, FillRef, FillRefOptions
+
 from tools.find_schemas import FindSchemas, FindSchemasOptions, Schema
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s - %(message)s')
 
 
-def fill_tables():
+def fill_mms():
     dps_signal_cb = DPCSignal(signal_part='XB00',
                               signal_part_dupl=('XB01', 'XB02'),
                               command_part='XL00',
@@ -55,8 +60,38 @@ def fill_tables():
                                                        rcb_main='Device/LLN0.RP.Report_A_DS3',
                                                        rcb_res='Device/LLN0.RP.Report_B_DS3')
 
-    dpc_signals: List[DPCSignal] = [dps_signal_cb, dps_signal_cb2, dps_signal_alt, dps_signal_gb]
+    dpc_signals: list[DPCSignal] = [dps_signal_cb, dps_signal_cb2, dps_signal_alt, dps_signal_gb]
 
+    FillMMSAdress.run(FillMMSAddressOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.07.accdb',
+                                            iec_table_name='[МЭК 61850]',
+                                            ied_table_name='[IED]',
+                                            dpc_signals=dpc_signals,
+                                            bsc_signals=[bsc_signal],
+                                            datasets=DatasetDescriptionList([dataset_1, dataset_2, dataset_3])))
+
+
+def fill_tables():
+    signal1: DoublePointSignal = DoublePointSignal(single_part='XB00',
+                                                   on_part='XB01',
+                                                   off_part='XB02')
+    signal2: DoublePointSignal = DoublePointSignal(single_part='XL00',
+                                                   on_part='XL01',
+                                                   off_part='XL02')
+    signal3: DoublePointSignal = DoublePointSignal(single_part='XB20',
+                                                   on_part='XB21',
+                                                   off_part='XB22')
+    signal4: DoublePointSignal = DoublePointSignal(single_part='XL20',
+                                                   on_part='XL21',
+                                                   off_part='XL22')
+    signal5: DoublePointSignal = DoublePointSignal(single_part='XB30',
+                                                   on_part='XB31',
+                                                   off_part='XB32')
+    signal6: DoublePointSignal = DoublePointSignal(single_part='XL10',
+                                                   on_part='XL11',
+                                                   off_part='XL12')
+    signal7: DoublePointSignal = DoublePointSignal(single_part=None,
+                                                   on_part='XA01',
+                                                   off_part='XA02')
     GenerateTables.run(GenerateTableOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.07.accdb',
                                             network_data_table_name='[Network Data]',
                                             controller_data_table_name='TPTS',
@@ -65,11 +100,12 @@ def fill_tables():
                                             iec_table_name='[МЭК 61850]',
                                             ied_table_name='[IED]',
                                             ref_table_name='[REF]',
-                                            signalization_table_name='[DIAG]',
+                                            sign_table_name='[DIAG]',
                                             skip_duplicate_prefix=['00BCE'],
-                                            dpc_signals=dpc_signals,
-                                            bsc_signals=[bsc_signal],
-                                            datasets=DatasetDescriptionList([dataset_1, dataset_2, dataset_3])))
+                                            dps_signals=[signal1, signal2, signal3, signal4, signal5, signal6, signal7],
+                                            sw_templates=[SWTemplate('SW_1623_1', ['XF27']),
+                                                          SWTemplate('SW_1623_2', ['XK52'])])
+                       )
 
 
 def copy_cid():
@@ -88,7 +124,33 @@ def find_schemas():
                                        schemas=[schema1]))
 
 
+def fill_ref():
+    template1_var1 = TemplateVariant(name='DSW1',
+                                     signal_parts={'XB01': ('3', '10', '20'),
+                                                   'XB02': ('3', '11', None)})
+    template1: VirtualTemplate = VirtualTemplate(name='Управление выключателем',
+                                                 part='XA00',
+                                                 has_channel=True,
+                                                 commands_parts_list={'XL01': 'Port1', 'XL02': 'Port2'},
+                                                 variants=[template1_var1])
+
+    wired_template_1: TemplateVariant = TemplateVariant(name='SW_1623_1',
+                                                        signal_parts={'XF27': ('3', '10', None)})
+    wired_template_2: TemplateVariant = TemplateVariant(name='SW_1623_2',
+                                                        signal_parts={'XK52': ('3', '11', None)})
+    FillRef.run(FillRefOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.07.accdb',
+                               sim_table_name='[Сигналы и механизмы]',
+                               ref_table_name='[REF]',
+                               sign_table_name='DIAG',
+                               vs_sign_table_name='[DIAG_VS]',
+                               virtual_templates=[template1],
+                               virtual_schemas_table_name='[VIRTUAL SCHEMAS]',
+                               wired_template_variants=[wired_template_1, wired_template_2]))
+
+
 if __name__ == '__main__':
-    fill_tables()
+    # fill_tables()
+    # fill_mms()
     # copy_cid()
     # find_schemas()
+    fill_ref()

@@ -1,5 +1,4 @@
 import pyodbc
-from typing import List, Dict, Union
 from enum import IntEnum
 
 
@@ -26,12 +25,12 @@ class Connection:
         self._cursor.close()
         self._connection.close()
 
-    def retrieve_data(self, table_name: str, fields: List[str],
-                      key_names: Union[List[str], None] = None,
-                      key_values: Union[List[str], None] = None,
+    def retrieve_data(self, table_name: str, fields: list[str],
+                      key_names: list[str] | None = None,
+                      key_values: list[str] | None = None,
                       uniq_values: bool = False,
-                      sort_by: Union[List[str], None] = None,
-                      key_operator: Union[List[str], None] = None) -> List[Dict[str, str]]:
+                      sort_by: list[str] | None = None,
+                      key_operator: list[str] | None = None) -> list[dict[str, str]]:
 
         distinct_placeholder: str = ' DISTINCT ' if uniq_values else ''
         sort_by_placeholder: str = ' ORDER BY ' + ' ,'.join(sort_by) + ' ASC' if sort_by is not None else ''
@@ -74,13 +73,13 @@ class Connection:
         return out_list
 
     def retrieve_data_from_joined_table(self, table_name1: str, table_name2,
-                                        joined_fields: List[str],
-                                        fields: List[str],
-                                        key_names: Union[List[str], None],
-                                        key_values: Union[List[str], None],
+                                        joined_fields: list[str],
+                                        fields: list[str],
+                                        key_names: list[str] | None,
+                                        key_values: list[str] | None,
                                         uniq_values: bool = False,
-                                        sort_by: Union[List[str], None] = None,
-                                        key_operator: str = '=') -> List[Dict[str, str]]:
+                                        sort_by: list[str] | None = None,
+                                        key_operator: str = '=') -> list[dict[str, str]]:
         join_placeholder: str = ','.join(
             ['{0}.{2} = {1}.{2}'.format(table_name1, table_name2, field) for field in joined_fields])
         distinct_placeholder: str = ' DISTINCT ' if uniq_values else ''
@@ -112,7 +111,7 @@ class Connection:
             out_list.append(out_row)
         return out_list
 
-    def remove_row(self, table_name: str, key_names: List[str], key_values: List[str]) -> None:
+    def remove_row(self, table_name: str, key_names: list[str], key_values: list[str]) -> None:
         key_column_placeholder = ['{0} = ?'.format(item) for item in key_names]
         if len(key_values) != len(key_names):
             print("Неверное число значений ключевых полей")
@@ -121,8 +120,8 @@ class Connection:
         query = 'DELETE FROM {0} WHERE {1}'.format(table_name, ' AND '.join(key_column_placeholder))
         self._cursor.execute(query, key_values)
 
-    def update_field(self, table_name: str, fields: List[str], values: List[str], key_names: List[str],
-                     key_values: List[str]) -> None:
+    def update_field(self, table_name: str, fields: list[str], values: list[str], key_names: list[str],
+                     key_values: list[str]) -> None:
         if len(key_values) != len(key_names):
             print("Несоответствие названий ключевых полей и их значений")
             raise Exception("AccessError")
@@ -143,7 +142,7 @@ class Connection:
 
     def is_table_exists(self, table_name: str) -> bool:
         if self._base_type == _BaseType.ACCESS:
-            values: List = self.retrieve_data(table_name='MSysObject',
+            values: list = self.retrieve_data(table_name='MSysObject',
                                               fields=['Name'],
                                               key_names=['Name', 'Type'],
                                               key_values=[table_name, '(1,4,6)'],
@@ -156,8 +155,8 @@ class Connection:
         elif self._base_type == _BaseType.POSTGRES:
             raise Exception('Неподдерживаемый тип базы')
 
-    def retrive_data_with_having(self, table_name: str, fields: List[str], key_column: str,
-                                 key_values: List[str]):
+    def retrive_data_with_having(self, table_name: str, fields: list[str], key_column: str,
+                                 key_values: list[str]):
         condition_placeholder: str = ' OR '.join([f"{table_name}.{key_column} = ?" for _ in range(len(key_values))])
         fields_placeholder: str = ', '.join([f'{table_name}.{field}' for field in fields])
         having_placeholder: str = 'COUNT({0}.{1})={2}'.format(table_name, key_column, len(key_values))
@@ -181,7 +180,7 @@ class Connection:
             self._cursor.execute(f'ALTER TABLE {table_name} ALTER COLUMN ID COUNTER(1,1)')
         self._cursor.commit()
 
-    def insert_row(self, table_name: str, column_names: List[str], values: List[Union[str, int, float]]) -> None:
+    def insert_row(self, table_name: str, column_names: list[str], values: list[str | int | float]) -> None:
         if len(column_names) != len(values):
             print("Несоответствие количества столбцов количеству значений")
             raise Exception("SQLError")
@@ -199,7 +198,7 @@ class Connection:
         return int(self._cursor.fetchval())
 
     @staticmethod
-    def get_string_value(value: Union[str, float, int]) -> str:
+    def get_string_value(value: str | float | int) -> str:
         if isinstance(value, int) or isinstance(value, float):
             return f'{value}'
         if isinstance(value, str):

@@ -1,10 +1,9 @@
-import re
 import logging
-from typing import List, Dict, Union, Set, Tuple
+import re
 from dataclasses import dataclass
 
-from tools.utils.sql_utils import Connection
 from tools.utils.progress_utils import ProgressBar
+from tools.utils.sql_utils import Connection
 
 
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
@@ -18,40 +17,12 @@ class UncommonTemplate:
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-class DPCSignal:
+class SWTemplate:
     """
-    Класс хранения двухпозицонного сигнала
+    Класс для хранения шаблонов для проводных сигналов управления
     """
-    signal_part: Union[str, None]
-    signal_part_dupl: Union[Tuple[str, str], None]
-    command_part: Union[str, None]
-    command_part_dupl: Union[Tuple[str, str], None]
-
-    def is_command(self, value: str) -> bool:
-        if self.command_part_dupl is None:
-            return False
-        return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
-
-    def is_signal(self, value: str) -> bool:
-        if self.signal_part_dupl is None:
-            return False
-        return value.upper() in (signal_part.upper() for signal_part in self.signal_part_dupl)
-
-
-@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-class BSCSignal:
-    """
-    Класс хранения сигнала РПН типа BSC
-    """
-    signal_part: str
-    command_part: str
-    command_part_dupl: Union[Tuple[str, str], None]
-
-    def is_command(self, value: str) -> bool:
-        return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
-
-    def is_signal(self, value: str) -> bool:
-        return value.upper() == self.signal_part
+    name: str
+    part_list: list[str]
 
 
 @dataclass(init=False, repr=False, eq=False, order=False, frozen=False)
@@ -68,24 +39,24 @@ class Signal:
     full_name_rus: str
     name_eng: str
     full_name_eng: str
-    min: Union[float, None]
-    max: Union[float, None]
+    min: float | None
+    max: float | None
     units_rus: str
     units_eng: str
     in_level: str
     cabinet: str
-    slot_mp: Union[int, None]
-    channel: Union[int, None]
+    slot_mp: int | None
+    channel: int | None
     connection: str
     sensr_typ: str
     cat_nam: str
     location_mp: str
-    dname: Union[str, None]
+    dname: str | None
     kksp: str
-    template: Union[str, None]
+    template: str | None
 
     @staticmethod
-    def create_from_row(value: Dict[str, str]) -> 'Signal':
+    def create_from_row(value: dict[str, str]) -> 'Signal':
         signal: Signal = Signal()
         signal.object_typ = value['OBJECT_TYP']
         signal.kks = value['KKS']
@@ -149,182 +120,10 @@ class Signal:
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-class SignalRange:
-    """
-    Класс хранения диапазона MMS адресов для типа сигнала в CID файле
-    """
-    low: int
-    high: int
-
-
-@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-class DatasetDescription:
-    """
-    Класс хранения описания Dataset в CID файле
-    """
-    name: str
-    path: str
-    rcb_main: str
-    rcb_res: str
-    spc_range: Union[SignalRange, None] = None
-    sps_range: Union[SignalRange, None] = None
-    dpc_range: Union[SignalRange, None] = None
-    bsc_range: Union[SignalRange, None] = None
-    mv_range: Union[SignalRange, None] = None
-
-
-@dataclass(init=True, repr=False, eq=False, order=False, frozen=False)
-class DatasetDescriptionList:
-    """
-    Класс хранения списков Dataset
-    """
-    dataset_list: List[DatasetDescription]
-
-    def get_by_spc_index(self, spc_index) -> Union[DatasetDescription, None]:
-        return next(
-            (dataset for dataset in self.dataset_list if dataset.spc_range is not None and dataset.spc_range.low <=
-             spc_index <= dataset.spc_range.high),
-            None)
-
-    def get_by_sps_index(self, sps_index) -> Union[DatasetDescription, None]:
-        return next(
-            (dataset for dataset in self.dataset_list if dataset.sps_range is not None and dataset.sps_range.low <=
-             sps_index <= dataset.sps_range.high),
-            None)
-
-    def get_by_dpc_index(self, dpc_index) -> Union[DatasetDescription, None]:
-        return next(
-            (dataset for dataset in self.dataset_list if dataset.dpc_range is not None and dataset.dpc_range.low <=
-             dpc_index <= dataset.dpc_range.high),
-            None)
-
-    def get_by_bsc_index(self, bsc_index) -> Union[DatasetDescription, None]:
-        return next(
-            (dataset for dataset in self.dataset_list if dataset.bsc_range is not None and dataset.bsc_range.low <=
-             bsc_index <= dataset.bsc_range.high),
-            None)
-
-    def get_by_mv_index(self, mv_index) -> Union[DatasetDescription, None]:
-        return next(
-            (dataset for dataset in self.dataset_list if dataset.mv_range is not None and dataset.mv_range.low <=
-             mv_index <= dataset.mv_range.high),
-            None)
-
-
-class MMSGenerator:
-    """
-    Класс генератора MMS адресов для сигналов
-    """
-    sps_index: int
-    spc_index: int
-    dpc_index: int
-    mv_index: int
-    bsc_index: int
-    ied_name: str
-
-    dpc_container: Dict[DPCSignal, Dict[str, str]]
-    bsc_container: Dict[BSCSignal, Dict[str, str]]
-    dataset_container: List[DatasetDescription]
-    dataset_descriptions: Union[DatasetDescriptionList, None]
-
-    MV_PREFIX = 'Device/GGIO1.AnIn'
-    MV_POSTFIX = '.mag.f'
-
-    SPS_PREFIX = 'Device/GGIO1.Alm'
-    SPS_POSTFIX = '.stVal'
-
-    SPC_PREFIX = 'Device/GGIO1.SPCSO'
-    SPC_POSTFIX = '.Oper'
-
-    BSC_PREFIX = 'Device/ATCC'
-    BSC_COMMAND_POSTFIX = '.TapChg.Oper'
-    BSC_POS_POSTFIX = '.TapChg.valWTr'
-
-    DPS_PREFIX = 'Device/GGIO1.DPCSO'
-    DPS_COMMAND_POSTFIX = '.Oper'
-    DPS_POS_POSTFIX = '.stVal'
-
-    def __init__(self, kksp: str, dpc_signals: List[DPCSignal],
-                 bsc_signals: List[BSCSignal], dataset_descriptions: DatasetDescriptionList):
-        self.sps_index = 0
-        self.spc_index = 0
-        self.dpc_index = 0
-        self.mv_index = 0
-        self.bsc_index = 0
-        self.ied_name = 'IED_' + kksp.replace('-', '_')
-        self.dpc_container = {}
-        self.bsc_container = {}
-        self.dataset_container = []
-        self.dataset_descriptions = dataset_descriptions
-        for dpc_signal in dpc_signals:
-            self.dpc_container[dpc_signal] = {}
-        for bsc_signal in bsc_signals:
-            self.bsc_container[bsc_signal] = {}
-
-    def get_mms(self, kks: str, part: str):
-        for dps_signal in self.dpc_container:
-            if dps_signal.is_signal(part) or dps_signal.is_command(part):
-                postfix: str = self.DPS_COMMAND_POSTFIX if dps_signal.is_command(part) else \
-                    self.DPS_POS_POSTFIX
-                if kks not in self.dpc_container[dps_signal]:
-                    self.dpc_index += 1
-                    self.dpc_container[dps_signal][kks] = self.DPS_PREFIX + str(self.dpc_index)
-                    if self.dataset_descriptions is not None:
-                        dataset: DatasetDescription = self.dataset_descriptions.get_by_dpc_index(self.dpc_index)
-                        if dataset is None:
-                            logging.error(f'Не найден Dataset для DPS {self.dpc_index}')
-                            raise Exception('DatasetError')
-                        if not self.dataset_container.__contains__(dataset):
-                            self.dataset_container.append(dataset)
-                return self.ied_name + self.dpc_container[dps_signal][kks] + postfix
-
-        for bsc_signal in self.bsc_container:
-            if bsc_signal.is_signal(part) or bsc_signal.is_command(part):
-                postfix: str = self.BSC_COMMAND_POSTFIX if bsc_signal.is_command(part) else \
-                    self.BSC_POS_POSTFIX
-                if kks not in self.bsc_container[bsc_signal]:
-                    self.bsc_index += 1
-                    self.bsc_container[bsc_signal][kks] = self.BSC_PREFIX + str(self.bsc_index)
-                    if self.dataset_descriptions is not None:
-                        dataset: DatasetDescription = self.dataset_descriptions.get_by_bsc_index(self.bsc_index)
-                        if dataset is None:
-                            logging.error(f'Не найден Dataset для BSC {self.bsc_index}')
-                            raise Exception('DatasetError')
-                        if not self.dataset_container.__contains__(dataset):
-                            self.dataset_container.append(dataset)
-                return self.ied_name + self.bsc_container[bsc_signal][kks] + postfix
-
-        if part.upper().startswith('XL'):
-            self.spc_index += 1
-            if self.dataset_descriptions is not None:
-                dataset: DatasetDescription = self.dataset_descriptions.get_by_spc_index(self.spc_index)
-                if dataset is None:
-                    logging.error(f'Не найден Dataset для SPC {self.spc_index}')
-                    raise Exception('DatasetError')
-                if not self.dataset_container.__contains__(dataset):
-                    self.dataset_container.append(dataset)
-            return self.ied_name + self.SPC_PREFIX + str(self.spc_index) + self.SPC_POSTFIX
-
-        if part.upper().startswith('XQ'):
-            self.mv_index += 1
-            if self.dataset_descriptions is not None:
-                dataset: DatasetDescription = self.dataset_descriptions.get_by_mv_index(self.mv_index)
-                if dataset is None:
-                    logging.error(f'Не найден Dataset для MV {self.mv_index}')
-                    raise Exception('DatasetError')
-                if not self.dataset_container.__contains__(dataset):
-                    self.dataset_container.append(dataset)
-            return self.ied_name + self.MV_PREFIX + str(self.mv_index) + self.MV_POSTFIX
-
-        self.sps_index += 1
-        if self.dataset_descriptions is not None:
-            dataset: DatasetDescription = self.dataset_descriptions.get_by_sps_index(self.sps_index)
-            if dataset is None:
-                logging.error(f'Не найден Dataset для SPS {self.sps_index}')
-                raise Exception('DatasetError')
-            if not self.dataset_container.__contains__(dataset):
-                self.dataset_container.append(dataset)
-        return self.ied_name + self.SPS_PREFIX + str(self.sps_index) + self.SPS_POSTFIX
+class DoublePointSignal:
+    single_part: str | None
+    on_part: str
+    off_part: str
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -340,12 +139,11 @@ class GenerateTableOptions:
     iec_table_name: str
     ied_table_name: str
     ref_table_name: str
-    signalization_table_name: str
-    dpc_signals: List[DPCSignal]
-    bsc_signals: List[BSCSignal]
-    skip_duplicate_prefix: List[str]
-    datasets: Union[None, DatasetDescriptionList] = None
-    uncommon_templates: Union[None, List[UncommonTemplate]] = None
+    sign_table_name: str
+    skip_duplicate_prefix: list[str]
+    dps_signals: list[DoublePointSignal]
+    sw_templates: list[SWTemplate]
+    uncommon_templates: None | list[UncommonTemplate] = None
 
 
 class GenerateTables:
@@ -359,19 +157,19 @@ class GenerateTables:
         self._options = options
         self._access_base = access_base
 
-    def _get_kksp_list(self) -> List[str]:
+    def _get_kksp_list(self) -> list[str]:
         """
-        Функция загрузки списка KKSp из БД
+
         :return: Список KKSp
         """
-        values: List[Dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.aep_table_name,
+        values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.aep_table_name,
                                                                        fields=['KKSp'],
                                                                        key_names=None,
                                                                        key_values=None,
                                                                        uniq_values=True,
                                                                        sort_by=None,
                                                                        key_operator=None)
-        kksp_list: List[str] = []
+        kksp_list: list[str] = []
         for value in values:
             kksp_list.append(value['KKSp'])
         return kksp_list
@@ -391,27 +189,20 @@ class GenerateTables:
                                                     'LOCATION_MP', 'DNAME', 'KKSp'],
                                             key_names=['KKSp'],
                                             key_values=[kksp])
-        sw_container: Dict[str, List[Signal]] = {}
-        undubled_container: List[Signal] = []
-        mms_generator: MMSGenerator = MMSGenerator(kksp=kksp,
-                                                   dpc_signals=self._options.dpc_signals,
-                                                   bsc_signals=self._options.bsc_signals,
-                                                   dataset_descriptions=self.
-                                                   _options.datasets)
+        sw_container: dict[str, list[Signal]] = {}
+        undubled_container: list[Signal] = []
         for value in values:
             ProgressBar.update_progress()
             signal: Signal = Signal.create_from_row(value)
             if signal.module == '1623' or signal.module == '1631' or signal.module == '1661':
                 self._process_wired_signal(signal=signal, sw_container=sw_container)
             elif signal.module == '1691':
-                self._process_digital_signal(signal=signal, mms_generator=mms_generator,
+                self._process_digital_signal(signal=signal,
                                              undubled_signal_container=undubled_container)
-        if self._options.datasets is not None and len(mms_generator.dataset_container) > 0:
-            self._add_ied_record(mms_generator=mms_generator)
-        self._check_undubled_signals(undubled_signal_container=undubled_container, mms_generator=mms_generator)
+        self._check_undubled_signals(undubled_signal_container=undubled_container)
         self._access_base.commit()
 
-    def _process_wired_signal(self, signal: Signal, sw_container: Dict[str, List[Signal]]) -> None:
+    def _process_wired_signal(self, signal: Signal, sw_container: dict[str, list[Signal]]) -> None:
         """
         Обработка проводного сигнала
         :param signal: Сигнал (строка таблицы)
@@ -424,93 +215,27 @@ class GenerateTables:
         else:
             self._add_signal_to_sim_table(signal=signal)
 
-    def _add_ied_record(self, mms_generator: MMSGenerator):
-        """
-        Функция добавления (редактирования) записи в таблице IED
-        :param mms_generator: Экземпляр класса генератора MMS сигналов (в нем хранятся Dataset)
-        :return:
-        """
-        ied_record_exists: bool = len(self._access_base.retrieve_data(table_name=self._options.ied_table_name,
-                                                                      fields=['IED_NAME'],
-                                                                      key_names=['IED_NAME'],
-                                                                      key_values=[mms_generator.ied_name])) == 1
-        dataset_list: str = ';'.join([dataset.path for dataset in mms_generator.dataset_container])
-        rb_master_list: str = ';'.join([dataset.rcb_main for dataset in mms_generator.dataset_container])
-        rb_slave_list: str = ';'.join([dataset.rcb_res for dataset in mms_generator.dataset_container])
-        if ied_record_exists:
-            self._access_base.update_field(table_name=self._options.ied_table_name,
-                                           fields=['DATASET', 'RB_MASTER', 'RB_SLAVE'],
-                                           values=[dataset_list, rb_master_list, rb_slave_list],
-                                           key_names=['IED_NAME'],
-                                           key_values=[mms_generator.ied_name])
-        else:
-            self._access_base.insert_row(table_name=self._options.ied_table_name,
-                                         column_names=['IED_NAME', 'DATASET', 'RB_MASTER', 'RB_SLAVE'],
-                                         values=[dataset_list, rb_master_list, rb_slave_list])
-
-    def _get_parts_to_duplicate(self) -> List[str]:
-        """
-        Получение списка PART для сигналов, которые требуется раздвоить
-        :return: Список PART для сигналов, которые требуется раздвоить
-        """
-        output: List[str] = []
-        for dps_signal in self._options.dpc_signals:
-            if dps_signal.signal_part is not None:
-                output.append(dps_signal.signal_part)
-            if dps_signal.command_part is not None:
-                output.append(dps_signal.command_part)
-        for bsc_signal in self._options.bsc_signals:
-            output.append(bsc_signal.command_part)
-        return output
-
-    def _get_duplicated_parts(self) -> List[str]:
-        """
-        Получение списка PART для раздвоенных сигналов
-        :return: Список PART для раздвоенных сигналов
-        """
-        output: List[str] = []
-        for dpc_signal in self._options.dpc_signals:
-            if dpc_signal.signal_part_dupl is not None:
-                output.extend(dpc_signal.signal_part_dupl)
-            if dpc_signal.command_part_dupl is not None:
-                output.extend(dpc_signal.command_part_dupl)
-        for bsc_signal in self._options.bsc_signals:
-            if bsc_signal.command_part_dupl is not None:
-                output.extend(bsc_signal.command_part_dupl)
-        return output
-
     def _get_part_pair(self, part: str) -> str:
         """
         Получение ответный part для раздвоенных сигналов
         :param part: Part, для которой ищется пара
         :return: Ответный part для развдоенного сигнала
         """
-        for dpc_signal in self._options.dpc_signals:
-            if dpc_signal.signal_part_dupl is not None:
-                if dpc_signal.signal_part_dupl[0].casefold() == part.casefold():
-                    return dpc_signal.signal_part_dupl[1]
-                if dpc_signal.signal_part_dupl[1].casefold() == part.casefold():
-                    return dpc_signal.signal_part_dupl[0]
-            if dpc_signal.command_part_dupl is not None:
-                if dpc_signal.command_part_dupl[0].casefold() == part.casefold():
-                    return dpc_signal.command_part_dupl[1]
-                if dpc_signal.command_part_dupl[1].casefold() == part.casefold():
-                    return dpc_signal.command_part_dupl[0]
-        for bsc_signal in self._options.bsc_signals:
-            if bsc_signal.command_part_dupl is not None:
-                if bsc_signal.command_part_dupl[0].casefold() == part.casefold():
-                    return bsc_signal.command_part_dupl[1]
-                if bsc_signal.command_part_dupl[1].casefold() == part.casefold():
-                    return bsc_signal.command_part_dupl[0]
+        found_signal: DoublePointSignal = next((dps_signal for dps_signal in self._options.dps_signals if
+                                                dps_signal.on_part.casefold() == part.casefold()), None)
+        if found_signal is not None:
+            return found_signal.off_part
+        else:
+            return next(dps_signal.on_part for dps_signal in self._options.dps_signals
+                        if dps_signal.off_part.casefold() == part.casefold())
 
-    def _check_undubled_signals(self, undubled_signal_container: List[Signal], mms_generator: MMSGenerator) -> None:
+    def _check_undubled_signals(self, undubled_signal_container: list[Signal]) -> None:
         """
         Проверка пар для раздвоенных сигналов (которые изначально были в базе). Для сигналов без пары создается сигнал
         :param undubled_signal_container: Хранилище для раздвоенных сигналов
-        :param mms_generator: Экземпляр класса генератора MMS адресов
         :return: None
         """
-        dict_with_status: Dict[Signal, bool] = {signal: False for signal in undubled_signal_container}
+        dict_with_status: dict[Signal, bool] = {signal: False for signal in undubled_signal_container}
         for signal in dict_with_status:
             if dict_with_status[signal]:
                 continue
@@ -523,37 +248,36 @@ class GenerateTables:
             else:
                 new_signal: Signal = signal.clone()
                 new_signal.part = paired_part
-                self._add_signal_to_iec_table(signal=new_signal, mms_generator=mms_generator)
+                self._add_signal_to_iec_table(signal=new_signal)
                 self._add_signal_to_sim_table(signal=new_signal)
 
-    def _process_digital_signal(self, signal: Signal, mms_generator: MMSGenerator,
-                                undubled_signal_container: List[Signal]) -> None:
+    def _process_digital_signal(self, signal: Signal, undubled_signal_container: list[Signal]) -> None:
         """
         Обработка цифрового сигнала
         :param signal: Сигнал (строка из базы)
-        :param mms_generator: Экземпляр для класса генератора MMS адресов
         :param undubled_signal_container: хранилище для раздвоенных сигналов (которые изначально были в базе)
         :return: None
         """
-        if signal.part in self._get_duplicated_parts():
+        if signal.part in list(sum([(dps_signal.on_part, dps_signal.off_part) for dps_signal in
+                                    self._options.dps_signals], ())):
             signal.name_rus = self._sanitizate_signal_name(signal.name_rus)
             signal.full_name_rus = self._sanitizate_signal_name(signal.full_name_rus)
             signal.name_eng = self._sanitizate_signal_name(signal.name_eng)
             signal.full_name_eng = self._sanitizate_signal_name(signal.full_name_eng)
             undubled_signal_container.append(signal)
 
-        if signal.part in self._get_parts_to_duplicate() and \
+        if signal.part in [dps_signal.single_part for dps_signal in self._options.dps_signals
+                           if dps_signal.single_part is not None] and \
                 not any(signal.kks.upper().startswith(item.upper()) for item in self._options.skip_duplicate_prefix):
-            self._duplicate_signal(signal=signal, mms_generator=mms_generator)
+            self._duplicate_signal(signal=signal)
         else:
-            self._add_signal_to_iec_table(signal=signal, mms_generator=mms_generator)
+            self._add_signal_to_iec_table(signal=signal)
             self._add_signal_to_sim_table(signal=signal)
 
-    def _duplicate_signal(self, signal: Signal, mms_generator: MMSGenerator) -> None:
+    def _duplicate_signal(self, signal: Signal) -> None:
         """
         Раздвоение сигнала
         :param signal: Исходный сигнал
-        :param mms_generator: Экземпляр для класса генератора MMS адреса
         :return: None
         """
         part_num_string: str = signal.part[2:]
@@ -562,13 +286,13 @@ class GenerateTables:
         new_signal_1.part = signal.part[:2] + str(part_num + 1).rjust(2, '0')
         new_signal_2: Signal = signal.clone()
         new_signal_2.part = signal.part[:2] + str(part_num + 2).rjust(2, '0')
-        self._add_signal_to_iec_table(signal=new_signal_1, mms_generator=mms_generator)
+        self._add_signal_to_iec_table(signal=new_signal_1)
         self._add_signal_to_sim_table(signal=new_signal_1)
-        self._add_signal_to_iec_table(signal=new_signal_2, mms_generator=mms_generator)
+        self._add_signal_to_iec_table(signal=new_signal_2)
         self._add_signal_to_sim_table(signal=new_signal_2)
 
     @staticmethod
-    def _get_common_prefix(strings: List[str]) -> str:
+    def _get_common_prefix(strings: list[str]) -> str:
         """
         Класс выделения общей части для группы строк
         :param strings: Группа строк
@@ -589,7 +313,7 @@ class GenerateTables:
             common_index = min_length
         return strings[0][:common_index].rstrip()
 
-    def _process_sw_signals(self, sw_container: Dict[str, List[Signal]], signal: Signal) -> None:
+    def _process_sw_signals(self, sw_container: dict[str, list[Signal]], signal: Signal) -> None:
         """
         Обработка SW сигналов (объединения группы сигналов в один)
         :param sw_container: Хранилище для SW сигналов
@@ -597,12 +321,12 @@ class GenerateTables:
         :return: None
         """
         if signal.kks in sw_container:
-            sw_signals: List[Signal] = sw_container[signal.kks]
+            sw_signals: list[Signal] = sw_container[signal.kks]
             if len(sw_signals) < 6:
                 sw_signals.append(signal)
             if len(sw_signals) == 6:
-                parts_in_container: Set[str] = {item.part for item in sw_signals}
-                parts_set: Set[str] = {'XB01', 'XB02', 'XL01', 'XL02', 'XB07', 'XB08'}
+                parts_in_container: set[str] = {item.part for item in sw_signals}
+                parts_set: set[str] = {'XB01', 'XB02', 'XL01', 'XL02', 'XB07', 'XB08'}
                 if parts_set == parts_in_container:
                     sw_signal: Signal = signal.clone()
                     sw_signal.part = 'XA00'
@@ -612,6 +336,7 @@ class GenerateTables:
                                                                                sw_signals)))
                     sw_signal.full_name_eng = self._get_common_prefix(list(map(lambda item: item.full_name_eng,
                                                                                sw_signals)))
+                    sw_signal.template = self._get_sw_template(sw_signal.kksp, sw_signal.cabinet)
                     self._add_signal_to_sim_table(sw_signal)
                     del sw_container[signal.kks]
                 else:
@@ -620,13 +345,25 @@ class GenerateTables:
         else:
             sw_container[signal.kks] = [signal]
 
+    def _get_sw_template(self, kksp: str, cabinet: str) -> str:
+        values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.aep_table_name,
+                                                                       fields=['PART'],
+                                                                       key_names=['KKSp', 'CABINET'],
+                                                                       key_values=[kksp, cabinet])
+        path_list: list[str] = [value['PART'] for value in values]
+        for sw_template in self._options.sw_templates:
+            if all(part in path_list for part in sw_template.part_list):
+                return sw_template.name
+        logging.error('Не найдена схема подключения для управления выключателем')
+        raise Exception('SWTemplateNotFound')
+
     def _add_signal_to_sim_table(self, signal: Signal) -> None:
         """
         Добавление сигнала в таблицу СиМ
         :param signal: Сигнал для добавления в таблицу
         :return: None
         """
-        column_names: List[str] = ['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF', 'FULL_NAME_RUS', 'NAME_RUS',
+        column_names: list[str] = ['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF', 'FULL_NAME_RUS', 'NAME_RUS',
                                    'FULL_NAME_ENG', 'NAME_ENG', 'Min', 'Max', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL',
                                    'CABINET', 'SLOT_MP', 'CHANNEL', 'CONNECTION', 'SENSR_TYPE', 'CatNam', 'KKSp',
                                    'LOCATION_MP', 'SCHEMA']
@@ -646,7 +383,7 @@ class GenerateTables:
             channel = signal.channel + 50
         else:
             channel = signal.channel
-        values: List[str] = [signal.object_typ, signal.kks, signal.part, signal.module, signal.rednd_intf,
+        values: list[str] = [signal.object_typ, signal.kks, signal.part, signal.module, signal.rednd_intf,
                              signal.full_name_rus, signal.name_rus, signal.full_name_eng, signal.name_eng,
                              signal.min, signal.max, signal.units_rus, signal.units_eng, signal.in_level,
                              signal.cabinet, signal.slot_mp, channel, signal.connection, signal.sensr_typ,
@@ -655,35 +392,22 @@ class GenerateTables:
                                      column_names=column_names,
                                      values=values)
 
-    def _add_signal_to_iec_table(self, signal: Signal, mms_generator: MMSGenerator) -> None:
+    def _add_signal_to_iec_table(self, signal: Signal) -> None:
         """
         Добавление сигнала в таблицу МЭК
         :param signal: Сигнал (запись в базе)
-        :param mms_generator: Экземпляр класса генератора MMS адресов
         :return: None
         """
-        column_names: List[str] = ['KKS', 'PART', 'KKSp', 'MODULE', 'REDND_INTF', 'CABINET', 'SLOT_MP', 'LOCATION_MP',
+        column_names: list[str] = ['KKS', 'PART', 'KKSp', 'MODULE', 'REDND_INTF', 'CABINET', 'SLOT_MP', 'LOCATION_MP',
                                    'FULL_NAME_RUS', 'NAME_RUS', 'FULL_NAME_ENG', 'NAME_ENG', 'Min', 'Max', 'UNITS_RUS',
-                                   'UNITS_ENG', 'SENSR_TYPE', 'AREA', 'DNAME', 'IP', 'IED_NAME', 'MMS', 'MMS_POS',
-                                   'MMS_COM']
+                                   'UNITS_ENG', 'SENSR_TYPE', 'AREA', 'DNAME', 'IP', 'IED_NAME']
         ied_name: str = 'IED_' + signal.kksp.replace('-', '_')
         area: str = self._access_base.retrieve_data('TPTS', ['AREA'], ['CABINET'], [signal.cabinet])[0]['AREA']
         ip: str = self._access_base.retrieve_data('[Network data]', ['IP'], ['KKSp'], [signal.kksp])[0]['IP']
-        mms_path: str = mms_generator.get_mms(signal.kks, signal.part)
-        mms: str = ''
-        mms_pos: str = ''
-        mms_com: str = ''
-        if signal.part.upper().startswith('XL') or signal.part.startswith('XA'):
-            mms_com = mms_path
-        elif signal.part.upper().startswith('XB'):
-            mms_pos = mms_path
-        else:
-            mms = mms_path
-        values: List[str] = [signal.kks, signal.part, signal.kksp, signal.module, signal.rednd_intf, signal.cabinet,
+        values: list[str] = [signal.kks, signal.part, signal.kksp, signal.module, signal.rednd_intf, signal.cabinet,
                              signal.slot_mp, signal.location_mp, signal.full_name_rus, signal.name_rus,
                              signal.full_name_eng, signal.name_eng, signal.min, signal.max, signal.units_rus,
-                             signal.units_eng, signal.sensr_typ, area, signal.dname, ip, ied_name, mms, mms_pos,
-                             mms_com]
+                             signal.units_eng, signal.sensr_typ, area, signal.dname, ip, ied_name]
 
         self._access_base.insert_row(table_name=self._options.iec_table_name,
                                      column_names=column_names,
@@ -697,9 +421,9 @@ class GenerateTables:
         :param signal_name: Очищаемое имя сигнала
         :return: Очищенное имя сигнала
         """
-        key_words: List = ['вкл', 'откл', 'замкн', 'разомкн', 'ввод', 'вывод', 'введ',
+        key_words: list = ['вкл', 'откл', 'замкн', 'разомкн', 'ввод', 'вывод', 'введ',
                            'close', 'trip', 'input', 'output', 'discon']
-        key_word: Union[str, None] = next((key for key in key_words if key.upper() in signal_name.upper()), None)
+        key_word: str | None = next((key for key in key_words if key.upper() in signal_name.upper()), None)
         out_string: str
         if key_word is not None:
             start_index: int = signal_name.upper().find(key_word.upper())
@@ -724,36 +448,13 @@ class GenerateTables:
             raise Exception('SignalNameCorrectionFailed')
         return out_string
 
-    def _add_ref_record(self, kks: str, part: str, ref: str) -> None:
-        """
-        Функция добавления записи в таблицу REF
-        :param kks: KKS сигнала
-        :param part: Part сигнала
-        :param ref: Ссылка
-        :return: None
-        """
-        ref_record_exists: bool = len(self._access_base.retrieve_data(table_name=self._options.ref_table_name,
-                                                                      fields=['KKS', 'PART'],
-                                                                      key_names=['KKS', 'PART'],
-                                                                      key_values=[kks, part])) == 1
-        if ref_record_exists:
-            self._access_base.update_field(table_name=self._options.ref_table_name,
-                                           fields=['REF'],
-                                           values=[ref],
-                                           key_names=['KKS', 'PART'],
-                                           key_values=[kks, part])
-        else:
-            self._access_base.insert_row(table_name=self._options.ref_table_name,
-                                         column_names=['KKS', 'PART', 'REF'],
-                                         values=[kks, part, ref])
-
     def _read_signalization_table(self) -> None:
         """
-        Функция чтения строк таблицы SIGNAL и запись в таблицы СиМ и REF
+        Функция чтения строк таблицы DIAG и запись в таблицу СиМ
         :return: None
         """
         values: list[dict[str, str]] = \
-            self._access_base.retrieve_data(table_name=self._options.signalization_table_name,
+            self._access_base.retrieve_data(table_name=self._options.sign_table_name,
                                             fields=['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF',
                                                     'FULL_NAME_RUS', 'NAME_RUS', 'FULL_NAME_ENG', 'NAME_ENG', 'MIN',
                                                     'MAX', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL', 'CABINET',
@@ -766,10 +467,6 @@ class GenerateTables:
         for value in values:
             signal: Signal = Signal.create_from_row(value)
             self._add_signal_to_sim_table(signal=signal)
-            if value['REF'] is not None and value['REF'] != '':
-                self._add_ref_record(kks=signal.kks,
-                                     part=signal.part,
-                                     ref=value['REF'])
             ProgressBar.update_progress()
 
     def generate(self) -> None:
@@ -788,7 +485,7 @@ class GenerateTables:
         max_value: int = self._access_base.get_row_count(self._options.aep_table_name)
         logging.info('Заполнение таблиц...')
         ProgressBar.config(max_value=max_value, step=1, prefix='Обработка таблицы АЭП', suffix='Завершено', length=50)
-        kksp_list: List[str] = self._get_kksp_list()
+        kksp_list: list[str] = self._get_kksp_list()
         for kksp in kksp_list:
             self._generate_table_for_kksp(kksp=kksp)
 
