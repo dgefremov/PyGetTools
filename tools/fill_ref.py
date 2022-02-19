@@ -19,9 +19,8 @@ class VirtualTemplate:
     Класс хранения данных по шаблону для виртаульных схем
     """
     name: str
-    part: str
     has_channel: bool
-    commands_parts_list: list[dict[str, str]]
+    commands_parts_list: dict[str, dict[str, str]]
     variants: list[TemplateVariant]
 
 
@@ -194,15 +193,15 @@ class FillRef:
                              ref=ref,
                              unrel_ref=None)
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.vs_sign_table_name,
-                                                                  fields=['VS_KKS', 'CABINET', 'VS_SCHEMA',
-                                                                          'VS_CHANNEL', 'VS_PART', 'DESCR',
+                                                                  fields=['KKS', 'CABINET', 'SCHEMA',
+                                                                          'CHANNEL', 'PART', 'DESCR',
                                                                           'REF'])
         for value in values:
-            vs_kks: str = value['VS_KKS']
+            vs_kks: str = value['KKS']
             cabinet: str = value['CABINET']
-            vs_schema: str = value['VS_SCHEMA']
-            vs_channel: int = int(value['VS_CHANNEL'])
-            vs_part: str = value['VS_PART']
+            vs_schema: str = value['SCHEMA']
+            vs_channel: int = int(value['CHANNEL'])
+            vs_part: str = value['PART']
             descr: str = value['DESCR']
             vs_ref: str = value['REF']
             self._update_ref(kks=vs_kks,
@@ -211,7 +210,7 @@ class FillRef:
                              ref=vs_ref)
 
             self._access.insert_row(table_name=self._options.virtual_schemas_table_name,
-                                    column_names=['VS_KKS', 'CABINET', 'VS_SCHEMA', 'VS_CHANNEL', 'VS_PART', 'DESCR'],
+                                    column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR'],
                                     values=[vs_kks, cabinet, vs_schema, vs_channel, vs_part, descr])
         self._access.commit()
 
@@ -222,7 +221,8 @@ class FillRef:
         """
         channel_container: dict[str, int] = {}
         for template in self._options.virtual_templates:
-            for command_list in template.commands_parts_list:
+            for schema_part in template.commands_parts_list:
+                command_list: dict[str, str] = template.commands_parts_list[schema_part]
                 values_list: list[dict[str, str]] = self._access.retrive_data_with_having(
                     table_name=self._options.sim_table_name,
                     fields=['KKS', 'CABINET', 'KKSp'],
@@ -251,12 +251,18 @@ class FillRef:
                     self._fill_ref_for_virtaul_template_variant(variant=variant,
                                                                 part_dict=part_dict,
                                                                 template_kks=kks,
-                                                                template_part=template.part,
-                                                                commands_parts_list=command_list)
+                                                                template_part=schema_part)
                     self._access.insert_row(table_name=self._options.virtual_schemas_table_name,
-                                            column_names=['VS_KKS', 'CABINET', 'VS_SCHEMA', 'VS_CHANNEL', 'VS_PART'],
-                                            values=[kks, cabinet, variant.name, current_channel, template.part])
-            self._access.commit()
+                                            column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART'],
+                                            values=[kks, cabinet, variant.name, current_channel, schema_part])
+                    command_ref: str = ';'.join([f'{command_list[command_part]}:{kks}_{command_part}'
+                                                 for command_part in command_list])
+                    self._update_ref(ref=command_ref,
+                                     unrel_ref=None,
+                                     kks=kks,
+                                     part=schema_part)
+
+        self._access.commit()
 
     def _fill_ref(self) -> None:
         """
@@ -275,16 +281,14 @@ class FillRef:
         self._fill_sign_ref()
 
     def _fill_ref_for_virtaul_template_variant(self, variant: TemplateVariant, part_dict: dict[str, str],
-                                               template_kks: str, template_part: str,
-                                               commands_parts_list: dict[str, str]):
+                                               template_kks: str, template_part: str) -> None:
         """
         Функция заполнения ссылок для варианта схемы
         :param variant: Вариант схемы
         :param part_dict: Список Part (с ККС) для данной схемы
         :param template_kks: ККС схемы
         :param template_part: PART схемы
-        :param commands_parts_list: Список команд схемы
-        :return:
+        :return: None
         """
         for part in variant.signal_parts:
             kks: str = part_dict[part]
@@ -299,12 +303,6 @@ class FillRef:
                              unrel_ref=unrel_ref,
                              kks=kks,
                              part=part)
-            command_ref: str = ';'.join([f'{commands_parts_list[command_part]}:{template_kks}_{command_part}'
-                                         for command_part in commands_parts_list])
-            self._update_ref(ref=command_ref,
-                             unrel_ref=None,
-                             kks=template_kks,
-                             part=template_part)
 
     @staticmethod
     def run(options: FillRefOptions) -> None:

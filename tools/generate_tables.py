@@ -16,13 +16,21 @@ class UncommonTemplate:
     template: str
 
 
+@dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
+class SWTemplateVariant:
+    schema: str
+    parts: list[str]
+
+
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class SWTemplate:
     """
     Класс для хранения шаблонов для проводных сигналов управления
     """
     name: str
-    part_list: list[str]
+    connection: str
+    signals: set[str]
+    variants: list[SWTemplateVariant]
 
 
 @dataclass(init=False, repr=False, eq=False, order=False, frozen=False)
@@ -189,29 +197,31 @@ class GenerateTables:
                                                     'LOCATION_MP', 'DNAME', 'KKSp'],
                                             key_names=['KKSp'],
                                             key_values=[kksp])
-        sw_container: dict[str, list[Signal]] = {}
+        sw_containers: dict[SWTemplate, dict[str, list[Signal]]] = {}
+        for sw_template in self._options.sw_templates:
+            sw_containers[sw_template] = {}
         undubled_container: list[Signal] = []
         for value in values:
             ProgressBar.update_progress()
             signal: Signal = Signal.create_from_row(value)
             if signal.module == '1623' or signal.module == '1631' or signal.module == '1661':
-                self._process_wired_signal(signal=signal, sw_container=sw_container)
+                self._process_wired_signal(signal=signal, sw_containers=sw_containers)
             elif signal.module == '1691':
                 self._process_digital_signal(signal=signal,
                                              undubled_signal_container=undubled_container)
         self._check_undubled_signals(undubled_signal_container=undubled_container)
         self._access_base.commit()
 
-    def _process_wired_signal(self, signal: Signal, sw_container: dict[str, list[Signal]]) -> None:
+    def _process_wired_signal(self, signal: Signal, sw_containers: dict[SWTemplate, dict[str, list[Signal]]]) -> None:
         """
         Обработка проводного сигнала
         :param signal: Сигнал (строка таблицы)
-        :param sw_container: Контейнер для хранения групп SW сигналов
+        :param sw_containers: Контейнер для хранения групп SW сигналов
         :return: None
         """
         if signal.module == '1623' and signal.object_typ.casefold() == 'SW'.casefold():
-            self._process_sw_signals(sw_container=sw_container,
-                                     signal=signal)
+            self._process_sw_signal(sw_containers=sw_containers,
+                                    signal=signal)
         else:
             self._add_signal_to_sim_table(signal=signal)
 
@@ -313,48 +323,57 @@ class GenerateTables:
             common_index = min_length
         return strings[0][:common_index].rstrip()
 
-    def _process_sw_signals(self, sw_container: dict[str, list[Signal]], signal: Signal) -> None:
+    def _process_sw_signal(self, sw_containers: dict[SWTemplate, dict[str, list[Signal]]], signal: Signal) -> None:
         """
         Обработка SW сигналов (объединения группы сигналов в один)
-        :param sw_container: Хранилище для SW сигналов
+        :param sw_containers: Хранилище для SW сигналов
         :param signal: Текущий SW сигнал
         :return: None
         """
-        if signal.kks in sw_container:
-            sw_signals: list[Signal] = sw_container[signal.kks]
-            if len(sw_signals) < 6:
-                sw_signals.append(signal)
-            if len(sw_signals) == 6:
-                parts_in_container: set[str] = {item.part for item in sw_signals}
-                parts_set: set[str] = {'XB01', 'XB02', 'XL01', 'XL02', 'XB07', 'XB08'}
-                if parts_set == parts_in_container:
-                    sw_signal: Signal = signal.clone()
-                    sw_signal.part = 'XA00'
-                    sw_signal.name_rus = self._get_common_prefix(list(map(lambda item: item.name_rus, sw_signals)))
-                    sw_signal.name_eng = self._get_common_prefix(list(map(lambda item: item.name_eng, sw_signals)))
-                    sw_signal.full_name_rus = self._get_common_prefix(list(map(lambda item: item.full_name_rus,
-                                                                               sw_signals)))
-                    sw_signal.full_name_eng = self._get_common_prefix(list(map(lambda item: item.full_name_eng,
-                                                                               sw_signals)))
-                    sw_signal.template = self._get_sw_template(sw_signal.kksp, sw_signal.cabinet)
-                    self._add_signal_to_sim_table(sw_signal)
-                    del sw_container[signal.kks]
-                else:
-                    logging.error('Неверный набор сигналов в группе SW')
-                    raise Exception('SignalGroupError')
-        else:
-            sw_container[signal.kks] = [signal]
+        sw_template: SWTemplate = next((template for template in self._options.sw_templates if template.connection ==
+                                        signal.connection), None)
+        if sw_template is None:
+            logging.error('Не найдена схема для проводного сигнала')
+            raise Exception('SWConnectionNotFound')
 
-    def _get_sw_template(self, kksp: str, cabinet: str) -> str:
+        sw_signals: list[Signal]
+        if signal.kksp in sw_containers[sw_template]:
+            sw_signals = sw_containers[sw_template][signal.kksp]
+        else:
+            sw_signals = []
+            sw_containers[sw_template][signal.kksp] = sw_signals
+        sw_signals.append(signal)
+        if len(sw_signals) == len(sw_template.signals):
+            parts_in_container: set[str] = {item.part for item in sw_signals}
+            parts_set: set[str] = sw_template.signals
+            if parts_set == parts_in_container:
+                sw_signal: Signal = signal.clone()
+                sw_signal.part = sw_template.name
+                sw_signal.name_rus = self._get_common_prefix(list(map(lambda item: item.name_rus, sw_signals)))
+                sw_signal.name_eng = self._get_common_prefix(list(map(lambda item: item.name_eng, sw_signals)))
+                sw_signal.full_name_rus = self._get_common_prefix(list(map(lambda item: item.full_name_rus,
+                                                                           sw_signals)))
+                sw_signal.full_name_eng = self._get_common_prefix(list(map(lambda item: item.full_name_eng,
+                                                                           sw_signals)))
+                sw_signal.template = self._get_sw_template(kksp=sw_signal.kksp,
+                                                           cabinet=sw_signal.cabinet,
+                                                           sw_template=sw_template)
+                self._add_signal_to_sim_table(sw_signal)
+                del sw_containers[sw_template]
+            else:
+                logging.error('Неверный набор сигналов в группе SW')
+                raise Exception('SignalGroupError')
+
+    def _get_sw_template(self, kksp: str, cabinet: str, sw_template: SWTemplate) -> str:
         values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.aep_table_name,
                                                                        fields=['PART'],
                                                                        key_names=['KKSp', 'CABINET'],
                                                                        key_values=[kksp, cabinet])
         path_list: list[str] = [value['PART'] for value in values]
-        for sw_template in self._options.sw_templates:
-            if all(part in path_list for part in sw_template.part_list):
-                return sw_template.name
-        logging.error('Не найдена схема подключения для управления выключателем')
+        for sw_template in sorted(sw_template.variants, key=lambda item: len(item.parts), reverse=True):
+            if len(sw_template.parts) == 0 or all(part in path_list for part in sw_template.parts):
+                return sw_template.schema
+        logging.error('Не найдена схема подключения для управления')
         raise Exception('SWTemplateNotFound')
 
     def _add_signal_to_sim_table(self, signal: Signal) -> None:
@@ -379,7 +398,7 @@ class GenerateTables:
                     if uncommon_template is None else uncommon_template.template
 
         channel: int
-        if signal.module == '1623' and signal.object_typ != 'SW':
+        if signal.module == '1623' and signal.object_typ != 'SW' and signal.channel < 50:
             channel = signal.channel + 50
         else:
             channel = signal.channel
@@ -421,8 +440,8 @@ class GenerateTables:
         :param signal_name: Очищаемое имя сигнала
         :return: Очищенное имя сигнала
         """
-        key_words: list = ['вкл', 'откл', 'замкн', 'разомкн', 'ввод', 'вывод', 'введ',
-                           'close', 'trip', 'input', 'output', 'discon']
+        key_words: list = ['вкл', 'откл', 'замкн', 'разомкн', 'ввод', 'вывод', 'введ', 'вывед',
+                           'close', 'trip', 'input', 'output', 'discon', 'enabl', 'remov']
         key_word: str | None = next((key for key in key_words if key.upper() in signal_name.upper()), None)
         out_string: str
         if key_word is not None:

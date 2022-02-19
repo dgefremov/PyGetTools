@@ -1,6 +1,6 @@
 import logging
 
-from tools.generate_tables import GenerateTables, GenerateTableOptions, DoublePointSignal, SWTemplate
+from tools.generate_tables import GenerateTables, GenerateTableOptions, DoublePointSignal, SWTemplate, SWTemplateVariant
 
 from tools.fill_mms_address import FillMMSAdress, FillMMSAddressOptions, DPCSignal, BSCSignal, DatasetDescriptionList, \
     DatasetDescription, SignalRange
@@ -55,14 +55,14 @@ def fill_mms():
                                                        rcb_res='Device/LLN0.RP.Report_B_DS2')
 
     dataset_3: DatasetDescription = DatasetDescription(name='Dataset03',
-                                                       mv_range=SignalRange(1, 10),
+                                                       mv_range=SignalRange(1, 25),
                                                        path='Device/LLN0.DataSet03',
                                                        rcb_main='Device/LLN0.RP.Report_A_DS3',
                                                        rcb_res='Device/LLN0.RP.Report_B_DS3')
 
     dpc_signals: list[DPCSignal] = [dps_signal_cb, dps_signal_cb2, dps_signal_alt, dps_signal_gb]
 
-    FillMMSAdress.run(FillMMSAddressOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.07.accdb',
+    FillMMSAdress.run(FillMMSAddressOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
                                             iec_table_name='[МЭК 61850]',
                                             ied_table_name='[IED]',
                                             dpc_signals=dpc_signals,
@@ -92,7 +92,19 @@ def fill_tables():
     signal7: DoublePointSignal = DoublePointSignal(single_part=None,
                                                    on_part='XA01',
                                                    off_part='XA02')
-    GenerateTables.run(GenerateTableOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.07.accdb',
+    sw_template1: SWTemplate = SWTemplate(name='XA00',
+                                          connection='NTSW0113',
+                                          signals={'XB01', 'XB02', 'XL01', 'XL02', 'XB07', 'XB08'},
+                                          variants=[SWTemplateVariant(schema='SW_1623_1',
+                                                                      parts=['XF27']),
+                                                    SWTemplateVariant(schema='SW_1623_2',
+                                                                      parts=['XK52'])])
+    sw_template2: SWTemplate = SWTemplate(name='XA10',
+                                          connection='NTSW0114',
+                                          signals={'XB21', 'XB22', 'XL21', 'XL22'},
+                                          variants=[SWTemplateVariant(schema='SW_1623_AVR',
+                                                                      parts=[])])
+    GenerateTables.run(GenerateTableOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
                                             network_data_table_name='[Network Data]',
                                             controller_data_table_name='TPTS',
                                             aep_table_name='[Сигналы и механизмы АЭП]',
@@ -103,13 +115,12 @@ def fill_tables():
                                             sign_table_name='[DIAG]',
                                             skip_duplicate_prefix=['00BCE'],
                                             dps_signals=[signal1, signal2, signal3, signal4, signal5, signal6, signal7],
-                                            sw_templates=[SWTemplate('SW_1623_1', ['XF27']),
-                                                          SWTemplate('SW_1623_2', ['XK52'])])
+                                            sw_templates=[sw_template1, sw_template2])
                        )
 
 
 def copy_cid():
-    CopyCid.run(CopyCidOptions(base_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.07.accdb',
+    CopyCid.run(CopyCidOptions(base_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
                                source_cid='c:\\User data\\All_in_one.cid',
                                target_path='c:\\User data\\2\\',
                                mask='255.255.255.0'))
@@ -119,16 +130,15 @@ def find_schemas():
     schema1: Schema = Schema(name="Управление выключателем",
                              command_parts=['XL01', 'XL02'],
                              signal_parts=['XB01', 'XB02', 'XB07', 'XB08', 'XF19', 'XF27'])
-    FindSchemas.run(FindSchemasOptions(database_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.07.accdb',
+    FindSchemas.run(FindSchemasOptions(database_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
                                        sim_table_name='[Сигналы и механизмы]',
                                        schemas=[schema1]))
 
 
 def fill_ref():
     template1: VirtualTemplate = VirtualTemplate(name='Управление выключателем',
-                                                 part='XA00',
                                                  has_channel=True,
-                                                 commands_parts_list=[{'XL01': 'Port1', 'XL02': 'Port2'}],
+                                                 commands_parts_list={'XA00': {'XL01': 'Port1', 'XL02': 'Port2'}},
                                                  variants=[TemplateVariant(name='DSW1',
                                                                            signal_parts={'XB01': ('3', '3', '15'),
                                                                                          'XB02': ('3', '4', None)}),
@@ -151,59 +161,57 @@ def fill_ref():
                                                                                          'XF27': ('3', '8', '19')}),
                                                            ])
     template2: VirtualTemplate = VirtualTemplate(name='Управление АВР',
-                                                 part='XA10',
                                                  has_channel=True,
-                                                 commands_parts_list=[{'XL21': 'Port1', 'XL22': 'Port2'}],
+                                                 commands_parts_list={'XA10': {'XL21': 'Port1', 'XL22': 'Port2'}},
                                                  variants=[TemplateVariant(name='DAVR',
                                                                            signal_parts={'XB21': ('3', '3', '15'),
                                                                                          'XB22': ('3', '4', None)}),
                                                            ])
     template3: VirtualTemplate = VirtualTemplate(name='Управление РПН',
-                                                 part='XA20',
                                                  has_channel=True,
-                                                 commands_parts_list=[{'XL11': 'Port1', 'XL12': 'Port2'}],
+                                                 commands_parts_list={'XA20': {'XL11': 'Port1', 'XL12': 'Port2'}},
                                                  variants=[TemplateVariant(name='DLTC',
                                                                            signal_parts={'XB10': ('3', '3', '7')}),
                                                            ])
     template4: VirtualTemplate = VirtualTemplate(name='Пуск ДГ',
-                                                 part='XA30',
                                                  has_channel=True,
-                                                 commands_parts_list=[{'XL04': 'Port1'}],
+                                                 commands_parts_list={'XA30': {'XL04': 'Port1'}},
                                                  variants=[TemplateVariant(name='DDGS',
                                                                            signal_parts={}),
                                                            ])
     template5: VirtualTemplate = VirtualTemplate(name='Пуск АСП',
-                                                 part='XA40',
                                                  has_channel=True,
-                                                 commands_parts_list=[{'XL08': 'Port1'}],
+                                                 commands_parts_list={'XA40': {'XL08': 'Port1'}},
                                                  variants=[TemplateVariant(name='DACNPS',
                                                                            signal_parts={}),
                                                            ])
     template6: VirtualTemplate = VirtualTemplate(name='Квитирование сигнализации',
-                                                 part='XA50',
                                                  has_channel=True,
-                                                 commands_parts_list=[{'XL50': 'Port1'},
-                                                                      {'XL51': 'Port1'}],
+                                                 commands_parts_list={'XA50': {'XL50': 'Port1'},
+                                                                      'XA51': {'XL51': 'Port1'}},
                                                  variants=[TemplateVariant(name='DSIGN',
                                                                            signal_parts={}),
                                                            ])
     wired_template_1: TemplateVariant = TemplateVariant(name='SW_1623_1',
-                                                        signal_parts={'XF27': ('3', '10', None)})
+                                                        signal_parts={'XF27': ('3', '11', None)})
     wired_template_2: TemplateVariant = TemplateVariant(name='SW_1623_2',
-                                                        signal_parts={'XK52': ('3', '11', None)})
-    FillRef.run(FillRefOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.07.accdb',
+                                                        signal_parts={'XK52': ('3', '9', None)})
+    wired_template_3: TemplateVariant = TemplateVariant(name='SW_1623_AVR',
+                                                        signal_parts={})
+
+    FillRef.run(FillRefOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
                                sim_table_name='[Сигналы и механизмы]',
                                ref_table_name='[REF]',
-                               sign_table_name='DIAG',
+                               sign_table_name='[DIAG]',
                                vs_sign_table_name='[DIAG_VS]',
                                virtual_templates=[template1, template2, template3, template4, template5, template6],
                                virtual_schemas_table_name='[VIRTUAL SCHEMAS]',
-                               wired_template_variants=[wired_template_1, wired_template_2]))
+                               wired_template_variants=[wired_template_1, wired_template_2, wired_template_3]))
 
 
 if __name__ == '__main__':
     fill_tables()
-    # fill_mms()
+    fill_mms()
+    fill_ref()
     # copy_cid()
     # find_schemas()
-    fill_ref()

@@ -142,7 +142,7 @@ class MMSGenerator:
 
     BSC_PREFIX = 'Device/ATCC'
     BSC_COMMAND_POSTFIX = '.TapChg.Oper'
-    BSC_POS_POSTFIX = '.TapChg.valWTr'
+    BSC_POS_POSTFIX = '.TapChg.valWTr.posVal'
 
     DPS_PREFIX = 'Device/GGIO1.DPCSO'
     DPS_COMMAND_POSTFIX = '.Oper'
@@ -312,7 +312,7 @@ class FillMMSAdress:
         else:
             self._access_base.insert_row(table_name=self._options.ied_table_name,
                                          column_names=['IED_NAME', 'DATASET', 'RB_MASTER', 'RB_SLAVE'],
-                                         values=[dataset_list, rb_master_list, rb_slave_list])
+                                         values=[mms_generator.ied_name, dataset_list, rb_master_list, rb_slave_list])
 
     def _fill_mms(self) -> None:
         """
