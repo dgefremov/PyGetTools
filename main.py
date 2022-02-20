@@ -1,6 +1,7 @@
 import logging
 
-from tools.generate_tables import GenerateTables, GenerateTableOptions, DoublePointSignal, SWTemplate, SWTemplateVariant
+from tools.generate_tables import GenerateTables, GenerateTableOptions, DoublePointSignal, SWTemplate, \
+    SWTemplateVariant, SignalModification
 
 from tools.fill_mms_address import FillMMSAdress, FillMMSAddressOptions, DPCSignal, BSCSignal, DatasetDescriptionList, \
     DatasetDescription, SignalRange
@@ -104,6 +105,21 @@ def fill_tables():
                                           signals={'XB21', 'XB22', 'XL21', 'XL22'},
                                           variants=[SWTemplateVariant(schema='SW_1623_AVR',
                                                                       parts=[])])
+    signal_modification1 = SignalModification(signal_kks='10BBG01GS001',
+                                              signal_part='XB17',
+                                              new_template='BI_1623_INV',
+                                              new_name_rus='Нерабочее положение',
+                                              new_full_name_rus='Нерабочее положение тележки выкатного элемента',
+                                              new_name_eng='Truck non-work pos',
+                                              new_full_name_eng='Non-working position of roll-out element truck')
+    signal_modification2 = SignalModification(signal_kks='10BBG03GS001',
+                                              signal_part='XB17',
+                                              new_template='BI_1623_INV',
+                                              new_name_rus='Нерабочее положение',
+                                              new_full_name_rus='Нерабочее положение тележки выкатного элемента',
+                                              new_name_eng='Truck non-work pos',
+                                              new_full_name_eng='Non-working position of roll-out element truck')
+
     GenerateTables.run(GenerateTableOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
                                             network_data_table_name='[Network Data]',
                                             controller_data_table_name='TPTS',
@@ -115,14 +131,14 @@ def fill_tables():
                                             sign_table_name='[DIAG]',
                                             skip_duplicate_prefix=['00BCE'],
                                             dps_signals=[signal1, signal2, signal3, signal4, signal5, signal6, signal7],
-                                            sw_templates=[sw_template1, sw_template2])
-                       )
+                                            sw_templates=[sw_template1, sw_template2],
+                                            signal_modifications=[signal_modification1, signal_modification2]))
 
 
 def copy_cid():
     CopyCid.run(CopyCidOptions(base_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
-                               source_cid='c:\\User data\\All_in_one.cid',
-                               target_path='c:\\User data\\2\\',
+                               source_cid='c:\\User data\\All_in_one_25MV.cid',
+                               target_path='c:\\User data\\5\\',
                                mask='255.255.255.0'))
 
 
@@ -192,6 +208,12 @@ def fill_ref():
                                                  variants=[TemplateVariant(name='DSIGN',
                                                                            signal_parts={}),
                                                            ])
+    template7: VirtualTemplate = VirtualTemplate(name='Вкл при ручной синхронизации',
+                                                 has_channel=True,
+                                                 commands_parts_list={'XA60': {'XL03': 'Port1'}},
+                                                 variants=[TemplateVariant(name='DSYNC',
+                                                                           signal_parts={}),
+                                                           ])
     wired_template_1: TemplateVariant = TemplateVariant(name='SW_1623_1',
                                                         signal_parts={'XF27': ('3', '11', None)})
     wired_template_2: TemplateVariant = TemplateVariant(name='SW_1623_2',
@@ -204,7 +226,8 @@ def fill_ref():
                                ref_table_name='[REF]',
                                sign_table_name='[DIAG]',
                                vs_sign_table_name='[DIAG_VS]',
-                               virtual_templates=[template1, template2, template3, template4, template5, template6],
+                               virtual_templates=[template1, template2, template3, template4, template5, template6,
+                                                  template7],
                                virtual_schemas_table_name='[VIRTUAL SCHEMAS]',
                                wired_template_variants=[wired_template_1, wired_template_2, wired_template_3]))
 

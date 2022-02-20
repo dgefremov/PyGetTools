@@ -4,6 +4,7 @@ from lxml import etree as et
 
 import logging
 
+
 @dataclass(init=True, unsafe_hash=False, repr=False, eq=False, order=False, frozen=True)
 class NodeDescription:
     xpath: str

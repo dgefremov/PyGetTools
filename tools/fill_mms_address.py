@@ -125,6 +125,7 @@ class MMSGenerator:
     mv_index: int
     bsc_index: int
     ied_name: str
+    kksp: str
 
     dpc_container: dict[DPCSignal, dict[str, str]]
     bsc_container: dict[BSCSignal, dict[str, str]]
@@ -156,6 +157,7 @@ class MMSGenerator:
         self.mv_index = 0
         self.bsc_index = 0
         self.ied_name = 'IED_' + kksp.replace('-', '_')
+        self.kksp = kksp
         self.dpc_container = {}
         self.bsc_container = {}
         self.dataset_container = []
@@ -305,14 +307,15 @@ class FillMMSAdress:
         rb_slave_list: str = ';'.join([dataset.rcb_res for dataset in mms_generator.dataset_container])
         if ied_record_exists:
             self._access_base.update_field(table_name=self._options.ied_table_name,
-                                           fields=['DATASET', 'RB_MASTER', 'RB_SLAVE'],
-                                           values=[dataset_list, rb_master_list, rb_slave_list],
+                                           fields=['DATASET', 'RB_MASTER', 'RB_SLAVE', 'ICD_PATH'],
+                                           values=[dataset_list, rb_master_list, rb_slave_list, mms_generator.kksp],
                                            key_names=['IED_NAME'],
                                            key_values=[mms_generator.ied_name])
         else:
             self._access_base.insert_row(table_name=self._options.ied_table_name,
-                                         column_names=['IED_NAME', 'DATASET', 'RB_MASTER', 'RB_SLAVE'],
-                                         values=[mms_generator.ied_name, dataset_list, rb_master_list, rb_slave_list])
+                                         column_names=['IED_NAME', 'DATASET', 'RB_MASTER', 'RB_SLAVE', 'ICD_PATH'],
+                                         values=[mms_generator.ied_name, dataset_list, rb_master_list, rb_slave_list,
+                                                 mms_generator.kksp])
 
     def _fill_mms(self) -> None:
         """

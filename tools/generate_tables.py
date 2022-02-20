@@ -7,13 +7,18 @@ from tools.utils.sql_utils import Connection
 
 
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
-class UncommonTemplate:
+class SignalModification:
     """
     Класс хранения шаблонов для нетиповых сигналов
     """
     signal_kks: str
     signal_part: str
-    template: str
+    new_template: str | None = None
+    new_name_rus: str | None = None
+    new_full_name_rus: str | None = None
+    new_name_eng: str | None = None
+    new_full_name_eng: str | None = None
+    new_part: str | None = None
 
 
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
@@ -151,7 +156,7 @@ class GenerateTableOptions:
     skip_duplicate_prefix: list[str]
     dps_signals: list[DoublePointSignal]
     sw_templates: list[SWTemplate]
-    uncommon_templates: None | list[UncommonTemplate] = None
+    signal_modifications: None | list[SignalModification] = None
 
 
 class GenerateTables:
@@ -389,13 +394,26 @@ class GenerateTables:
         if signal.module == '1691':
             signal.template = ''
         else:
-            if signal.template is None:
-                uncommon_template: [UncommonTemplate, None] = None
-                if self._options.uncommon_templates is not None:
-                    uncommon_template = next(item for item in self._options.uncommon_templates if
-                                             item.signal_kks == signal.kks and item.signal_part == signal.part)
-                signal.template = f'{signal.object_typ}_{signal.module}' \
-                    if uncommon_template is None else uncommon_template.template
+            if signal.template is None or signal.template == '':
+                signal.template = f'{signal.object_typ}_{signal.module}'
+
+            if self._options.signal_modifications is not None:
+                signal_modification: SignalModification | None = \
+                    next((item for item in self._options.signal_modifications
+                          if item.signal_kks == signal.kks and item.signal_part == signal.part), None)
+                if signal_modification is not None:
+                    if signal_modification.new_template is not None:
+                        signal.template = signal_modification.new_template
+                    if signal_modification.new_name_rus is not None:
+                        signal.name_rus = signal_modification.new_name_rus
+                    if signal_modification.new_full_name_rus is not None:
+                        signal.full_name_rus = signal_modification.new_full_name_rus
+                    if signal_modification.new_name_eng is not None:
+                        signal.name_eng = signal_modification.new_name_eng
+                    if signal_modification.new_full_name_eng is not None:
+                        signal.full_name_eng = signal_modification.new_full_name_eng
+                    if signal_modification.new_part is not None:
+                        signal.part = signal_modification.new_part
 
         channel: int
         if signal.module == '1623' and signal.object_typ != 'SW' and signal.channel < 50:
