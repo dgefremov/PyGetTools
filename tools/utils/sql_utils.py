@@ -72,6 +72,10 @@ class Connection:
             out_list.append(out_row)
         return out_list
 
+    def get_column_names(self, table_name: str) -> set[str]:
+        # noinspection PyArgumentList
+        return set([row.column_name for row in self._cursor.columns(table=table_name.strip('[]'))])
+
     def retrieve_data_from_joined_table(self, table_name1: str, table_name2,
                                         joined_fields: list[str],
                                         fields: list[str],
@@ -173,6 +177,13 @@ class Connection:
                 out_row[fields[column_index]] = None if row[column_index] is None else str(row[column_index])
             out_list.append(out_row)
         return out_list
+
+    # def get_primary_column(self, table_name: str):
+    #     for row in self._cursor.columns(table=table_name.strip('[]')):
+    #         a = row.data_type
+    #         b = row.type_name
+    #         c = row.column_def
+    #         d = row.type_name
 
     def clear_table(self, table_name: str, drop_index: bool = False) -> None:
         self._cursor.execute(f'DELETE * From {table_name}')

@@ -63,7 +63,7 @@ def fill_mms():
 
     dpc_signals: list[DPCSignal] = [dps_signal_cb, dps_signal_cb2, dps_signal_alt, dps_signal_gb]
 
-    FillMMSAdress.run(FillMMSAddressOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
+    FillMMSAdress.run(FillMMSAddressOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.09.accdb',
                                             iec_table_name='[МЭК 61850]',
                                             ied_table_name='[IED]',
                                             dpc_signals=dpc_signals,
@@ -120,7 +120,7 @@ def fill_tables():
                                               new_name_eng='Truck non-work pos',
                                               new_full_name_eng='Non-working position of roll-out element truck')
 
-    GenerateTables.run(GenerateTableOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
+    GenerateTables.run(GenerateTableOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.09.accdb',
                                             network_data_table_name='[Network Data]',
                                             controller_data_table_name='TPTS',
                                             aep_table_name='[Сигналы и механизмы АЭП]',
@@ -136,7 +136,7 @@ def fill_tables():
 
 
 def copy_cid():
-    CopyCid.run(CopyCidOptions(base_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
+    CopyCid.run(CopyCidOptions(base_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.09.accdb',
                                source_cid='c:\\User data\\All_in_one_25MV.cid',
                                target_path='c:\\User data\\5\\',
                                mask='255.255.255.0'))
@@ -146,7 +146,7 @@ def find_schemas():
     schema1: Schema = Schema(name="Управление выключателем",
                              command_parts=['XL01', 'XL02'],
                              signal_parts=['XB01', 'XB02', 'XB07', 'XB08', 'XF19', 'XF27'])
-    FindSchemas.run(FindSchemasOptions(database_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
+    FindSchemas.run(FindSchemasOptions(database_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.09.accdb',
                                        sim_table_name='[Сигналы и механизмы]',
                                        schemas=[schema1]))
 
@@ -221,7 +221,7 @@ def fill_ref():
     wired_template_3: TemplateVariant = TemplateVariant(name='SW_1623_AVR',
                                                         signal_parts={})
 
-    FillRef.run(FillRefOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.08.accdb',
+    FillRef.run(FillRefOptions(path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.09.accdb',
                                sim_table_name='[Сигналы и механизмы]',
                                ref_table_name='[REF]',
                                sign_table_name='[DIAG]',

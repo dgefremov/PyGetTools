@@ -1,6 +1,6 @@
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field, fields
 
 from tools.utils.progress_utils import ProgressBar
 from tools.utils.sql_utils import Connection
@@ -43,64 +43,52 @@ class Signal:
     """
     Класс хранения строки с сигналом
     """
-    object_typ: str
-    kks: str
-    part: str
-    module: str
-    rednd_intf: str
-    name_rus: str
-    full_name_rus: str
-    name_eng: str
-    full_name_eng: str
-    min: float | None
-    max: float | None
-    units_rus: str
-    units_eng: str
-    in_level: str
-    cabinet: str
-    slot_mp: int | None
-    channel: int | None
-    connection: str
-    sensr_typ: str
-    cat_nam: str
-    location_mp: str
-    dname: str | None
-    kksp: str
-    template: str | None
+    kks: str = field(metadata={'column_name': 'KKS'})
+    part: str = field(metadata={'column_name': 'PART'})
+    module: str = field(metadata={'column_name': 'MODULE'})
+    slot_mp: int = field(metadata={'column_name': 'SLOT_MP'})
+    location_mp: str = field(metadata={'column_name': 'LOCATION_MP'})
+    kksp: str = field(metadata={'column_name': 'KKSp'})
+    object_typ: str = field(metadata={'column_name': 'OBJECT_TYP'})
+    rednd_intf: str | None = field(default=None, metadata={'column_name': 'REDND_INTF'})
+    name_rus: str | None = field(default=None, metadata={'column_name': 'NAME_RUS'})
+    full_name_rus: str | None = field(default=None, metadata={'column_name': 'FULL_NAME_RUS'})
+    name_eng: str | None = field(default=None, metadata={'column_name': 'NAME_ENG'})
+    full_name_eng: str | None = field(default=None, metadata={'column_name': 'FULL_NAME_ENG'})
+    min: float | None = field(default=None, metadata={'column_name': 'MIN'})
+    max: float | None = field(default=None, metadata={'column_name': 'MAX'})
+    units_rus: str | None = field(default=None, metadata={'column_name': 'UNITS_RUS'})
+    units_eng: str | None = field(default=None, metadata={'column_name': 'UNITS_ENG'})
+    in_level: str | None = field(default=None, metadata={'column_name': 'IN_LEVEL'})
+    cabinet: str | None = field(default=None, metadata={'column_name': 'CABINET'})
+    channel: int | None = field(default=None, metadata={'column_name': 'CHANNEL'})
+    connection: str = field(default=None, metadata={'column_name': 'CONNECTION'})
+    sensr_typ: str = field(default=None, metadata={'column_name': 'SENSR_TYPE'})
+    cat_nam: str = field(default=None, metadata={'column_name': 'CatNam'})
+    dname: str | None = field(default=None, metadata={'column_name': 'DNAME'})
+    template: str | None = field(default=None, metadata={'column_name' : 'SCHEMA'})
 
     @staticmethod
     def create_from_row(value: dict[str, str]) -> 'Signal':
         signal: Signal = Signal()
-        signal.object_typ = value['OBJECT_TYP']
-        signal.kks = value['KKS']
-        signal.part = value['PART']
-        signal.module = value['MODULE']
-        signal.rednd_intf = value['REDND_INTF']
-        signal.name_rus = value['NAME_RUS']
-        signal.full_name_rus = value['FULL_NAME_RUS']
-        signal.name_eng = value['NAME_ENG']
-        signal.full_name_eng = value['FULL_NAME_ENG']
-        signal.min = None if value['MIN'] is None else float(value['MIN'])
-        signal.max = None if value['MAX'] is None else float(value['MAX'])
-        signal.units_rus = value['UNITS_RUS']
-        signal.units_eng = value['UNITS_ENG']
-        signal.in_level = value['IN_LEVEL']
-        signal.cabinet = value['CABINET']
-        signal.slot_mp = None if value['SLOT_MP'] is None else int(value['SLOT_MP'])
-        signal.channel = None if value['CHANNEL'] is None else int(value['CHANNEL'])
-        signal.connection = value['CONNECTION']
-        signal.sensr_typ = value['SENSR_TYPE']
-        signal.cat_nam = value['CatNam']
-        signal.location_mp = value['LOCATION_MP']
-        if 'DNAME' in value:
-            signal.dname = value['DNAME']
-        else:
-            signal.dname = None
-        signal.kksp = value['KKSp']
-        if 'SCHEMA' in value:
-            signal.template = value['SCHEMA']
-        else:
-            signal.template = None
+        for dataclass_field in fields(signal):
+            if 'column_name' in dataclass_field.metadata:
+                column_name: str = dataclass_field.metadata['column_name']
+                if column_name in value:
+                    if value[column_name] is None:
+                        setattr(signal, dataclass_field.name, None)
+                    else:
+                        field_type = dataclass_field.type
+                        if field_type == str or field_type == str | None:
+                            setattr(signal, dataclass_field.name, value[column_name])
+                        elif field_type == int or field_type == int | None:
+                            setattr(signal, dataclass_field.name, int(value[column_name]))
+                        elif field_type == float or field_type == float | None:
+                            setattr(signal, dataclass_field.name, float(value[column_name]))
+                        else:
+                            logging.error(f'Недопустимый тип для поля {dataclass_field.name}')
+                            raise TypeError('Недопустимый тип')
+
         return signal
 
     def clone(self) -> 'Signal':
@@ -130,6 +118,57 @@ class Signal:
         new_signal.kksp = self.kksp
         new_signal.template = self.template
         return new_signal
+
+
+@dataclass(init=False, repr=False, eq=False, order=False, frozen=False)
+class DigitalSignal:
+    """
+    Класс хранения строки с сигналом
+    """
+    kks: str = field(metadata={'column_name': 'KKS'})
+    part: str = field(metadata={'column_name': 'PART'})
+    module: str = field(metadata={'column_name': 'MODULE'})
+    slot_mp: int = field(metadata={'column_name': 'SLOT_MP'})
+    location_mp: str = field(metadata={'column_name': 'LOCATION_MP'})
+    kksp: str = field(metadata={'column_name': 'KKSp'})
+    rednd_intf: str | None = field(default=None, metadata={'column_name': 'REDND_INTF'})
+    name_rus: str | None = field(default=None, metadata={'column_name': 'NAME_RUS'})
+    full_name_rus: str | None = field(default=None, metadata={'column_name': 'FULL_NAME_RUS'})
+    name_eng: str | None = field(default=None, metadata={'column_name': 'NAME_ENG'})
+    full_name_eng: str | None = field(default=None, metadata={'column_name': 'FULL_NAME_ENG'})
+    min: float | None = field(default=None, metadata={'column_name': 'MIN'})
+    max: float | None = field(default=None, metadata={'column_name': 'MAX'})
+    units_rus: str | None = field(default=None, metadata={'column_name': 'UNITS_RUS'})
+    units_eng: str | None = field(default=None, metadata={'column_name': 'UNITS_ENG'})
+    cabinet: str | None = field(default=None, metadata={'column_name': 'CABINET'})
+    sensr_typ: str = field(default=None, metadata={'column_name': 'SENSR_TYPE'})
+    dname: str | None = field(default=None, metadata={'column_name': 'DNAME'})
+    ip: str | None = field(default=None, metadata={'column_name:': 'IP'})
+    ied_name: str | None = field(default=None, metadata={'column_name': 'IED_NAME'})
+    area: str | None = field(default=None, metadata={'column_name': 'AREA'})
+
+    @staticmethod
+    def create_from_signal(signal: Signal) -> 'DigitalSignal':
+        diginal_signal: DigitalSignal = DigitalSignal()
+        diginal_signal.kks = signal.kks
+        diginal_signal.part = signal.part
+        diginal_signal.module = signal.module
+        diginal_signal.slot_mp = signal.slot_mp
+        diginal_signal.location_mp = signal.location_mp
+        diginal_signal.kksp = signal.kksp
+        diginal_signal.rednd_intf = signal.rednd_intf
+        diginal_signal.name_rus = signal.name_rus
+        diginal_signal.full_name_rus = signal.full_name_rus
+        diginal_signal.name_eng = signal.name_eng
+        diginal_signal.full_name_eng = signal.full_name_eng
+        diginal_signal.min = signal.min
+        diginal_signal.max = signal.max
+        diginal_signal.units_rus = signal.units_rus
+        diginal_signal.units_eng = signal.units_eng
+        diginal_signal.cabinet = signal.cabinet
+        diginal_signal.sensr_typ = signal.sensr_typ
+        diginal_signal.dname = signal.dname
+        return diginal_signal
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -165,14 +204,35 @@ class GenerateTables:
     """
     _options: 'GenerateTableOptions'
     _access_base: Connection
+    _columns_list: dict[str, list[str]]
 
     def __init__(self, options: GenerateTableOptions, access_base: Connection):
         self._options = options
         self._access_base = access_base
+        self._columns_list = {}
+
+    @staticmethod
+    def _get_column_set(signal_type: dataclass) -> set[str]:
+        columns: set[str] = set()
+        for dataclass_field in fields(signal_type):
+            if 'column_name' in dataclass_field.metadata:
+                columns.add(dataclass_field.metadata['column_name'])
+        return columns
+
+    @staticmethod
+    def _get_columns_and_values(signal: dataclass, columns_from_table: list[str]) -> tuple[list[str], list[str]]:
+        columns: list[str] = []
+        values: list[str] = []
+        for dataclass_field in fields(signal):
+            if 'column_name' in dataclass_field.metadata and \
+                    dataclass_field.metadata['column_name'] in columns_from_table:
+                columns.append(dataclass_field.metadata['column_name'])
+                values.append(getattr(signal, dataclass_field.name))
+        return columns, values
 
     def _get_kksp_list(self) -> list[str]:
         """
-
+        Функция получения списка KKSp
         :return: Список KKSp
         """
         values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.aep_table_name,
@@ -195,11 +255,7 @@ class GenerateTables:
         """
         values: list[dict[str, str]] = \
             self._access_base.retrieve_data(table_name=self._options.aep_table_name,
-                                            fields=['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF',
-                                                    'FULL_NAME_RUS', 'NAME_RUS', 'FULL_NAME_ENG', 'NAME_ENG', 'MIN',
-                                                    'MAX', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL', 'CABINET',
-                                                    'SLOT_MP', 'CHANNEL', 'CONNECTION', 'SENSR_TYPE', 'CatNam',
-                                                    'LOCATION_MP', 'DNAME', 'KKSp'],
+                                            fields=self._columns_list[self._options.aep_table_name],
                                             key_names=['KKSp'],
                                             key_values=[kksp])
         sw_containers: dict[SWTemplate, dict[str, list[Signal]]] = {}
@@ -387,10 +443,6 @@ class GenerateTables:
         :param signal: Сигнал для добавления в таблицу
         :return: None
         """
-        column_names: list[str] = ['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF', 'FULL_NAME_RUS', 'NAME_RUS',
-                                   'FULL_NAME_ENG', 'NAME_ENG', 'Min', 'Max', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL',
-                                   'CABINET', 'SLOT_MP', 'CHANNEL', 'CONNECTION', 'SENSR_TYPE', 'CatNam', 'KKSp',
-                                   'LOCATION_MP', 'SCHEMA']
         if signal.module == '1691':
             signal.template = ''
         else:
@@ -417,16 +469,14 @@ class GenerateTables:
 
         channel: int
         if signal.module == '1623' and signal.object_typ != 'SW' and signal.channel < 50:
-            channel = signal.channel + 50
+            signal.channel = signal.channel + 50
         else:
-            channel = signal.channel
-        values: list[str] = [signal.object_typ, signal.kks, signal.part, signal.module, signal.rednd_intf,
-                             signal.full_name_rus, signal.name_rus, signal.full_name_eng, signal.name_eng,
-                             signal.min, signal.max, signal.units_rus, signal.units_eng, signal.in_level,
-                             signal.cabinet, signal.slot_mp, channel, signal.connection, signal.sensr_typ,
-                             signal.cat_nam, signal.kksp, signal.location_mp, signal.template]
+            signal.channel = signal.channel
+        columns, values = self._get_columns_and_values(signal=signal,
+                                                       columns_from_table=self._columns_list[
+                                                           self._options.sim_table_name])
         self._access_base.insert_row(table_name=self._options.sim_table_name,
-                                     column_names=column_names,
+                                     column_names=columns,
                                      values=values)
 
     def _add_signal_to_iec_table(self, signal: Signal) -> None:
@@ -435,19 +485,16 @@ class GenerateTables:
         :param signal: Сигнал (запись в базе)
         :return: None
         """
-        column_names: list[str] = ['KKS', 'PART', 'KKSp', 'MODULE', 'REDND_INTF', 'CABINET', 'SLOT_MP', 'LOCATION_MP',
-                                   'FULL_NAME_RUS', 'NAME_RUS', 'FULL_NAME_ENG', 'NAME_ENG', 'Min', 'Max', 'UNITS_RUS',
-                                   'UNITS_ENG', 'SENSR_TYPE', 'AREA', 'DNAME', 'IP', 'IED_NAME']
-        ied_name: str = 'IED_' + signal.kksp.replace('-', '_')
-        area: str = self._access_base.retrieve_data('TPTS', ['AREA'], ['CABINET'], [signal.cabinet])[0]['AREA']
-        ip: str = self._access_base.retrieve_data('[Network data]', ['IP'], ['KKSp'], [signal.kksp])[0]['IP']
-        values: list[str] = [signal.kks, signal.part, signal.kksp, signal.module, signal.rednd_intf, signal.cabinet,
-                             signal.slot_mp, signal.location_mp, signal.full_name_rus, signal.name_rus,
-                             signal.full_name_eng, signal.name_eng, signal.min, signal.max, signal.units_rus,
-                             signal.units_eng, signal.sensr_typ, area, signal.dname, ip, ied_name]
-
+        digital_signal: DigitalSignal = DigitalSignal.create_from_signal(signal=signal)
+        digital_signal.ied_name = 'IED_' + signal.kksp.replace('-', '_')
+        digital_signal.area = self._access_base.retrieve_data('TPTS', ['AREA'], ['CABINET'], [signal.cabinet])[0][
+            'AREA']
+        digital_signal.ip = self._access_base.retrieve_data('[Network data]', ['IP'], ['KKSp'], [signal.kksp])[0]['IP']
+        columns, values = self._get_columns_and_values(signal=digital_signal,
+                                                       columns_from_table=self._columns_list[
+                                                           self._options.iec_table_name])
         self._access_base.insert_row(table_name=self._options.iec_table_name,
-                                     column_names=column_names,
+                                     column_names=columns,
                                      values=values)
 
     @staticmethod
@@ -492,19 +539,39 @@ class GenerateTables:
         """
         values: list[dict[str, str]] = \
             self._access_base.retrieve_data(table_name=self._options.sign_table_name,
-                                            fields=['OBJECT_TYP', 'KKS', 'PART', 'MODULE', 'REDND_INTF',
-                                                    'FULL_NAME_RUS', 'NAME_RUS', 'FULL_NAME_ENG', 'NAME_ENG', 'MIN',
-                                                    'MAX', 'UNITS_RUS', 'UNITS_ENG', 'IN_LEVEL', 'CABINET',
-                                                    'SLOT_MP', 'CHANNEL', 'CONNECTION', 'SENSR_TYPE', 'CatNam',
-                                                    'LOCATION_MP', 'KKSp', 'SCHEMA', 'REF'],
+                                            fields=self._columns_list[self._options.sign_table_name],
                                             key_names=None,
                                             key_values=None)
         ProgressBar.config(max_value=len(values), length=50, step=1,
                            prefix=f'Добавление диагностических сигналов', suffix='Завершено')
         for value in values:
-            signal: Signal = Signal.create_from_row(value)
-            self._add_signal_to_sim_table(signal=signal)
+            values_to_add: list[str] = []
+            for column in self._columns_list[self._options.sign_table_name]:
+                values_to_add.append(value[column])
+            self._access_base.insert_row(table_name=self._options.sim_table_name,
+                                         column_names=self._columns_list[self._options.sign_table_name],
+                                         values=values_to_add)
             ProgressBar.update_progress()
+
+    def _get_table_columns(self):
+        columns_from_signal: set[str] = self._get_column_set(signal_type=Signal)
+        columns_from_digital_signal: set[str] = self._get_column_set(signal_type=DigitalSignal)
+        columns_from_table_aep: set[str] = self._access_base.get_column_names(table_name=self._options.aep_table_name)
+        columns_from_table_sim: set[str] = self._access_base.get_column_names(table_name=self._options.sim_table_name)
+        columns_from_table_iec: set[str] = self._access_base.get_column_names(table_name=self._options.iec_table_name)
+        columns_from_table_sign: set[str] = self._access_base.get_column_names(table_name=self._options.sign_table_name)
+        excluded_columns: set[str] = columns_from_signal.difference(columns_from_table_aep)
+        if len(excluded_columns) > 0:
+            logging.info('Следующие поля не будут загружены: {}'.format(','.join(excluded_columns)))
+
+        self._columns_list[self._options.aep_table_name] = list(
+            columns_from_signal.intersection(columns_from_table_aep))
+        self._columns_list[self._options.sim_table_name] = list(
+            columns_from_signal.intersection(columns_from_table_sim))
+        self._columns_list[self._options.iec_table_name] = list(
+            columns_from_digital_signal.intersection(columns_from_table_iec))
+        self._columns_list[self._options.sign_table_name] = list(
+            columns_from_table_sign.intersection(columns_from_table_sim))
 
     def generate(self) -> None:
         """
@@ -518,6 +585,8 @@ class GenerateTables:
         logging.info(f'Очистка таблицы {self._options.iec_table_name}...')
         self._access_base.clear_table(self._options.iec_table_name)
         logging.info('Завершено')
+
+        self._get_table_columns()
 
         max_value: int = self._access_base.get_row_count(self._options.aep_table_name)
         logging.info('Заполнение таблиц...')
@@ -538,6 +607,7 @@ class GenerateTables:
         """
         logging.info('Запуск скрипта...')
         with Connection.connect_to_mdb(options.path) as access_base:
+            access_base.get_primary_column(table_name='[Сигналы и механизмы АЭП')
             generate_class: GenerateTables = GenerateTables(options=options,
                                                             access_base=access_base)
             generate_class.generate()
