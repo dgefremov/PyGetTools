@@ -178,13 +178,6 @@ class Connection:
             out_list.append(out_row)
         return out_list
 
-    # def get_primary_column(self, table_name: str):
-    #     for row in self._cursor.columns(table=table_name.strip('[]')):
-    #         a = row.data_type
-    #         b = row.type_name
-    #         c = row.column_def
-    #         d = row.type_name
-
     def clear_table(self, table_name: str, drop_index: bool = False) -> None:
         self._cursor.execute(f'DELETE * From {table_name}')
         if self._base_type == _BaseType.ACCESS and drop_index:

@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 
 from tools.utils.sql_utils import Connection
+from tools.utils.progress_utils import ProgressBar
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -29,7 +30,6 @@ class FillRefOptions:
     """
     Класс для хранения настроек
     """
-    path: str
     sim_table_name: str
     ref_table_name: str
     virtual_schemas_table_name: str
@@ -147,7 +147,9 @@ class FillRef:
                                                                   fields=['KKS', 'PART', 'KKSp', 'SCHEMA'],
                                                                   key_names=['OBJECT_TYP'],
                                                                   key_values=['SW'])
+        step: float = 100/3/len(values)
         for value in values:
+            ProgressBar.update_progress_with_step(step)
             sw_kks: str = value['KKS']
             sw_part: str = value['PART']
             sw_kksp: str = value['KKSp']
@@ -182,7 +184,9 @@ class FillRef:
         """
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sign_table_name,
                                                                   fields=['KKS', 'PART', 'REF'])
+        step: float = 100/3/len(values)
         for value in values:
+            ProgressBar.update_progress_with_step(step)
             kks: str = value['KKS']
             part: str = value['PART']
             ref: str = value['REF']
@@ -220,7 +224,10 @@ class FillRef:
         :return: None
         """
         channel_container: dict[str, int] = {}
+        step: float = 100/3/len(self._options.virtual_templates)
+
         for template in self._options.virtual_templates:
+            ProgressBar.update_progress_with_step(step)
             for schema_part in template.commands_parts_list:
                 command_list: dict[str, str] = template.commands_parts_list[schema_part]
                 values_list: list[dict[str, str]] = self._access.retrive_data_with_having(
@@ -276,6 +283,7 @@ class FillRef:
         self._access.clear_table(table_name=self._options.virtual_schemas_table_name, drop_index=False)
         logging.info('Очистка завершена.')
         logging.info('Расстановка ссылок...')
+        ProgressBar.config(max_value=100, step=1, prefix='Расстановка ссылок', suffix='Завершено', length=50)
         self._fill_virtual_ref()
         self._fill_wired_ref()
         self._fill_sign_ref()
@@ -305,15 +313,11 @@ class FillRef:
                              part=part)
 
     @staticmethod
-    def run(options: FillRefOptions) -> None:
-        """
-        Запуск скрипта
-        :param options: Настройки для скрипта
-        :return: None
-        """
-        logging.info('Запуск скрипта...')
-        with Connection.connect_to_mdb(options.path) as access:
+    def run(options: FillRefOptions, base_path: str) -> None:
+        logging.info('Запуск скрипта "Расстановка ссылок"...')
+        with Connection.connect_to_mdb(base_path=base_path) as access:
             find_class: FillRef = FillRef(options=options,
                                           access=access)
             find_class._fill_ref()
-        logging.info('Выпонение завершено.')
+        logging.info('Выпонение скрипта "Расстановка ссылок" завершено.')
+        logging.info('')

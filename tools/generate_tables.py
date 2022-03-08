@@ -1,11 +1,13 @@
 import logging
 import re
 from dataclasses import dataclass, field, fields
+from dataclasses_json import dataclass_json
 
 from tools.utils.progress_utils import ProgressBar
 from tools.utils.sql_utils import Connection
 
 
+@dataclass_json
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
 class SignalModification:
     """
@@ -21,12 +23,14 @@ class SignalModification:
     new_part: str | None = None
 
 
+@dataclass_json
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
 class SWTemplateVariant:
     schema: str
     parts: list[str]
 
 
+@dataclass_json
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class SWTemplate:
     """
@@ -66,7 +70,7 @@ class Signal:
     sensr_typ: str = field(default=None, metadata={'column_name': 'SENSR_TYPE'})
     cat_nam: str = field(default=None, metadata={'column_name': 'CatNam'})
     dname: str | None = field(default=None, metadata={'column_name': 'DNAME'})
-    template: str | None = field(default=None, metadata={'column_name' : 'SCHEMA'})
+    template: str | None = field(default=None, metadata={'column_name': 'SCHEMA'})
 
     @staticmethod
     def create_from_row(value: dict[str, str]) -> 'Signal':
@@ -171,6 +175,7 @@ class DigitalSignal:
         return diginal_signal
 
 
+@dataclass_json
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class DoublePointSignal:
     single_part: str | None
@@ -178,12 +183,12 @@ class DoublePointSignal:
     off_part: str
 
 
+@dataclass_json
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class GenerateTableOptions:
     """
     Класс настроек
     """
-    path: str
     network_data_table_name: str
     controller_data_table_name: str
     aep_table_name: str
@@ -599,16 +604,12 @@ class GenerateTables:
         logging.info('Завершено')
 
     @staticmethod
-    def run(options: GenerateTableOptions) -> None:
-        """
-        Запуск скрипта
-        :param options: Настройки для скрипта
-        :return: None
-        """
-        logging.info('Запуск скрипта...')
-        with Connection.connect_to_mdb(options.path) as access_base:
-            access_base.get_primary_column(table_name='[Сигналы и механизмы АЭП')
+    def run(options: GenerateTableOptions, base_path: str) -> None:
+        logging.info('Запуск скрипта "Заполнение таблиц"...')
+        with Connection.connect_to_mdb(base_path=base_path) as access_base:
             generate_class: GenerateTables = GenerateTables(options=options,
                                                             access_base=access_base)
             generate_class.generate()
-        logging.info('Выпонение завершено.')
+        logging.info('Выпонение скрипта "Заполнение таблиц" завершено.')
+        logging.info('')
+

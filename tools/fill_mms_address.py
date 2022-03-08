@@ -107,7 +107,6 @@ class DatasetDescriptionList:
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class FillMMSAddressOptions:
-    path: str
     iec_table_name: str
     ied_table_name: str
     dpc_signals: list[DPCSignal]
@@ -332,15 +331,12 @@ class FillMMSAdress:
         logging.info('Завершено')
 
     @staticmethod
-    def run(options: FillMMSAddressOptions) -> None:
-        """
-        Запуск скрипта
-        :param options: Настройки для скрипта
-        :return: None
-        """
-        logging.info('Запуск скрипта...')
-        with Connection.connect_to_mdb(options.path) as access_base:
+    def run(options: FillMMSAddressOptions, base_path: str) -> None:
+        logging.info('Запуск скрипта "Заполнение MMS адресов"...')
+        with Connection.connect_to_mdb(base_path=base_path) as access_base:
             fill_mms_class: FillMMSAdress = FillMMSAdress(options=options,
                                                           access_base=access_base)
             fill_mms_class._fill_mms()
-        logging.info('Выпонение завершено.')
+        logging.info('Выпонение скрипта "Заполнение MMS адресов" завершено.')
+        logging.info('')
+

@@ -19,7 +19,6 @@ class FindSchemasOptions:
     """
     Класс хранения настроек
     """
-    database_path: str
     sim_table_name: str
     schemas: list[Schema]
 
@@ -127,16 +126,11 @@ class FindSchemas:
         return schema_variant
 
     @staticmethod
-    def run(options: FindSchemasOptions) -> None:
-        """
-        Запуск скрипта
-        :param options: Настройки для скрипта
-        :return: None
-        """
-        logging.info('Запуск скрипта...')
-        with Connection.connect_to_mdb(options.database_path) as access:
+    def run(options: FindSchemasOptions, base_path: str) -> None:
+        logging.info('Запуск скрипта "Поиск схем"...')
+        with Connection.connect_to_mdb(base_path=base_path) as access:
             find_class: FindSchemas = FindSchemas(options=options,
                                                   access=access)
             schema_variants: dict[Schema, list[list[bool]]] = find_class.find_schemas_variants()
             find_class._print_schemas_variants(schema_variants)
-        logging.info('Выпонение завершено.')
+        logging.info('Выпонение скрипта "Поиск схем" завершено.')

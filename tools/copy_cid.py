@@ -1,38 +1,43 @@
 import logging
 import os.path
-from dataclasses import dataclass
 
 from tools.utils.progress_utils import ProgressBar
 from tools.utils.cid_utils import ParameterData, Nodes, save_xml, get_updated_content
 from tools.utils.sql_utils import Connection
 
 
-@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-class CopyCidOptions:
-    """
-    Класс настроек
-    """
-    base_path: str
-    source_cid: str
-    target_path: str
-    mask: str
+# @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+# class CopyCidOptions:
+#     """
+#     Класс настроек
+#     """
+#     base_path: str
+#     source_cid: str
+#     target_path: str
+#     mask: str
 
 
 class CopyCid:
     """
     Основной класс копирования CID файлов
     """
-    _options: CopyCidOptions
+    _base_path: str
+    _source_cid_path: str
+    _target_path: str
+    _mask: str
 
-    def __init__(self, options: CopyCidOptions):
-        self._options = options
+    def __init__(self, base_path: str, source_cid_path: str, target_path: str, mask: str):
+        self._base_path = base_path
+        self._source_cid_path = source_cid_path
+        self._target_path = target_path
+        self._mask = mask
 
     def _get_data_from_base(self) -> dict[str, list[tuple[ParameterData, str]]]:
         """
         Загрузка данных для генерации из базы
         :return: Словарь со значениями из базы
         """
-        with Connection.connect_to_mdb(self._options.base_path) as access_base:
+        with Connection.connect_to_mdb(self._base_path) as access_base:
             data: list[dict[str, str]] = access_base.retrieve_data_from_joined_table(
                 table_name1='[МЭК 61850]',
                 table_name2='[IED]',
@@ -42,13 +47,13 @@ class CopyCid:
                 key_values=None,
                 uniq_values=True)
             data_for_xml: dict[str, list[tuple[ParameterData, str]]] = {}
-            _, file_extension = os.path.splitext(self._options.source_cid)
+            _, file_extension = os.path.splitext(self._source_cid_path)
             for value in data:
-                file_name: str = self._options.target_path + value['ICD_PATH']
+                file_name: str = self._target_path + value['ICD_PATH']
                 if file_name[-4:].upper() not in ('.CID', '.ICD', 'SCD'):
                     file_name = file_name + file_extension
                 parameters: list[tuple[ParameterData, str]] = [(Nodes.IP.value, value['IP']),
-                                                               (Nodes.MASK.value, self._options.mask),
+                                                               (Nodes.MASK.value, self._mask),
                                                                (Nodes.IEDNAME.value, value['[IED].IED_NAME']),
                                                                (Nodes.DESCR.value, value['[IED].SENSR_TYPE'])]
 
@@ -63,20 +68,18 @@ class CopyCid:
         """
         ProgressBar.config(max_value=len(data_for_xml), step=1, prefix='Копирование файлов', suffix='Завершено')
         for file in data_for_xml:
-            data: bytes = get_updated_content(source_file_name=self._options.source_cid,
+            data: bytes = get_updated_content(source_file_name=self._source_cid_path,
                                               parameters=data_for_xml[file])
             save_xml(xml_content=data, target_file_name=file)
             ProgressBar.update_progress()
 
     @staticmethod
-    def run(options: CopyCidOptions) -> None:
-        """
-        Запуск скрипта
-        :param options: Настройки скрипта
-        :return: None
-        """
+    def run(base_path: str, source_cid_path: str, target_path: str, mask: str) -> None:
         logging.info('Запуск скрипта...')
-        copy_class: CopyCid = CopyCid(options)
+        copy_class: CopyCid = CopyCid(base_path=base_path,
+                                      source_cid_path=source_cid_path,
+                                      target_path=target_path,
+                                      mask=mask)
 
         logging.info('Загрузка данных из базы...')
         data_for_xml: dict[str, list[tuple[ParameterData, str]]] = copy_class._get_data_from_base()

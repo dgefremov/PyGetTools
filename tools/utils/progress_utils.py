@@ -1,3 +1,6 @@
+import logging
+
+
 class ProgressBar:
     max_value: float
     suffix: str
@@ -29,9 +32,14 @@ class ProgressBar:
         bar = ProgressBar.fill * filled_length + '-' * (ProgressBar.length - filled_length)
         print(f'\r{ProgressBar.prefix} |{bar}| {percent}% {ProgressBar.suffix}', end='', flush=True)
         ProgressBar.current_value = value
-        if value == ProgressBar.max_value:
+        if value >= ProgressBar.max_value:
             print()
 
     @staticmethod
     def update_progress():
         ProgressBar.draw_progress(ProgressBar.current_value + ProgressBar.step)
+
+    @staticmethod
+    def update_progress_with_step(step: float):
+
+        ProgressBar.draw_progress(ProgressBar.current_value + step)
