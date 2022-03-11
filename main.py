@@ -1,14 +1,13 @@
-import logging
-
 from tools.fill_mms_address import FillMMSAdress
 from tools.fill_ref import FillRef
 from tools.generate_tables import GenerateTables
+from tools.find_schemas import FindSchemas
 from tools.options import Options
-
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s: %(levelname)s - %(message)s')
+from tools.utils.log_utils import configure_logger
 
 
 def run_scripts():
+    configure_logger('log', 'log')
     options: Options = Options.load_ruppur()
     base_path: str = 'c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.09.accdb'
 
@@ -22,11 +21,11 @@ def run_scripts():
 
     # Расстановка ссылок
     # Закомментировать если не используется
-    FillRef.run(options=options.fill_ref_options, base_path=base_path)
+    # FillRef.run(options=options.fill_ref_options, base_path=base_path)
 
     # Поиск вариантов схем
     # Закомментировать если не используется
-    # FindSchemas.run(options=options.find_schemas_options, base_path=base_path)
+    FindSchemas.run(options=options.find_schemas_options, base_path=base_path)
 
     # Генерация CID файлов на основе шаблона
     # Закомментировать если не используется

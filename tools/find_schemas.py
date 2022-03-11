@@ -4,6 +4,12 @@ from dataclasses import dataclass, field
 from tools.utils.sql_utils import Connection
 
 
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class SchemaVariant:
+    parts: list[bool]
+    kks: list[str]
+
+
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
 class Schema:
     """
@@ -34,31 +40,36 @@ class FindSchemas:
         self._options = options
         self._access = access
 
-    def find_schemas_variants(self) -> dict[Schema, list[list[bool]]]:
+    def find_schemas_variants(self) -> dict[Schema, list[SchemaVariant]]:
         """
         Функция поиска схем вариантов управления
         :return: Список схем с набором используемых сигналов
         """
-        schema_variants: dict[Schema, list[list[bool]]] = {}
+        schema_variants: dict[Schema, list[SchemaVariant]] = {}
         for schema in self._options.schemas:
-            variants: list[list[bool]] = []
+            variants: list[SchemaVariant] = []
             values_list: list[dict[str, str]] = self._access.retrive_data_with_having(
                 table_name=self._options.sim_table_name,
                 fields=['KKS', 'CABINET', 'KKSp'],
                 key_column='PART',
                 key_values=schema.command_parts)
+            kks_schemas_list: list[str] = [value['KKS'] for value in values_list]
             for value in values_list:
                 parts_list: list[str] = self._get_part_list(kks=value['KKS'],
                                                             kksp=value['KKSp'],
-                                                            cabinet=value['CABINET'])
-                new_variant: list[bool] = self._get_schema_variant(schema=schema, parts_list=parts_list)
-                if not self._variant_exists(variants=variants, new_variant=new_variant):
-                    variants.append(new_variant)
+                                                            cabinet=value['CABINET'],
+                                                            kks_shemas=kks_schemas_list)
+                new_variant_parts: list[bool] = self._get_schema_variant(schema=schema, parts_list=parts_list)
+                schema_variant: SchemaVariant = self._get_variant(variants=variants, new_variant=new_variant_parts)
+                if schema_variant is None:
+                    variants.append(SchemaVariant(parts=new_variant_parts, kks=[value['KKS']]))
+                else:
+                    schema_variant.kks.append(value['KKS'])
             schema_variants[schema] = variants
         return schema_variants
 
     @staticmethod
-    def _variant_exists(variants: list[list[bool]], new_variant: list[bool]):
+    def _get_variant(variants: list[SchemaVariant], new_variant: list[bool]) -> SchemaVariant | None:
         """
         Сравнение двух наборов сигналов
         :param variants:
@@ -66,11 +77,11 @@ class FindSchemas:
         :return:
         """
         for variant in variants:
-            if next((False for item1, item2 in zip(variant, new_variant) if item1 != item2), True):
-                return True
-        return False
+            if next((False for item1, item2 in zip(variant.parts, new_variant) if item1 != item2), True):
+                return variant
+        return None
 
-    def _get_part_list(self, kks: str, kksp: str, cabinet: str) -> list[str]:
+    def _get_part_list(self, kks: str, kksp: str, cabinet: str, kks_shemas: list[str]) -> list[str]:
         """
         Функция поиска PART для данного ККС и KKSp
         :param kks: ККС сигналов управления
@@ -78,27 +89,34 @@ class FindSchemas:
         :param cabinet: Имя шкафа для сужения поиска
         :return: Список Part
         """
-        parts_list: list[str] = []
+        parts_dict: dict[str] = {}
         values_from_kks: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table_name,
                                                                            fields=['PART'],
                                                                            key_names=['KKS', 'CABINET'],
                                                                            key_values=[kks, cabinet])
         for value in values_from_kks:
             if value['PART'] not in values_from_kks:
-                parts_list.append(value['PART'])
+                parts_dict[value['PART']] = kks
 
         values_from_kksp: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table_name,
-                                                                            fields=['PART'],
+                                                                            fields=['PART', 'KKS'],
                                                                             key_names=['KKSp', 'CABINET'],
                                                                             key_values=[kksp, cabinet])
         for value in values_from_kksp:
-            if value['PART'] not in values_from_kksp:
-                parts_list.append(value['PART'])
+            # Если ККС относится к схеме, которая есть в списке схем - пропускаем
+            if value['KKS'] in kks_shemas:
+                continue
 
-        return parts_list
+            if value['PART'] not in values_from_kksp:
+                parts_dict[value['PART']] = value['KKS']
+            else:
+                if value['KKS'].casefold() == kks:
+                    parts_dict[value['PART']] = value['KKS']
+
+        return list(parts_dict.keys())
 
     @staticmethod
-    def _print_schemas_variants(schemas_variants: dict[Schema, list[list[bool]]]) -> None:
+    def _print_schemas_variants(schemas_variants: dict[Schema, list[SchemaVariant]]) -> None:
         """
         Вывод на экран списков вариантов схем
         :param schemas_variants:
@@ -109,8 +127,13 @@ class FindSchemas:
             for index in range(len(schemas_variants[schema])):
                 logging.info(f'Вариация {index + 1}')
                 logging.info(
-                    ','.join([part for part, part_presence in zip(schema.signal_parts, schemas_variants[schema][index])
+                    ','.join([part for part, part_presence in
+                              zip(schema.signal_parts, schemas_variants[schema][index].parts)
                               if part_presence]))
+                logging.info('KKS вариации:')
+                logging.info(
+                    ','.join(schemas_variants[schema][index].kks)
+                )
 
     @staticmethod
     def _get_schema_variant(schema: Schema, parts_list: list[str]) -> list[bool]:
@@ -131,6 +154,6 @@ class FindSchemas:
         with Connection.connect_to_mdb(base_path=base_path) as access:
             find_class: FindSchemas = FindSchemas(options=options,
                                                   access=access)
-            schema_variants: dict[Schema, list[list[bool]]] = find_class.find_schemas_variants()
+            schema_variants: dict[Schema, list[SchemaVariant]] = find_class.find_schemas_variants()
             find_class._print_schemas_variants(schema_variants)
         logging.info('Выпонение скрипта "Поиск схем" завершено.')

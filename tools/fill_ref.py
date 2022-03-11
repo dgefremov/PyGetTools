@@ -61,7 +61,7 @@ class FillRef:
         при наличии в пределах KKSp двух схем управления
         :return: Список PART с их KKS
         """
-        parts_dict: dict[str] = {}
+        parts_dict: dict[str, str] = {}
         values_from_kks: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table_name,
                                                                            fields=['PART'],
                                                                            key_names=['KKS', 'CABINET'],
