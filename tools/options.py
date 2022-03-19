@@ -79,7 +79,8 @@ class Options:
                                                                                   signal5, signal6, signal7],
                                                                      sw_templates=[sw_template1, sw_template2],
                                                                      signal_modifications=[signal_modification1,
-                                                                                           signal_modification2])
+                                                                                           signal_modification2],
+                                                                     copy_ds_to_sim_table=True)
         # <-------------------------------generate_table_options------------------------------------------------------->
 
         # <-------------------------------fill_mms_address_options----------------------------------------------------->
@@ -280,7 +281,8 @@ class Options:
                                                                      skip_duplicate_prefix=['00BCE'],
                                                                      dps_signals=[signal1, signal2, signal3, signal4,
                                                                                   signal5, signal6, signal7],
-                                                                     sw_templates=[sw_template1, sw_template2])
+                                                                     sw_templates=[sw_template1, sw_template2],
+                                                                     copy_ds_to_sim_table=False)
         # <-------------------------------generate_table_options------------------------------------------------------->
 
         # <-------------------------------fill_mms_address_options----------------------------------------------------->

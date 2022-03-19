@@ -8,12 +8,12 @@ from tools.utils.log_utils import configure_logger
 
 def run_scripts():
     configure_logger('log', 'log')
-    options: Options = Options.load_ruppur()
-    base_path: str = 'c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.09.accdb'
+    options: Options = Options.load_kursk()
+    base_path: str = 'c:\\User data\\6\\Курск.accdb'
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
-    # GenerateTables.run(options=options.generate_table_options, base_path=base_path)
+    GenerateTables.run(options=options.generate_table_options, base_path=base_path)
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
@@ -25,7 +25,7 @@ def run_scripts():
 
     # Поиск вариантов схем
     # Закомментировать если не используется
-    FindSchemas.run(options=options.find_schemas_options, base_path=base_path)
+    # FindSchemas.run(options=options.find_schemas_options, base_path=base_path)
 
     # Генерация CID файлов на основе шаблона
     # Закомментировать если не используется

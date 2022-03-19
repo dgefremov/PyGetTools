@@ -1,13 +1,11 @@
 import logging
 import re
 from dataclasses import dataclass, field, fields
-from dataclasses_json import dataclass_json
 
 from tools.utils.progress_utils import ProgressBar
 from tools.utils.sql_utils import Connection
 
 
-@dataclass_json
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
 class SignalModification:
     """
@@ -23,14 +21,12 @@ class SignalModification:
     new_part: str | None = None
 
 
-@dataclass_json
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
 class SWTemplateVariant:
     schema: str
     parts: list[str]
 
 
-@dataclass_json
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class SWTemplate:
     """
@@ -175,7 +171,6 @@ class DigitalSignal:
         return diginal_signal
 
 
-@dataclass_json
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class DoublePointSignal:
     single_part: str | None
@@ -183,7 +178,6 @@ class DoublePointSignal:
     off_part: str
 
 
-@dataclass_json
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class GenerateTableOptions:
     """
@@ -198,6 +192,7 @@ class GenerateTableOptions:
     ref_table_name: str
     sign_table_name: str
     skip_duplicate_prefix: list[str]
+    copy_ds_to_sim_table: bool
     dps_signals: list[DoublePointSignal]
     sw_templates: list[SWTemplate]
     signal_modifications: None | list[SignalModification] = None
@@ -270,12 +265,13 @@ class GenerateTables:
         for value in values:
             ProgressBar.update_progress()
             signal: Signal = Signal.create_from_row(value)
-            if signal.module == '1623' or signal.module == '1631' or signal.module == '1661':
+            if signal.module in ['1623', '1631', '1661', '1662', '1671', '1673']:
                 self._process_wired_signal(signal=signal, sw_containers=sw_containers)
             elif signal.module == '1691':
                 self._process_digital_signal(signal=signal,
                                              undubled_signal_container=undubled_container)
         self._check_undubled_signals(undubled_signal_container=undubled_container)
+        self._flush_sw_container(sw_containers=sw_containers)
         self._access_base.commit()
 
     def _process_wired_signal(self, signal: Signal, sw_containers: dict[SWTemplate, dict[str, list[Signal]]]) -> None:
@@ -285,7 +281,7 @@ class GenerateTables:
         :param sw_containers: Контейнер для хранения групп SW сигналов
         :return: None
         """
-        if signal.module == '1623' and signal.object_typ.casefold() == 'SW'.casefold():
+        if (signal.module == '1623' or signal.module == '1673') and signal.object_typ.casefold() == 'SW'.casefold():
             self._process_sw_signal(sw_containers=sw_containers,
                                     signal=signal)
         else:
@@ -325,7 +321,8 @@ class GenerateTables:
                 new_signal: Signal = signal.clone()
                 new_signal.part = paired_part
                 self._add_signal_to_iec_table(signal=new_signal)
-                self._add_signal_to_sim_table(signal=new_signal)
+                if self._options.copy_ds_to_sim_table:
+                    self._add_signal_to_sim_table(signal=new_signal)
 
     def _process_digital_signal(self, signal: Signal, undubled_signal_container: list[Signal]) -> None:
         """
@@ -336,10 +333,14 @@ class GenerateTables:
         """
         if signal.part in list(sum([(dps_signal.on_part, dps_signal.off_part) for dps_signal in
                                     self._options.dps_signals], ())):
-            signal.name_rus = self._sanitizate_signal_name(signal.name_rus)
-            signal.full_name_rus = self._sanitizate_signal_name(signal.full_name_rus)
-            signal.name_eng = self._sanitizate_signal_name(signal.name_eng)
-            signal.full_name_eng = self._sanitizate_signal_name(signal.full_name_eng)
+            if signal.name_rus is not None:
+                signal.name_rus = self._sanitizate_signal_name(signal.name_rus)
+            if signal.full_name_rus is not None:
+                signal.full_name_rus = self._sanitizate_signal_name(signal.full_name_rus)
+            if signal.name_eng is not None:
+                signal.name_eng = self._sanitizate_signal_name(signal.name_eng)
+            if signal.full_name_eng is not None:
+                signal.full_name_eng = self._sanitizate_signal_name(signal.full_name_eng)
             undubled_signal_container.append(signal)
 
         if signal.part in [dps_signal.single_part for dps_signal in self._options.dps_signals
@@ -348,7 +349,8 @@ class GenerateTables:
             self._duplicate_signal(signal=signal)
         else:
             self._add_signal_to_iec_table(signal=signal)
-            self._add_signal_to_sim_table(signal=signal)
+            if self._options.copy_ds_to_sim_table:
+                self._add_signal_to_sim_table(signal=signal)
 
     def _duplicate_signal(self, signal: Signal) -> None:
         """
@@ -363,9 +365,10 @@ class GenerateTables:
         new_signal_2: Signal = signal.clone()
         new_signal_2.part = signal.part[:2] + str(part_num + 2).rjust(2, '0')
         self._add_signal_to_iec_table(signal=new_signal_1)
-        self._add_signal_to_sim_table(signal=new_signal_1)
         self._add_signal_to_iec_table(signal=new_signal_2)
-        self._add_signal_to_sim_table(signal=new_signal_2)
+        if self._options.copy_ds_to_sim_table:
+            self._add_signal_to_sim_table(signal=new_signal_1)
+            self._add_signal_to_sim_table(signal=new_signal_2)
 
     @staticmethod
     def _get_common_prefix(strings: list[str]) -> str:
@@ -388,6 +391,12 @@ class GenerateTables:
         if not stop_flag:
             common_index = min_length
         return strings[0][:common_index].rstrip()
+
+    def _flush_sw_container(self, sw_containers: dict[SWTemplate, dict[str, list[Signal]]]):
+        for signal_dict in sw_containers.values():
+            for signal_list in signal_dict.values():
+                for signal in signal_list:
+                    self._add_signal_to_sim_table(signal)
 
     def _process_sw_signal(self, sw_containers: dict[SWTemplate, dict[str, list[Signal]]], signal: Signal) -> None:
         """
@@ -612,4 +621,3 @@ class GenerateTables:
             generate_class.generate()
         logging.info('Выпонение скрипта "Заполнение таблиц" завершено.')
         logging.info('')
-
