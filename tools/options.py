@@ -2,7 +2,7 @@ from tools.generate_tables import GenerateTableOptions, DoublePointSignal, SWTem
     SWTemplateVariant
 from tools.fill_mms_address import FillMMSAddressOptions, DPCSignal, DatasetDescription, DatasetDescriptionList, \
     BSCSignal, SignalRange
-from tools.fill_ref import FillRefOptions, VirtualTemplate, TemplateVariant
+from tools.fill_ref import FillRefOptions, VirtualTemplate, TemplateVariant, DefinedVariant
 from tools.find_schemas import FindSchemasOptions, Schema
 
 from dataclasses import dataclass
@@ -74,7 +74,7 @@ class Options:
                                                                      ied_table_name='[IED]',
                                                                      ref_table_name='[REF]',
                                                                      sign_table_name='[DIAG]',
-                                                                     skip_duplicate_prefix=['00BCE'],
+                                                                     skip_signals=[('00BCE', 'XB20')],
                                                                      dps_signals=[signal1, signal2, signal3, signal4,
                                                                                   signal5, signal6, signal7],
                                                                      sw_templates=[sw_template1, sw_template2],
@@ -84,28 +84,19 @@ class Options:
         # <-------------------------------generate_table_options------------------------------------------------------->
 
         # <-------------------------------fill_mms_address_options----------------------------------------------------->
-        dps_signal_cb = DPCSignal(signal_part='XB00',
-                                  signal_part_dupl=('XB01', 'XB02'),
-                                  command_part='XL00',
+        dps_signal_cb = DPCSignal(signal_part_dupl=('XB01', 'XB02'),
                                   command_part_dupl=('XL01', 'XL02'))
 
-        dps_signal_alt = DPCSignal(signal_part='XB20',
-                                   signal_part_dupl=('XB21', 'XB22'),
-                                   command_part='XL20',
+        dps_signal_alt = DPCSignal(signal_part_dupl=('XB21', 'XB22'),
                                    command_part_dupl=('XL21', 'XL22'))
 
-        dps_signal_gb = DPCSignal(signal_part='XB30',
-                                  signal_part_dupl=('XB31', 'XB32'),
-                                  command_part=None,
+        dps_signal_gb = DPCSignal(signal_part_dupl=('XB31', 'XB32'),
                                   command_part_dupl=None)
 
-        dps_signal_cb2 = DPCSignal(signal_part=None,
-                                   signal_part_dupl=None,
-                                   command_part=None,
+        dps_signal_cb2 = DPCSignal(signal_part_dupl=('XB01', 'XB02'),
                                    command_part_dupl=('XA01', 'XA02'))
 
         bsc_signal = BSCSignal(signal_part='XB10',
-                               command_part='XL10',
                                command_part_dupl=('XL11', 'XL12'))
 
         dataset_1: DatasetDescription = DatasetDescription(name='Dataset01',
@@ -167,16 +158,27 @@ class Options:
         template2: VirtualTemplate = VirtualTemplate(name='Управление АВР',
                                                      has_channel=True,
                                                      commands_parts_list={'XA10': {'XL21': 'Port1', 'XL22': 'Port2'}},
-                                                     variants=[TemplateVariant(name='DAVR',
-                                                                               signal_parts={'XB21': ('3', '3', '15'),
+                                                     variants=[TemplateVariant(name='DAVR2',
+                                                                               signal_parts={'XB21': ('3', '3', '13'),
                                                                                              'XB22': ('3', '4', None)})
                                                                ])
+        dltc_var: DefinedVariant = DefinedVariant(name='DLTС2',
+                                                  signal_list=[('10BBT0#EK001', 'XB10', '3', '3', '16'),
+                                                               ('10BBT0#EK001', 'XN10', '3', '4', '17'),
+                                                               ('10BBT0#EK001', 'XF34', '3', '5', '18'),
+                                                               ('10BBT0#EK001', 'XB14', '3', '6', '19'),
+                                                               ('10BBT0#EK002', 'XM30', '3', '7', '20'),
+                                                               ('10BBT0#EK002', 'XM29', '3', '8', '21'),
+                                                               ('10BBT0#GH103', 'XF24', '3', '9', '22'),
+                                                               ('10BBT0#GH103', 'XF35', '3', '10', '23'),
+                                                               ('10BBT0#GH103', 'XF15', '3', '11', '24')])
+
         template3: VirtualTemplate = VirtualTemplate(name='Управление РПН',
                                                      has_channel=True,
                                                      commands_parts_list={'XA20': {'XL11': 'Port1', 'XL12': 'Port2'}},
-                                                     variants=[TemplateVariant(name='DLTC',
-                                                                               signal_parts={'XB10': ('3', '3', '7')})
+                                                     variants=[dltc_var
                                                                ])
+
         template4: VirtualTemplate = VirtualTemplate(name='Пуск ДГ',
                                                      has_channel=True,
                                                      commands_parts_list={'XA30': {'XL04': 'Port1'}},
@@ -202,6 +204,13 @@ class Options:
                                                      variants=[TemplateVariant(name='DSYNC',
                                                                                signal_parts={})
                                                                ])
+        template8: VirtualTemplate = VirtualTemplate(name='Управление выключателем 2',
+                                                     has_channel=True,
+                                                     commands_parts_list={'XA00': {'XA01': 'Port1', 'XA02': 'Port2'}},
+                                                     variants=[TemplateVariant(name='DSW1',
+                                                                               signal_parts={'XB01': ('3', '3', '15'),
+                                                                                             'XB02': ('3', '4', None)})
+                                                               ])
         wired_template_1: TemplateVariant = TemplateVariant(name='SW_1623_1',
                                                             signal_parts={'XF27': ('3', '11', None)})
         wired_template_2: TemplateVariant = TemplateVariant(name='SW_1623_2',
@@ -213,8 +222,8 @@ class Options:
                                                           sign_table_name='[DIAG]',
                                                           vs_sign_table_name='[DIAG_VS]',
                                                           virtual_templates=[template1, template2, template3, template4,
-                                                                             template5, template6,
-                                                                             template7],
+                                                                             template5, template6, template7,
+                                                                             template8],
                                                           virtual_schemas_table_name='[VIRTUAL SCHEMAS]',
                                                           wired_template_variants=[wired_template_1, wired_template_2,
                                                                                    wired_template_3])
@@ -278,7 +287,7 @@ class Options:
                                                                      ied_table_name='[IED]',
                                                                      ref_table_name='[REF]',
                                                                      sign_table_name='[DIAG]',
-                                                                     skip_duplicate_prefix=['00BCE'],
+                                                                     skip_signals=[('00BCE', 'XB20')],
                                                                      dps_signals=[signal1, signal2, signal3, signal4,
                                                                                   signal5, signal6, signal7],
                                                                      sw_templates=[sw_template1, sw_template2],
@@ -286,28 +295,19 @@ class Options:
         # <-------------------------------generate_table_options------------------------------------------------------->
 
         # <-------------------------------fill_mms_address_options----------------------------------------------------->
-        dps_signal_cb = DPCSignal(signal_part='XB00',
-                                  signal_part_dupl=('XB01', 'XB02'),
-                                  command_part='XL00',
+        dps_signal_cb = DPCSignal(signal_part_dupl=('XB01', 'XB02'),
                                   command_part_dupl=('XL01', 'XL02'))
 
-        dps_signal_alt = DPCSignal(signal_part='XB20',
-                                   signal_part_dupl=('XB21', 'XB22'),
-                                   command_part='XL20',
+        dps_signal_alt = DPCSignal(signal_part_dupl=('XB21', 'XB22'),
                                    command_part_dupl=('XL21', 'XL22'))
 
-        dps_signal_gb = DPCSignal(signal_part='XB30',
-                                  signal_part_dupl=('XB31', 'XB32'),
-                                  command_part=None,
+        dps_signal_gb = DPCSignal(signal_part_dupl=('XB31', 'XB32'),
                                   command_part_dupl=None)
 
-        dps_signal_cb2 = DPCSignal(signal_part=None,
-                                   signal_part_dupl=None,
-                                   command_part=None,
+        dps_signal_cb2 = DPCSignal(signal_part_dupl=None,
                                    command_part_dupl=('XA01', 'XA02'))
 
         bsc_signal = BSCSignal(signal_part='XB10',
-                               command_part='XL10',
                                command_part_dupl=('XL11', 'XL12'))
 
         dataset_1: DatasetDescription = DatasetDescription(name='Dataset01',

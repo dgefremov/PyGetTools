@@ -8,8 +8,8 @@ from tools.utils.log_utils import configure_logger
 
 def run_scripts():
     configure_logger('log', 'log')
-    options: Options = Options.load_kursk()
-    base_path: str = 'c:\\User data\\6\\Курск.accdb'
+    options: Options = Options.load_ruppur()
+    base_path: str = 'c:\\User data\\Руппур\\ПТК СКУ ЭЧ ЭБ_3.11.accdb'
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
@@ -17,11 +17,11 @@ def run_scripts():
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
-    # FillMMSAdress.run(options=options.fill_mms_address_options, base_path=base_path)
+    FillMMSAdress.run(options=options.fill_mms_address_options, base_path=base_path)
 
     # Расстановка ссылок
     # Закомментировать если не используется
-    # FillRef.run(options=options.fill_ref_options, base_path=base_path)
+    FillRef.run(options=options.fill_ref_options, base_path=base_path)
 
     # Поиск вариантов схем
     # Закомментировать если не используется

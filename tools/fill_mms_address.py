@@ -10,9 +10,7 @@ class DPCSignal:
     """
     Класс хранения двухпозицонного сигнала
     """
-    signal_part: str | None
     signal_part_dupl: tuple[str, str] | None
-    command_part: str | None
     command_part_dupl: tuple[str, str] | None
 
     def is_command(self, value: str) -> bool:
@@ -32,7 +30,6 @@ class BSCSignal:
     Класс хранения сигнала РПН типа BSC
     """
     signal_part: str
-    command_part: str
     command_part_dupl: tuple[str, str] | None
 
     def is_command(self, value: str) -> bool:
@@ -167,13 +164,13 @@ class MMSGenerator:
             self.bsc_container[bsc_signal] = {}
 
     def get_mms(self, kks: str, part: str):
-        for dps_signal in self.dpc_container:
-            if dps_signal.is_signal(part) or dps_signal.is_command(part):
-                postfix: str = self.DPS_COMMAND_POSTFIX if dps_signal.is_command(part) else \
+        for dpc_signal in self.dpc_container:
+            if dpc_signal.is_signal(part) or dpc_signal.is_command(part):
+                postfix: str = self.DPS_COMMAND_POSTFIX if dpc_signal.is_command(part) else \
                     self.DPS_POS_POSTFIX
-                if kks not in self.dpc_container[dps_signal]:
+                if kks not in self.dpc_container[dpc_signal]:
                     self.dpc_index += 1
-                    self.dpc_container[dps_signal][kks] = self.DPS_PREFIX + str(self.dpc_index)
+                    self.dpc_container[dpc_signal][kks] = self.DPS_PREFIX + str(self.dpc_index)
                     if self.dataset_descriptions is not None:
                         dataset: DatasetDescription = self.dataset_descriptions.get_by_dpc_index(self.dpc_index)
                         if dataset is None:
@@ -181,7 +178,7 @@ class MMSGenerator:
                             raise Exception('DatasetError')
                         if not self.dataset_container.__contains__(dataset):
                             self.dataset_container.append(dataset)
-                return self.ied_name + self.dpc_container[dps_signal][kks] + postfix
+                return self.ied_name + self.dpc_container[dpc_signal][kks] + postfix
 
         for bsc_signal in self.bsc_container:
             if bsc_signal.is_signal(part) or bsc_signal.is_command(part):
@@ -339,4 +336,3 @@ class FillMMSAdress:
             fill_mms_class._fill_mms()
         logging.info('Выпонение скрипта "Заполнение MMS адресов" завершено.')
         logging.info('')
-

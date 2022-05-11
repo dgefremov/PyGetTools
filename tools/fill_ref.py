@@ -11,7 +11,18 @@ class TemplateVariant:
     Класс хранения данных по вариантам схемы
     """
     name: str
+    # dict[part, tuple[page, ref_row, unrel_ref_row]]
     signal_parts: dict[str, tuple[str, str, str | None]]
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class DefinedVariant:
+    """
+    Класс хранения данных по жестко заданным схемам
+    """
+    name: str
+    # list[kss, part, page, ref_row, unrel_ref_row]
+    signal_list: list[tuple[str, str, str, str, str]]
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -22,7 +33,7 @@ class VirtualTemplate:
     name: str
     has_channel: bool
     commands_parts_list: dict[str, dict[str, str]]
-    variants: list[TemplateVariant]
+    variants: list[TemplateVariant | DefinedVariant]
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -50,7 +61,7 @@ class FillRef:
         self._options = options
         self._access = access
 
-    def _get_part_list(self, kks: str, kksp: str, cabinet: str, kks_shemas: list[str]) -> dict[str, str]:
+    def _get_part_list(self, kks: str, kksp: str, cabinet: str, kks_shemas: list[str]) -> dict[str, list[str]]:
         """
         Функция получения списка part для использования их в поиске схемы управления. Поиск осуществляется сначала
         по ККС, потом по KKSp.
@@ -61,14 +72,14 @@ class FillRef:
         при наличии в пределах KKSp двух схем управления
         :return: Список PART с их KKS
         """
-        parts_dict: dict[str, str] = {}
+        parts_dict: dict[str, list[str]] = {}
         values_from_kks: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table_name,
                                                                            fields=['PART'],
                                                                            key_names=['KKS', 'CABINET'],
                                                                            key_values=[kks, cabinet])
         for value in values_from_kks:
             if value['PART'] not in values_from_kks:
-                parts_dict[value['PART']] = kks
+                parts_dict[value['PART']] = [kks]
 
         values_from_kksp: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table_name,
                                                                             fields=['PART', 'KKS'],
@@ -79,16 +90,46 @@ class FillRef:
             if value['KKS'] in kks_shemas:
                 continue
 
-            if value['PART'] not in values_from_kksp:
-                parts_dict[value['PART']] = value['KKS']
+            if value['PART'] not in parts_dict:
+                parts_dict[value['PART']] = [value['KKS']]
             else:
-                if value['KKS'].casefold() == kks:
-                    parts_dict[value['PART']] = value['KKS']
-
+                parts_dict[value['PART']].append(value['KKS'])
         return parts_dict
 
     @staticmethod
-    def _get_template_variant(template: VirtualTemplate, parts: dict[str, str], kks: str) -> TemplateVariant:
+    def _compare_strings(string_with_templ: str, string_to_comp: str) -> bool:
+        if len(string_with_templ) != len(string_to_comp):
+            return False
+        for index in range(len(string_with_templ)):
+            if string_with_templ[index] == "#" and not string_to_comp[index].isdigit():
+                continue
+            if string_with_templ[index] == "*" and not string_to_comp[index].isalpha():
+                continue
+            if string_with_templ[index] != string_to_comp:
+                continue
+        return True
+
+    def _check_defined_variant(self, parts_dict: dict[str, list[str]], variant: DefinedVariant) -> bool:
+        """
+        Функция поиска всех сигналов из DefinedVarint в dict[str, list[str]]. Поддерживаются следующие спецсимволы:
+        # - цифра
+        * - буква
+        :param parts_dict:
+        :param variant:
+        :return:
+        """
+        for kks, part, _, _, _ in variant.signal_list:
+            if part not in parts_dict:
+                return False
+            kks_found: bool = False
+            for kks_from_base in parts_dict[part]:
+                kks_found = self._compare_strings(kks, kks_from_base)
+            if not kks_found:
+                return False
+        return True
+
+    def _get_template_variant(self, template: VirtualTemplate, parts: dict[str, list[str]], kks: str) -> \
+            TemplateVariant | DefinedVariant:
         """
         Фунция поиска варианты схемы
         :param template: Шаблон, для которого ищутся варианты схемы
@@ -96,10 +137,21 @@ class FillRef:
         :param kks: ККС для даннной схемы управления
         :return: Вариант схемы
         """
-        for template_variant in sorted(template.variants, key=lambda item: len(item.signal_parts.keys()), reverse=True):
-            parts_in_template: list[str] = list(template_variant.signal_parts.keys())
-            if all(item in parts.keys() for item in parts_in_template):
-                return template_variant
+        for template_variant in sorted(template.variants,
+                                       key=lambda item: len(item.signal_parts.keys())
+                                       if type(item) is TemplateVariant else len(item.signal_list), reverse=True):
+            if type(template_variant) is TemplateVariant:
+                parts_in_template: list[str] = list(template_variant.signal_parts.keys())
+                if all(item in parts.keys() for item in parts_in_template):
+                    for part in parts_in_template:
+                        if len(parts[part]) > 1 and kks not in parts[part]:
+                            logging.error(f'Несколько сигналов для одного part для {template.name} для part:{part}')
+                            raise Exception('TemplateVariantError')
+                    return template_variant
+            else:
+                if self._check_defined_variant(parts_dict=parts, variant=template_variant):
+                    return template_variant
+
         logging.error(f'Не найдена схема {template.name} для KKS:{kks}')
         raise Exception('TemplateVariantNotFound')
 
@@ -147,7 +199,7 @@ class FillRef:
                                                                   fields=['KKS', 'PART', 'KKSp', 'SCHEMA'],
                                                                   key_names=['OBJECT_TYP'],
                                                                   key_values=['SW'])
-        step: float = 100/3/len(values)
+        step: float = 100 / 3 / len(values)
         for value in values:
             ProgressBar.update_progress_with_step(step)
             sw_kks: str = value['KKS']
@@ -184,7 +236,7 @@ class FillRef:
         """
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sign_table_name,
                                                                   fields=['KKS', 'PART', 'REF'])
-        step: float = 100/3/len(values)
+        step: float = 100 / 3 / len(values)
         for value in values:
             ProgressBar.update_progress_with_step(step)
             kks: str = value['KKS']
@@ -224,7 +276,7 @@ class FillRef:
         :return: None
         """
         channel_container: dict[str, int] = {}
-        step: float = 100/3/len(self._options.virtual_templates)
+        step: float = 100 / 3 / len(self._options.virtual_templates)
 
         for template in self._options.virtual_templates:
             ProgressBar.update_progress_with_step(step)
@@ -251,14 +303,21 @@ class FillRef:
                             channel_container[cabinet] = 1
                             current_channel = 1
 
-                    part_dict: dict[str, str] = self._get_part_list(kks=kks, kksp=kksp, cabinet=cabinet,
-                                                                    kks_shemas=kks_schemas_list)
-                    variant: TemplateVariant = self._get_template_variant(template=template, parts=part_dict,
-                                                                          kks=kks)
-                    self._fill_ref_for_virtaul_template_variant(variant=variant,
-                                                                part_dict=part_dict,
-                                                                template_kks=kks,
-                                                                template_part=schema_part)
+                    part_dict: dict[str, list[str]] = self._get_part_list(kks=kks, kksp=kksp, cabinet=cabinet,
+                                                                          kks_shemas=kks_schemas_list)
+                    variant: TemplateVariant | DefinedVariant = self._get_template_variant(template=template,
+                                                                                           parts=part_dict,
+                                                                                           kks=kks)
+                    if type(variant) is TemplateVariant:
+                        self._fill_ref_for_virtual_template_variant(variant=variant,
+                                                                    part_dict=part_dict,
+                                                                    template_kks=kks,
+                                                                    template_part=schema_part)
+                    else:
+                        self._fill_ref_for_defined_variant(variant=variant,
+                                                           part_dict=part_dict,
+                                                           template_kks=kks,
+                                                           template_part=schema_part)
                     self._access.insert_row(table_name=self._options.virtual_schemas_table_name,
                                             column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART'],
                                             values=[kks, cabinet, variant.name, current_channel, schema_part])
@@ -288,7 +347,27 @@ class FillRef:
         self._fill_wired_ref()
         self._fill_sign_ref()
 
-    def _fill_ref_for_virtaul_template_variant(self, variant: TemplateVariant, part_dict: dict[str, str],
+    def _fill_ref_for_defined_variant(self, variant: DefinedVariant, part_dict: dict[str, list[str]],
+                                      template_kks: str, template_part: str) -> None:
+        for kks, part, page, cell, unrel_cell in variant.signal_list:
+            kks_list: list[str] = part_dict[part]
+            found_kks: str | None = None
+            for kks_in_list in kks_list:
+                if self._compare_strings(string_with_templ=kks, string_to_comp=kks_in_list):
+                    found_kks = kks_in_list
+                    break
+            if found_kks is None:
+                raise Exception("VariantError")
+            ref: str = f'{template_kks}_{template_part}\\{page}\\{cell}'
+            unrel_ref: str | None = None
+            if unrel_cell is not None:
+                unrel_ref: str = f'{template_kks}_{template_part}\\{page}\\{unrel_cell}'
+            self._update_ref(ref=ref,
+                             unrel_ref=unrel_ref,
+                             kks=found_kks,
+                             part=part)
+
+    def _fill_ref_for_virtual_template_variant(self, variant: TemplateVariant, part_dict: dict[str, list[str]],
                                                template_kks: str, template_part: str) -> None:
         """
         Функция заполнения ссылок для варианта схемы
@@ -299,13 +378,17 @@ class FillRef:
         :return: None
         """
         for part in variant.signal_parts:
-            kks: str = part_dict[part]
+            kks: str
+            if len(part_dict[part]) == 1:
+                kks = part_dict[part][0]
+            else:
+                kks = template_kks
             page: str = variant.signal_parts[part][0]
             cell: str = variant.signal_parts[part][1]
             unrel_cell: str | None = variant.signal_parts[part][2]
             ref: str = f'{template_kks}_{template_part}\\{page}\\{cell}'
             unrel_ref: str | None = None
-            if variant.signal_parts[part][2] is not None:
+            if unrel_cell is not None:
                 unrel_ref: str = f'{template_kks}_{template_part}\\{page}\\{unrel_cell}'
             self._update_ref(ref=ref,
                              unrel_ref=unrel_ref,

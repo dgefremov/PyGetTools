@@ -143,9 +143,10 @@ class DigitalSignal:
     cabinet: str | None = field(default=None, metadata={'column_name': 'CABINET'})
     sensr_typ: str = field(default=None, metadata={'column_name': 'SENSR_TYPE'})
     dname: str | None = field(default=None, metadata={'column_name': 'DNAME'})
-    ip: str | None = field(default=None, metadata={'column_name:': 'IP'})
+    ip: str | None = field(default=None, metadata={'column_name': 'IP'})
     ied_name: str | None = field(default=None, metadata={'column_name': 'IED_NAME'})
     area: str | None = field(default=None, metadata={'column_name': 'AREA'})
+    cat_nam: str = field(default=None, metadata={'column_name': 'CatNam'})
 
     @staticmethod
     def create_from_signal(signal: Signal) -> 'DigitalSignal':
@@ -168,6 +169,7 @@ class DigitalSignal:
         diginal_signal.cabinet = signal.cabinet
         diginal_signal.sensr_typ = signal.sensr_typ
         diginal_signal.dname = signal.dname
+        diginal_signal.cat_nam = signal.cat_nam
         return diginal_signal
 
 
@@ -191,7 +193,7 @@ class GenerateTableOptions:
     ied_table_name: str
     ref_table_name: str
     sign_table_name: str
-    skip_duplicate_prefix: list[str]
+    skip_signals: list[tuple[str, str]]
     copy_ds_to_sim_table: bool
     dps_signals: list[DoublePointSignal]
     sw_templates: list[SWTemplate]
@@ -342,10 +344,10 @@ class GenerateTables:
             if signal.full_name_eng is not None:
                 signal.full_name_eng = self._sanitizate_signal_name(signal.full_name_eng)
             undubled_signal_container.append(signal)
-
         if signal.part in [dps_signal.single_part for dps_signal in self._options.dps_signals
                            if dps_signal.single_part is not None] and \
-                not any(signal.kks.upper().startswith(item.upper()) for item in self._options.skip_duplicate_prefix):
+                not any(signal.kks.upper().startswith(item_kks.upper()) and signal.part.upper() == item_part.upper()
+                        for (item_kks, item_part) in self._options.skip_signals):
             self._duplicate_signal(signal=signal)
         else:
             self._add_signal_to_iec_table(signal=signal)
@@ -424,12 +426,26 @@ class GenerateTables:
             if parts_set == parts_in_container:
                 sw_signal: Signal = signal.clone()
                 sw_signal.part = sw_template.name
-                sw_signal.name_rus = self._get_common_prefix(list(map(lambda item: item.name_rus, sw_signals)))
-                sw_signal.name_eng = self._get_common_prefix(list(map(lambda item: item.name_eng, sw_signals)))
-                sw_signal.full_name_rus = self._get_common_prefix(list(map(lambda item: item.full_name_rus,
-                                                                           sw_signals)))
-                sw_signal.full_name_eng = self._get_common_prefix(list(map(lambda item: item.full_name_eng,
-                                                                           sw_signals)))
+                if any([signal.name_rus is None for signal in sw_signals]):
+                    sw_signal.name_rus = None
+                else:
+                    sw_signal.name_rus = self._get_common_prefix(list(map(lambda item: item.name_rus, sw_signals)))
+
+                if any([signal.name_eng is None for signal in sw_signals]):
+                    sw_signal.name_eng = None
+                else:
+                    sw_signal.name_eng = self._get_common_prefix(list(map(lambda item: item.name_eng, sw_signals)))
+
+                if any([signal.full_name_rus is None for signal in sw_signals]):
+                    sw_signal.full_name_rus = None
+                else:
+                    sw_signal.full_name_rus = self._get_common_prefix(list(map(lambda item: item.full_name_rus,
+                                                                               sw_signals)))
+                if any([signal.full_name_eng is None for signal in sw_signals]):
+                    sw_signal.full_name_eng = None
+                else:
+                    sw_signal.full_name_eng = self._get_common_prefix(list(map(lambda item: item.full_name_eng,
+                                                                               sw_signals)))
                 sw_signal.template = self._get_sw_template(kksp=sw_signal.kksp,
                                                            cabinet=sw_signal.cabinet,
                                                            sw_template=sw_template)
