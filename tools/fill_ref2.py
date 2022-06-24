@@ -41,4 +41,4 @@ class FillRef2:
         self._options = options
 
     def check(self):
-        data: list[dict[str, str]] = 
+        data: list[dict[str, str]] = None
