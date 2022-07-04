@@ -11,6 +11,7 @@ class InputPort:
     cell_num: int
     kks: str | None
     part: str
+    unrel_ref_cell_num: int | None
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -37,6 +38,7 @@ class SignalRef:
     kks: str
     part: str
     ref: str
+    unrel_ref: str | None
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -49,8 +51,7 @@ class FillRef2Options:
     templates: [Template]
     wired_signal_input_page: int
     wired_signal_input_cell: int
-    wired_signal_output_page: int
-    wired_signal_output_cell: int
+    wired_signal_input_port: str
 
 
 class FillRef2:
@@ -173,69 +174,176 @@ class FillRef2:
             return None
         return kksp_list[0]
 
-    def get_ref_for_defined_schemas(self):
+    def _creare_ref_for_input_port(self, schema_kks: str, schema_part: str, cabinet: str, input_port: InputPort,
+                                   kksp: str,
+                                   template_name: str) -> SignalRef | None:
+        """
+        Создание ссылки для входного сигналы схемы управления
+        :param schema_kks: KKS схемы управления
+        :param schema_part: PART схемы управления
+        :param cabinet: Имя стойки
+        :param input_port: Входной порт
+        :param kksp: KKS терминала
+        :param template_name: Имя шаблона (для диагностических сообщений)
+        :return: SignalRef или None
+        """
+        signal: tuple[str, str, bool] | None = self._get_signal_for_port(schema_kks=schema_kks,
+                                                                         cabinet=cabinet,
+                                                                         port=input_port,
+                                                                         kksp=kksp,
+                                                                         template_name=template_name)
+        if signal is None:
+            return None
+        signal_kks: str = signal[0]
+        signal_part: str = signal[1]
+        is_digital: bool = signal[2]
+        ref: str
+        unrel_ref: str | None
+        if is_digital:
+            ref: str = f'{schema_kks}_{schema_part}\\{input_port.page}\\{input_port.cell_num}'
+            unrel_ref = f'{schema_kks}_{schema_part}\\{input_port.page}\\{input_port.unrel_ref_cell_num}'
+        else:
+            ref: str = f'{self._options.wired_signal_input_port}:{schema_kks}_{schema_part}\\' \
+                       f'{input_port.page}\\{input_port.cell_num}'
+            unrel_ref = None
+        signal_ref: SignalRef = SignalRef(kks=signal_kks,
+                                          part=signal_part,
+                                          ref=ref,
+                                          unrel_ref=unrel_ref)
+        return signal_ref
+
+    def _creare_ref_for_output_port(self, schema_kks: str, cabinet: str, output_port: OutputPort, kksp: str,
+                                    template_name: str) -> SignalRef | None:
+        """
+        Создание ссылки для выходного сигналы схемы управления
+        :param schema_kks: KKS схемы управления
+        :param cabinet: Имя стойки
+        :param output_port: Выходной порт
+        :param kksp: KKS терминала
+        :param template_name: Имя шаблона (для диагностических сообщений)
+        :return: SignalRef или None
+        """
+        signal: tuple[str, str, bool] | None = self._get_signal_for_port(schema_kks=schema_kks,
+                                                                         cabinet=cabinet,
+                                                                         port=output_port,
+                                                                         kksp=kksp,
+                                                                         template_name=template_name)
+        if signal is None:
+            return None
+        signal_kks: str = signal[0]
+        signal_part: str = signal[1]
+        is_digital: bool = signal[2]
+        ref: str
+        if is_digital:
+            ref = f'{output_port.name}:{signal_kks}_{signal_part}'
+        else:
+            ref = f'{output_port.name}:{signal_kks}_{signal_part}\\{self._options.wired_signal_input_page}' \
+                  f'\\{self._options.wired_signal_input_cell}'
+        signal_ref: SignalRef = SignalRef(kks=signal_kks,
+                                          part=signal_part,
+                                          ref=ref,
+                                          unrel_ref=None)
+        return signal_ref
+
+    def get_ref_for_defined_schemas(self) -> list[SignalRef] | None:
+        """
+        Генерация ссылок для предопределенных схем управления
+        :return: Список ошибок либо None при ошибках
+        """
         error_flag: bool = False
         ref_list: list[SignalRef] = []
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.predifend_control_schemas_table,
             fields=['KKS', 'SCHEMA', 'PART', 'CABINET'])
         for value in values:
-            kks = value['KKS']
-            part = value['PART']
+            schema_kks = value['KKS']
+            schema_part = value['PART']
             cabinet = value['CABINET']
             template_name = value['SCHEMA']
-            template: Template | None = next((templ for templ in self._options.templates
-                                              if templ.name == template_name), None)
-            if template is None:
-                logging.error(f'Не найден шаблон с именем {template_name}')
+            ref_list_for_schema: list[SignalRef] | None = self._get_ref_for_schema(schema_kks=schema_kks,
+                                                                                   schema_part=schema_part,
+                                                                                   cabinet=cabinet,
+                                                                                   template_name=template_name)
+            if ref_list_for_schema is None:
                 error_flag = True
-                continue
-            kksp: str | None = self._get_kksp_for_template(template=template,
-                                                           schema_kks=kks,
-                                                           cabinet=cabinet)
-            if kksp is None:
+            else:
+                ref_list = ref_list + ref_list_for_schema
+        if error_flag:
+            return None
+        return ref_list
+
+    def get_ref_for_wired_schemas(self) -> list[SignalRef] | None:
+        """
+        Генерация ссылок для проводных схем управления
+        :return: Список ошибок либо None при ошибках
+        """
+        error_flag: bool = False
+        ref_list: list[SignalRef] = []
+        values: list[dict[str, str]] = self._access.retrieve_data(
+            table_name=self._options.sim_table,
+            fields=['KKS', 'SCHEMA', 'PART', 'CABINET'],
+            key_names=['OBJECT_TYP'],
+            key_values=['SW'])
+        for value in values:
+            schema_kks = value['KKS']
+            schema_part = value['PART']
+            cabinet = value['CABINET']
+            template_name = value['SCHEMA']
+            ref_list_for_schema: list[SignalRef] | None = self._get_ref_for_schema(schema_kks=schema_kks,
+                                                                                   schema_part=schema_part,
+                                                                                   cabinet=cabinet,
+                                                                                   template_name=template_name)
+            if ref_list_for_schema is None:
                 error_flag = True
-                continue
+            else:
+                ref_list = ref_list + ref_list_for_schema
+        if error_flag:
+            return None
+        return ref_list
 
-            for input_port in template.input_ports:
-                signal: tuple[str, str, bool] | None = self._get_signal_for_port(schema_kks=kks,
-                                                                                 cabinet=cabinet,
-                                                                                 port=input_port,
-                                                                                 kksp=kksp,
-                                                                                 template_name=template_name)
-                if signal is None:
-                    error_flag = True
-                    continue
-                ref: str
-                if signal[2]:
-                    ref = f'{signal[0]}_{signal[1]}'
-                else:
-                    ref = f'{signal[0]}_{signal[1]}\\{self._options.wired_signal_input_page}' \
-                          f'\\{self._options.wired_signal_input_cell}'
-                signal_ref: SignalRef = SignalRef(kks=signal[0],
-                                                  part=signal[1],
-                                                  ref=ref)
-                ref_list.append(signal_ref)
+    def _get_ref_for_schema(self, schema_kks: str, schema_part: str, cabinet: str, template_name: str) \
+            -> list[SignalRef] | None:
+        """
+        Генерация ссылок для схемы управления
+        :param schema_kks: KKS схемы управления
+        :param schema_part: PART схемы управления
+        :param cabinet: Имя стойки
+        :param template_name: Имя шаблона (для диагностических сообщений)
+        :return: Список ссылок либо None при ошибке
+        """
+        ref_list: list[SignalRef] = []
+        template: Template | None = next((templ for templ in self._options.templates
+                                          if templ.name == template_name), None)
+        if template is None:
+            logging.error(f'Не найден шаблон с именем {template_name}')
+            return None
+        kksp: str | None = self._get_kksp_for_template(template=template,
+                                                       schema_kks=schema_kks,
+                                                       cabinet=cabinet)
+        if kksp is None:
+            return None
 
-            for output_port in template.output_ports:
-                signal: tuple[str, str, bool] | None = self._get_signal_for_port(schema_kks=kks,
-                                                                                 cabinet=cabinet,
-                                                                                 port=output_port,
-                                                                                 kksp=kksp,
-                                                                                 template_name=template_name)
-                if signal is None:
-                    error_flag = True
-                    continue
-                ref: str
-                if signal[2]:
-                    ref = f'{signal[0]}_{signal[1]}'
-                else:
-                    ref = f'{signal[0]}_{signal[1]}\\{self._options.wired_signal_input_page}' \
-                          f'\\{self._options.wired_signal_input_cell}'
-                signal_ref: SignalRef = SignalRef(kks=signal[0],
-                                                  part=signal[1],
-                                                  ref=ref)
-                ref_list.append(signal_ref)
+        for port in template.input_ports:
+            signal_ref: SignalRef | None = self._creare_ref_for_input_port(schema_kks=schema_kks,
+                                                                           schema_part=schema_part,
+                                                                           cabinet=cabinet,
+                                                                           input_port=port,
+                                                                           kksp=kksp,
+                                                                           template_name=template_name)
+            if signal_ref is None:
+                return None
+            ref_list.append(signal_ref)
+
+        for port in template.output_ports:
+            signal_ref: SignalRef | None = self._creare_ref_for_output_port(schema_kks=schema_kks,
+                                                                            cabinet=cabinet,
+                                                                            output_port=port,
+                                                                            kksp=kksp,
+                                                                            template_name=template_name)
+            if signal_ref is None:
+                return None
+            ref_list.append(signal_ref)
+        return ref_list
 
     @staticmethod
     def run(options: FillRef2Options, base_path: str) -> None:
