@@ -351,5 +351,6 @@ class FillRef2:
         with Connection.connect_to_mdb(base_path=base_path) as access:
             fill_ref_class: FillRef2 = FillRef2(options=options,
                                                 access=access)
+            fill_ref_class
         logging.info('Выпонение скрипта "Расстановка ссылок" завершено.')
         logging.info('')
