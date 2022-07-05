@@ -3,6 +3,7 @@ from tools.generate_tables import GenerateTableOptions, DoublePointSignal, SWTem
 from tools.fill_mms_address import FillMMSAddressOptions, DPCSignal, DatasetDescription, DatasetDescriptionList, \
     BSCSignal, SignalRange
 from tools.fill_ref import FillRefOptions, VirtualTemplate, TemplateVariant, DefinedVariant
+from tools.fill_ref2 import FillRef2Options, InputPort, OutputPort, Template
 from tools.find_schemas import FindSchemasOptions, Schema
 
 from dataclasses import dataclass
@@ -129,6 +130,111 @@ class Options:
                                                                         datasets=DatasetDescriptionList(
                                                                             [dataset_1, dataset_2, dataset_3]))
         # <-------------------------------fill_mms_address_options----------------------------------------------------->
+
+        # <-------------------------------fill_ref2_address_options---------------------------------------------------->
+        template_dsw1_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB01',
+                                                                unrel_ref_cell_num=15),
+                                                      InputPort(page=3, cell_num=4, kks=None, part='XB02',
+                                                                unrel_ref_cell_num=None)]
+        template_dsw1_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
+                                                                   part='XL01'),
+                                                        OutputPort(name='Port2', page=2, cell_num=8, kks=None,
+                                                                   part='XL02')]
+        template_dsw1: Template = Template(name='DSW1',
+                                           input_ports=template_dsw1_input_ports,
+                                           output_ports=template_dsw1_output_ports)
+
+        template_dsw2_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB01',
+                                                                unrel_ref_cell_num=15),
+                                                      InputPort(page=3, cell_num=4, kks=None, part='XB02',
+                                                                unrel_ref_cell_num=None),
+                                                      InputPort(page=3, cell_num=5, kks=None, part='XB07',
+                                                                unrel_ref_cell_num=16),
+                                                      InputPort(page=3, cell_num=6, kks=None, part='XB08',
+                                                                unrel_ref_cell_num=17)]
+        template_dsw2_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
+                                                                   part='XL01'),
+                                                        OutputPort(name='Port2', page=2, cell_num=8, kks=None,
+                                                                   part='XL02')]
+        template_dsw2: Template = Template(name='DSW2',
+                                           input_ports=template_dsw2_input_ports,
+                                           output_ports=template_dsw2_output_ports)
+
+        template_dsw3_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB01',
+                                                                unrel_ref_cell_num=15),
+                                                      InputPort(page=3, cell_num=4, kks=None, part='XB02',
+                                                                unrel_ref_cell_num=None),
+                                                      InputPort(page=3, cell_num=5, kks=None, part='XB07',
+                                                                unrel_ref_cell_num=16),
+                                                      InputPort(page=3, cell_num=6, kks=None, part='XB08',
+                                                                unrel_ref_cell_num=17),
+                                                      InputPort(page=3, cell_num=7, kks=None, part='XB19',
+                                                                unrel_ref_cell_num=18)]
+        template_dsw3_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
+                                                                   part='XL01'),
+                                                        OutputPort(name='Port2', page=2, cell_num=8, kks=None,
+                                                                   part='XL02')]
+        template_dsw3: Template = Template(name='DSW3',
+                                           input_ports=template_dsw3_input_ports,
+                                           output_ports=template_dsw3_output_ports)
+
+        template_dsw4_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB01',
+                                                                unrel_ref_cell_num=15),
+                                                      InputPort(page=3, cell_num=4, kks=None, part='XB02',
+                                                                unrel_ref_cell_num=None),
+                                                      InputPort(page=3, cell_num=5, kks=None, part='XB07',
+                                                                unrel_ref_cell_num=16),
+                                                      InputPort(page=3, cell_num=6, kks=None, part='XB08',
+                                                                unrel_ref_cell_num=17),
+                                                      InputPort(page=3, cell_num=7, kks=None, part='XF27',
+                                                                unrel_ref_cell_num=18)]
+        template_dsw4_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
+                                                                   part='XL01'),
+                                                        OutputPort(name='Port2', page=2, cell_num=8, kks=None,
+                                                                   part='XL02')]
+        template_dsw4: Template = Template(name='DSW4',
+                                           input_ports=template_dsw4_input_ports,
+                                           output_ports=template_dsw4_output_ports)
+
+        template_davr2_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB21',
+                                                                 unrel_ref_cell_num=12),
+                                                       InputPort(page=3, cell_num=4, kks=None, part='XB22',
+                                                                 unrel_ref_cell_num=None)]
+        template_davr2_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
+                                                                    part='XL21'),
+                                                         OutputPort(name='Port2', page=2, cell_num=8, kks=None,
+                                                                    part='XL22')]
+        template_davr2: Template = Template(name='DAVR2',
+                                            input_ports=template_dsw1_input_ports,
+                                            output_ports=template_dsw1_output_ports)
+
+        template_dltc2_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks='10BBT0#EK001', part='XB10',
+                                                                 unrel_ref_cell_num=16),
+                                                       InputPort(page=3, cell_num=3, kks='10BBT0#EK001', part='XB10',
+                                                                 unrel_ref_cell_num=16),
+                                                       InputPort(page=3, cell_num=3, kks='10BBT0#EK001', part='XB10',
+                                                                 unrel_ref_cell_num=16),
+                                                       InputPort(page=3, cell_num=3, kks='10BBT0#EK001', part='XB10',
+                                                                 unrel_ref_cell_num=16),
+                                                       InputPort(page=3, cell_num=3, kks='10BBT0#EK001', part='XB10',
+                                                                 unrel_ref_cell_num=16),
+                                                       InputPort(page=3, cell_num=3, kks='10BBT0#EK001', part='XB10',
+                                                                 unrel_ref_cell_num=16),
+                                                       InputPort(page=3, cell_num=3, kks='10BBT0#EK001', part='XB10',
+                                                                 unrel_ref_cell_num=16),
+                                                       InputPort(page=3, cell_num=3, kks='10BBT0#EK001', part='XB10',
+                                                                 unrel_ref_cell_num=16),
+                                                       InputPort(page=3, cell_num=3, kks='10BBT0#EK001', part='XB10',
+                                                                 unrel_ref_cell_num=16)]
+        template_davr2_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
+                                                                    part='XL21'),
+                                                         OutputPort(name='Port2', page=2, cell_num=8, kks=None,
+                                                                    part='XL22')]
+        template_davr2: Template = Template(name='DAVR2',
+                                            input_ports=template_dsw1_input_ports,
+                                            output_ports=template_dsw1_output_ports)
+
+        # <-------------------------------fill_ref2_address_options---------------------------------------------------->
 
         # <-------------------------------fill_ref_options------------------------------------------------------------->
         template1: VirtualTemplate = VirtualTemplate(name='Управление выключателем',
