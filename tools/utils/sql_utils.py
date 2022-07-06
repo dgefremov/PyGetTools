@@ -184,7 +184,7 @@ class Connection:
             self._cursor.execute(f'ALTER TABLE {table_name} ALTER COLUMN ID COUNTER(1,1)')
         self._cursor.commit()
 
-    def insert_row(self, table_name: str, column_names: list[str], values: list[str | int | float]) -> None:
+    def insert_row(self, table_name: str, column_names: list[str], values: list[str | int | float | None]) -> None:
         if len(column_names) != len(values):
             print("Несоответствие количества столбцов количеству значений")
             raise Exception("SQLError")
@@ -202,7 +202,7 @@ class Connection:
         return int(self._cursor.fetchval())
 
     @staticmethod
-    def get_string_value(value: str | float | int) -> str:
+    def get_string_value(value: str | float | int | None) -> str:
         if isinstance(value, int) or isinstance(value, float):
             return f'{value}'
         if isinstance(value, str):

@@ -45,6 +45,7 @@ class SignalRef:
 class FillRef2Options:
     control_schemas_table: str
     predifend_control_schemas_table: str
+    ref_table_name: str
     ref_table: str
     sim_table: str
     iec_table: str
@@ -63,7 +64,7 @@ class FillRef2:
         self._access = access
 
     def _get_signal_for_port(self, schema_kks: str, cabinet: str, kksp: str, port: InputPort | OutputPort,
-                             template_name) -> tuple[str, str, bool] | None:
+                             template_name) -> tuple[str, str, str, bool] | None:
         """
         Функция поиска сигнала для порта шаблона
         :param schema_kks: KKS схемы управления
@@ -78,15 +79,15 @@ class FillRef2:
         values_from_sim: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.sim_table,
             fields=['KKS'],
-            key_names=['KKS', 'MODULE', 'KKSp', 'PART', 'CABINET'],
-            key_values=[kks, '1691', kksp, port.part, cabinet],
+            key_names=['KKS', 'MODULE', 'PART', 'CABINET', 'KKSp'],
+            key_values=[kks, '1691', kksp, port.part, cabinet, kksp],
             key_operator=['LIKE', '<>', '=', '=', '='])
         if len(values_from_sim) > 1:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
             return None
         if len(values_from_sim) == 1:
-            return values_from_sim[0]['KKS'], port.part, False
+            return values_from_sim[0]['KKS'], port.part, cabinet, False
         # Поиск сигнала в таблице МЭК по KKS, PART и KKSp
         values_from_iec: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.iec_table,
                                                                            fields=['KKS'],
@@ -98,7 +99,7 @@ class FillRef2:
                           f'с PART {port.part}')
             return None
         if len(values_from_iec) == 1:
-            return values_from_iec[0]['KKS'], port.part, True
+            return values_from_iec[0]['KKS'], port.part, cabinet, True
         # Если сигнал задан шаблоном, то на этом этапе он уже должен быть найден
         if port.kks is not None:
             logging.error(f'Не найден сигнао для шаблона {template_name} с KKS {schema_kks} для порта '
@@ -115,7 +116,7 @@ class FillRef2:
                           f'с PART {port.part}')
             return None
         if len(values_from_sim_with_kksp) == 1:
-            return values_from_sim[0]['KKS'], port.part, False
+            return values_from_sim[0]['KKS'], port.part, cabinet, False
         # Поиск сигнала в таблице МЭК по PART и KKSp
         values_from_iec_with_kksp: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.iec_table,
@@ -127,7 +128,36 @@ class FillRef2:
                           f'с PART {port.part}')
             return None
         if len(values_from_iec_with_kksp) == 1:
-            return values_from_iec[0]['KKS'], port.part, True
+            return values_from_iec[0]['KKS'], port.part, cabinet, True
+        # Поиск межстоечных сигналов (только если указан KKS)
+        if port.kks is not None:
+            # Поиск сигнала в другой стойке в таблице СИМ по ККС
+            values_intercabinet_from_sim: list[dict[str, str]] = self._access.retrieve_data(
+                table_name=self._options.sim_table,
+                fields=['KKS', 'CABINET'],
+                key_names=['KKS', 'MODULE', 'PART'],
+                key_values=[kks, '1691', kksp, port.part],
+                key_operator=['LIKE', '<>', '=', '='])
+            if len(values_intercabinet_from_sim) > 1:
+                logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
+                              f'с PART {port.part}')
+                return None
+            if len(values_intercabinet_from_sim) == 1:
+                return values_from_sim[0]['KKS'], port.part, values_intercabinet_from_sim[0]['CABINET'], False
+            # Поиск сигнала в другой стойке в таблице МЭК по KKS, PART
+            values_intercabinet_from_iec: list[dict[str, str]] = self._access.retrieve_data(
+                table_name=self._options.iec_table,
+                fields=['KKS', 'CABINET'],
+                key_names=['KKS', 'PART'],
+                key_values=[kks, port.part],
+                key_operator=['LIKE', '='])
+            if len(values_intercabinet_from_iec) > 1:
+                logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
+                              f'с PART {port.part}')
+                return None
+            if len(values_intercabinet_from_iec) == 1:
+                return values_from_iec[0]['KKS'], port.part, values_intercabinet_from_iec[0]['CABINET'], True
+
         logging.error(f'Не найден сигнао для шаблона {template_name} с KKS {schema_kks} для порта '
                       f'с PART {port.part}')
         return None
@@ -197,14 +227,19 @@ class FillRef2:
         signal_kks: str = signal[0]
         signal_part: str = signal[1]
         is_digital: bool = signal[2]
+        cabinet_prefix: str = '' if signal[3] == cabinet else f'{cabinet}\\'
         ref: str
         unrel_ref: str | None
         if is_digital:
-            ref: str = f'{schema_kks}_{schema_part}\\{input_port.page}\\{input_port.cell_num}'
-            unrel_ref = f'{schema_kks}_{schema_part}\\{input_port.page}\\{input_port.unrel_ref_cell_num}'
+            ref: str = f'{cabinet_prefix}{schema_kks}_{schema_part}\\{input_port.page}\\{input_port.cell_num}'
+            if input_port.unrel_ref_cell_num is not None:
+                unrel_ref = f'{cabinet_prefix}{schema_kks}_{schema_part}\\{input_port.page}\\' \
+                            f'{input_port.unrel_ref_cell_num}'
+            else:
+                unrel_ref = None
         else:
-            ref: str = f'{self._options.wired_signal_input_port}:{schema_kks}_{schema_part}\\' \
-                       f'{input_port.page}\\{input_port.cell_num}'
+            ref: str = f'{cabinet_prefix}{self._options.wired_signal_input_port}:{schema_kks}_{schema_part}\\' \
+                       f'{cabinet_prefix}{input_port.page}\\{input_port.cell_num}'
             unrel_ref = None
         signal_ref: SignalRef = SignalRef(kks=signal_kks,
                                           part=signal_part,
@@ -233,11 +268,12 @@ class FillRef2:
         signal_kks: str = signal[0]
         signal_part: str = signal[1]
         is_digital: bool = signal[2]
+        cabinet_prefix: str = '' if signal[3] == cabinet else f'{signal[3]}\\'
         ref: str
         if is_digital:
-            ref = f'{output_port.name}:{signal_kks}_{signal_part}'
+            ref = f'{cabinet_prefix}{output_port.name}:{signal_kks}_{signal_part}'
         else:
-            ref = f'{output_port.name}:{signal_kks}_{signal_part}\\{self._options.wired_signal_input_page}' \
+            ref = f'{cabinet_prefix}{output_port.name}:{signal_kks}_{signal_part}\\{self._options.wired_signal_input_page}' \
                   f'\\{self._options.wired_signal_input_cell}'
         signal_ref: SignalRef = SignalRef(kks=signal_kks,
                                           part=signal_part,
@@ -245,7 +281,7 @@ class FillRef2:
                                           unrel_ref=None)
         return signal_ref
 
-    def get_ref_for_defined_schemas(self) -> list[SignalRef] | None:
+    def _get_ref_for_defined_schemas(self) -> list[SignalRef] | None:
         """
         Генерация ссылок для предопределенных схем управления
         :return: Список ошибок либо None при ошибках
@@ -272,7 +308,7 @@ class FillRef2:
             return None
         return ref_list
 
-    def get_ref_for_wired_schemas(self) -> list[SignalRef] | None:
+    def _get_ref_for_wired_schemas(self) -> list[SignalRef] | None:
         """
         Генерация ссылок для проводных схем управления
         :return: Список ошибок либо None при ошибках
@@ -345,12 +381,45 @@ class FillRef2:
             ref_list.append(signal_ref)
         return ref_list
 
+    def _write_ref(self, ref_list: list[SignalRef]) -> None:
+        """
+        Функция записи ссылок в базу
+        :param ref_list: Список со ссылками
+        :return: None
+        """
+        for ref in ref_list:
+            self._access.insert_row(table_name=self._options.ref_table_name,
+                                    column_names=['KKS', 'PART', 'REF', 'UNREL_REF'],
+                                    values=[ref.kks, ref.part, ref.ref, ref.unrel_ref])
+        self._access.commit()
+
+    def _write_control_schemas(self):
+        values: list[dict[str, str]] = self._access.retrieve_data(
+            table_name=self._options.predifend_control_schemas_table,
+            fields=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR'])
+        for value in values:
+            self._access.insert_row(table_name=self._options.control_schemas_table,
+                                    column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR'],
+                                    values=[value['KKS'], value['CABINET'], value['SCHEMA'], value['CHANNEL'],
+                                            value['PART'], value['DESCR']])
+        self._access.commit()
+
+    def _fill_ref(self):
+        ref_for_predefined_schemas: list[SignalRef] | None = self._get_ref_for_defined_schemas()
+        ref_for_wired_schemas: list[SignalRef] | None = self._get_ref_for_wired_schemas()
+        if ref_for_wired_schemas is not None and ref_for_predefined_schemas is not None:
+            ref_list: list[SignalRef] = ref_for_predefined_schemas + ref_for_wired_schemas
+            self._access.clear_table(table_name=self._options.ref_table_name)
+            self._access.clear_table(table_name=self._options.control_schemas_table)
+            self._write_ref(ref_list=ref_list)
+            self._write_control_schemas()
+
     @staticmethod
     def run(options: FillRef2Options, base_path: str) -> None:
         logging.info('Запуск скрипта "Расстановка ссылок"...')
         with Connection.connect_to_mdb(base_path=base_path) as access:
             fill_ref_class: FillRef2 = FillRef2(options=options,
                                                 access=access)
-            a = fill_ref_class.get_ref_for_wired_schemas()
+            fill_ref_class._fill_ref()
         logging.info('Выпонение скрипта "Расстановка ссылок" завершено.')
         logging.info('')
