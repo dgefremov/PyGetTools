@@ -403,4 +403,4 @@ class FillRef:
                                           access=access)
             find_class._fill_ref()
         logging.info('Выпонение скрипта "Расстановка ссылок" завершено.')
-        logging.info('')
+        logging.info('a')
