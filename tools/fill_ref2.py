@@ -26,8 +26,8 @@ class OutputPort:
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class Template:
     name: str
-    input_ports: [InputPort]
-    output_ports: [OutputPort]
+    input_ports: dict[str, list[InputPort]]
+    output_ports: dict[str, list[OutputPort]]
 
     def clone(self) -> 'Template':
         return Template(self.name, self.input_ports, self.output_ports)
@@ -45,7 +45,6 @@ class SignalRef:
 class FillRef2Options:
     control_schemas_table: str
     predifend_control_schemas_table: str
-    ref_table_name: str
     ref_table: str
     sim_table: str
     iec_table: str
@@ -162,7 +161,7 @@ class FillRef2:
                       f'с PART {port.part}')
         return None
 
-    def _get_kksp_for_template(self, template: Template, schema_kks: str, cabinet: str) -> str | None:
+    def _get_kksp_for_template(self, template: Template, schema_part: str, schema_kks: str, cabinet: str) -> str | None:
         """
         Функция определения KKSp для заданного шаблона и ККС
         :param template: шаблон схемы управления
@@ -170,7 +169,7 @@ class FillRef2:
         :return: KKSp для данного KKS
         """
         kksp_list: list[str] = []
-        for output_port in template.output_ports:
+        for output_port in template.output_ports[schema_part]:
             values_from_sim: list[dict[str, str]]
             kks: str = output_port.kks if output_port.kks is not None else schema_kks
             values_from_sim = self._access.retrieve_data(table_name=self._options.sim_table,
@@ -273,8 +272,8 @@ class FillRef2:
         if is_digital:
             ref = f'{cabinet_prefix}{output_port.name}:{signal_kks}_{signal_part}'
         else:
-            ref = f'{cabinet_prefix}{output_port.name}:{signal_kks}_{signal_part}\\{self._options.wired_signal_input_page}' \
-                  f'\\{self._options.wired_signal_input_cell}'
+            ref = f'{cabinet_prefix}{output_port.name}:{signal_kks}_{signal_part}\\' \
+                  f'{self._options.wired_signal_input_page}\\{self._options.wired_signal_input_cell}'
         signal_ref: SignalRef = SignalRef(kks=signal_kks,
                                           part=signal_part,
                                           ref=ref,
@@ -355,31 +354,36 @@ class FillRef2:
             return None
         kksp: str | None = self._get_kksp_for_template(template=template,
                                                        schema_kks=schema_kks,
+                                                       schema_part=schema_part,
                                                        cabinet=cabinet)
         if kksp is None:
             return None
 
-        for port in template.input_ports:
-            signal_ref: SignalRef | None = self._creare_ref_for_input_port(schema_kks=schema_kks,
-                                                                           schema_part=schema_part,
-                                                                           cabinet=cabinet,
-                                                                           input_port=port,
-                                                                           kksp=kksp,
-                                                                           template_name=template_name)
-            if signal_ref is None:
-                return None
-            ref_list.append(signal_ref)
+        input_port_list: list[InputPort] | None = template.input_ports[schema_part]
+        if input_port_list is not None:
+            for port in input_port_list:
+                signal_ref: SignalRef | None = self._creare_ref_for_input_port(schema_kks=schema_kks,
+                                                                               schema_part=schema_part,
+                                                                               cabinet=cabinet,
+                                                                               input_port=port,
+                                                                               kksp=kksp,
+                                                                               template_name=template_name)
+                if signal_ref is None:
+                    return None
+                ref_list.append(signal_ref)
 
-        for port in template.output_ports:
-            signal_ref: SignalRef | None = self._creare_ref_for_output_port(schema_kks=schema_kks,
-                                                                            cabinet=cabinet,
-                                                                            output_port=port,
-                                                                            kksp=kksp,
-                                                                            template_name=template_name)
-            if signal_ref is None:
-                return None
-            ref_list.append(signal_ref)
-        return ref_list
+        output_port_list: list[OutputPort] | None = template.output_ports[schema_part]
+        if output_port_list is not None:
+            for port in output_port_list:
+                signal_ref: SignalRef | None = self._creare_ref_for_output_port(schema_kks=schema_kks,
+                                                                                cabinet=cabinet,
+                                                                                output_port=port,
+                                                                                kksp=kksp,
+                                                                                template_name=template_name)
+                if signal_ref is None:
+                    return None
+                ref_list.append(signal_ref)
+            return ref_list
 
     def _write_ref(self, ref_list: list[SignalRef]) -> None:
         """
@@ -409,7 +413,7 @@ class FillRef2:
         ref_for_wired_schemas: list[SignalRef] | None = self._get_ref_for_wired_schemas()
         if ref_for_wired_schemas is not None and ref_for_predefined_schemas is not None:
             ref_list: list[SignalRef] = ref_for_predefined_schemas + ref_for_wired_schemas
-            self._access.clear_table(table_name=self._options.ref_table_name)
+            self._access.clear_table(table_name=self._options.ref_table)
             self._access.clear_table(table_name=self._options.control_schemas_table)
             self._write_ref(ref_list=ref_list)
             self._write_control_schemas()
