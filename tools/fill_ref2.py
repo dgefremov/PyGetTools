@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-
+from enum import Enum
 from tools.utils.sql_utils import Connection
 from tools.utils.progress_utils import ProgressBar
 
@@ -54,6 +54,12 @@ class FillRef2Options:
     wired_signal_input_port: str
 
 
+class ErrorType(Enum):
+    NOERROR = 0
+    NOVALUES = 1
+    TOOMANYVALUES = 2
+
+
 class FillRef2:
     _options: FillRef2Options
     _access: Connection
@@ -61,6 +67,139 @@ class FillRef2:
     def __init__(self, options: FillRef2Options, access: Connection):
         self._options = options
         self._access = access
+
+    @staticmethod
+    def choose_signal_by_kksp(values: list[dict, str], kksp: str) -> tuple[str | None, ErrorType]:
+        """
+        Выбор среди результата запроса ККС, у которого KKSp совпадает с заданным
+        :param values: Результат запроса к базе
+        :param kksp: Сравниваемый KKSp
+        :return: Код ошибки или KKS
+        """
+        signals: list[str] = []
+        for value in values:
+            if value['KKSp'] == kksp:
+                signals.append(value['KKS'])
+        if len(signals) == 0:
+            return None, ErrorType.NOVALUES
+        if len(signals) > 1:
+            return None, ErrorType.TOOMANYVALUES
+        return signals[0], ErrorType.NOERROR
+
+    def _get_signal_from_sim_by_kks(self, cabinet: str | None, kks: str, kksp: str | None,
+                                    port: InputPort | OutputPort) -> tuple[str | None, str | None, ErrorType]:
+        """
+        Поиск сигнала по ККС в таблице  СиМ
+        :param cabinet: Имя стойки. Если None, поиск будет осуществляться и по другим стойкам
+        :param kks: Шаблон для ККС искомого сигнала. Может быть None
+        :param kksp: Код терминала. Не учитывается, если Cabinet=None
+        :param port: Порт, для которого ищется терминал
+        :return: Кортеж из ККС (если найден), имени стойки (если найдена) и кода ошибки
+        """
+        key_names: list[str] = ['KKS', 'MODULE', 'PART']
+        key_values: list[str] = [kks, '1691', port.part]
+        key_operator = ['LIKE', '<>', '=', '=']
+        if cabinet is not None:
+            key_names.append('CABINET')
+            key_values.append(cabinet)
+            key_operator.append('=')
+        values: list[dict[str, str]] = self._access.retrieve_data(
+            table_name=self._options.sim_table,
+            fields=['KKS', 'KKSp', 'CABINET'],
+            key_names=key_names,
+            key_values=key_values,
+            key_operator=key_operator)
+        if len(values) > 1:
+            # Если не задана стойка и KKSp, то для нескольких сигналов будет попытка выбрать один, относящийся
+            # к данному терминалу
+            if cabinet is not None and kksp is not None:
+                kks, error = self.choose_signal_by_kksp(values=values,
+                                                        kksp=kksp)
+                return kks, cabinet, error
+            else:
+                return None, None, ErrorType.TOOMANYVALUES
+
+        if len(values) == 0:
+            return None, None, ErrorType.NOVALUES
+        if len(values) == 1:
+            return values[0]['KKS'], values[1]['CABINET'], ErrorType.NOERROR
+
+    def _get_signal_from_iec_by_kks(self, kks: str, kksp: str | None,
+                                    port: InputPort | OutputPort, cabinet: str | None) -> tuple[str | None,
+                                                                                                str | None, ErrorType]:
+        """
+        Поиск сигнала по ККС в таблице МЭК
+        :param cabinet: Имя стойки. Если None, поиск будет осуществляться и по другим стойкам
+        :param kks: Шаблон для ККС искомого сигнала. Может быть None
+        :param kksp: Код терминала. Не учитывается, если Cabinet=None
+        :param port: Порт, для которого ищется терминал
+        :return: Кортеж из ККС (если найден), имени стойки (если найдена) и кода ошибки
+        """
+        key_names = ['KKS', 'PART']
+        key_values = [kks, port.part]
+        key_operator = ['LIKE', '=', '=']
+        if cabinet is not None:
+            key_names.append('CABINET')
+            key_values.append(cabinet)
+            key_operator.append('=')
+
+        values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.iec_table,
+                                                                  fields=['KKS', 'KKSp', 'CABINET'],
+                                                                  key_names=key_names,
+                                                                  key_values=key_values,
+                                                                  key_operator=key_operator)
+        if len(values) > 1:
+            # Если не задана стойка и KKSp, то для нескольких сигналов будет попытка выбрать один, относящийся
+            # к данному терминалу
+            if cabinet is not None and kksp is not None:
+                kks, error = self.choose_signal_by_kksp(values=values,
+                                                        kksp=kksp)
+                return kks, cabinet, error
+            else:
+                return None, None, ErrorType.TOOMANYVALUES
+        if len(values) == 1:
+            return values[0]['KKS'], values[0]['CABINET'], ErrorType.NOERROR
+        return None, None, ErrorType.NOVALUES
+
+    def _get_signal_from_sim_by_kksp(self, kksp: str, port: InputPort | OutputPort, cabinet: str) -> \
+            tuple[str | None, ErrorType]:
+        """
+        Поиск сигнала в таблице СиМ по KKSp
+        :param kksp: Код терминала
+        :param port: Порт, для которого ищется сигнал
+        :param cabinet: Имя стойки
+        :return: Кортеж из ККС (если найден) и кода ошибки
+        """
+        values: list[dict[str, str]] = self._access.retrieve_data(
+            table_name=self._options.sim_table,
+            fields=['KKS'],
+            key_names=['MODULE', 'KKSp', 'PART', 'CABINET'],
+            key_values=['1691', kksp, port.part, cabinet],
+            key_operator=['<>', '=', '=', '='])
+        if len(values) > 1:
+            return None, ErrorType.TOOMANYVALUES
+        if len(values) == 1:
+            return values[0]['KKS'], ErrorType.NOERROR
+        return None, ErrorType.NOVALUES
+
+    def _get_signal_from_iec_by_kksp(self, kksp: str, port: InputPort | OutputPort, cabinet: str) -> \
+            tuple[str | None, ErrorType]:
+        """
+        Поиск сигнала в таблице МЭК по KKSp
+        :param kksp: Код терминали
+        :param port: Порт, для которого ищется сигнал
+        :param cabinet: Имя стойки
+        :return: Кортеж из ККС (если найден) и кода ошибки
+        """
+        values: list[dict[str, str]] = self._access.retrieve_data(
+            table_name=self._options.iec_table,
+            fields=['KKS'],
+            key_names=['KKSp', 'PART', 'CABINET'],
+            key_values=[kksp, port.part, cabinet])
+        if len(values) > 1:
+            return None, ErrorType.TOOMANYVALUES
+        if len(values) == 1:
+            return values[0]['KKS'], ErrorType.NOERROR
 
     def _get_signal_for_port(self, schema_kks: str, cabinet: str, kksp: str, port: InputPort | OutputPort,
                              template_name) -> tuple[str, str, str, bool] | None:
@@ -74,90 +213,79 @@ class FillRef2:
         :return: Сигнал как кортеж KKS, PART, ФлагЦифровогоСигнала
         """
         kks: str = port.kks if port.kks is not None else schema_kks
-        # Поиск сигнала в таблице СИМ по KKS, PART и KKSp
-        values_from_sim: list[dict[str, str]] = self._access.retrieve_data(
-            table_name=self._options.sim_table,
-            fields=['KKS'],
-            key_names=['KKS', 'MODULE', 'PART', 'CABINET', 'KKSp'],
-            key_values=[kks, '1691', kksp, port.part, cabinet, kksp],
-            key_operator=['LIKE', '<>', '=', '=', '='])
-        if len(values_from_sim) > 1:
+        # Поиск сигнала в таблице СИМ по KKS, PART
+        found_kks, _, error = self._get_signal_from_sim_by_kks(cabinet=cabinet,
+                                                               kks=kks,
+                                                               kksp=kksp,
+                                                               port=port)
+        if error == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
             return None
-        if len(values_from_sim) == 1:
-            return values_from_sim[0]['KKS'], port.part, cabinet, False
-        # Поиск сигнала в таблице МЭК по KKS, PART и KKSp
-        values_from_iec: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.iec_table,
-                                                                           fields=['KKS'],
-                                                                           key_names=['KKS', 'KKSp', 'PART', 'CABINET'],
-                                                                           key_values=[kks, kksp, port.part, cabinet],
-                                                                           key_operator=['LIKE', '=', '=', '='])
-        if len(values_from_iec) > 1:
+        if error == ErrorType.NOERROR:
+            return found_kks, port.part, cabinet, False
+
+        # Поиск сигнала в таблице МЭК по KKS, PART
+        kks, _, result = self._get_signal_from_iec_by_kks(kks=kks,
+                                                          port=port,
+                                                          cabinet=cabinet,
+                                                          kksp=kksp)
+        if result == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
             return None
-        if len(values_from_iec) == 1:
-            return values_from_iec[0]['KKS'], port.part, cabinet, True
+        if result == ErrorType.NOERROR:
+            return kks, port.part, cabinet, True
         # Если сигнал задан шаблоном, то на этом этапе он уже должен быть найден
         if port.kks is not None:
             logging.error(f'Не найден сигнао для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
         # Поиск сигнала в таблице СИМ по PART и KKSp
-        values_from_sim_with_kksp: list[dict[str, str]] = self._access.retrieve_data(
-            table_name=self._options.sim_table,
-            fields=['KKS'],
-            key_names=['MODULE', 'KKSp', 'PART', 'CABINET'],
-            key_values=['1691', kksp, port.part, cabinet],
-            key_operator=['<>', '=', '=', '='])
-        if len(values_from_sim_with_kksp) > 1:
+        kks, result = self._get_signal_from_sim_by_kksp(kksp=kksp,
+                                                        port=port,
+                                                        cabinet=cabinet)
+        if result == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
             return None
-        if len(values_from_sim_with_kksp) == 1:
-            return values_from_sim[0]['KKS'], port.part, cabinet, False
+        if result == ErrorType.NOERROR:
+            return kks, port.part, cabinet, False
         # Поиск сигнала в таблице МЭК по PART и KKSp
-        values_from_iec_with_kksp: list[dict[str, str]] = self._access.retrieve_data(
-            table_name=self._options.iec_table,
-            fields=['KKS'],
-            key_names=['KKSp', 'PART', 'CABINET'],
-            key_values=[kksp, port.part, cabinet])
-        if len(values_from_iec_with_kksp) > 1:
+        kks, result = self._get_signal_from_iec_by_kksp(kksp=kksp,
+                                                        port=port,
+                                                        cabinet=cabinet)
+        if result == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
             return None
-        if len(values_from_iec_with_kksp) == 1:
-            return values_from_iec[0]['KKS'], port.part, cabinet, True
+        if result == ErrorType.NOERROR:
+            return kks, port.part, cabinet, True
         # Поиск межстоечных сигналов (только если указан KKS)
         if port.kks is not None:
             # Поиск сигнала в другой стойке в таблице СИМ по ККС
-            values_intercabinet_from_sim: list[dict[str, str]] = self._access.retrieve_data(
-                table_name=self._options.sim_table,
-                fields=['KKS', 'CABINET'],
-                key_names=['KKS', 'MODULE', 'PART'],
-                key_values=[kks, '1691', kksp, port.part],
-                key_operator=['LIKE', '<>', '=', '='])
-            if len(values_intercabinet_from_sim) > 1:
+            kks, cabinet, result = self._get_signal_from_iec_by_kks(kks=kks,
+                                                                    kksp=None,
+                                                                    port=port,
+                                                                    cabinet=None)
+            if result == ErrorType.TOOMANYVALUES:
                 logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                               f'с PART {port.part}')
                 return None
-            if len(values_intercabinet_from_sim) == 1:
-                return values_from_sim[0]['KKS'], port.part, values_intercabinet_from_sim[0]['CABINET'], False
+            if result == ErrorType.NOERROR:
+                return kks, port.part, cabinet, False
             # Поиск сигнала в другой стойке в таблице МЭК по KKS, PART
-            values_intercabinet_from_iec: list[dict[str, str]] = self._access.retrieve_data(
-                table_name=self._options.iec_table,
-                fields=['KKS', 'CABINET'],
-                key_names=['KKS', 'PART'],
-                key_values=[kks, port.part],
-                key_operator=['LIKE', '='])
-            if len(values_intercabinet_from_iec) > 1:
+            kks, cabinet, result = self._get_signal_from_iec_by_kks(kks=kks,
+                                                                    kksp=None,
+                                                                    port=port,
+                                                                    cabinet=None)
+            if result == ErrorType.TOOMANYVALUES:
                 logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                               f'с PART {port.part}')
                 return None
-            if len(values_intercabinet_from_iec) == 1:
-                return values_from_iec[0]['KKS'], port.part, values_intercabinet_from_iec[0]['CABINET'], True
+            if result == ErrorType.NOERROR:
+                return kks, port.part, cabinet, True
 
-        logging.error(f'Не найден сигнао для шаблона {template_name} с KKS {schema_kks} для порта '
+        logging.error(f'Не найден сигнал для шаблона {template_name} с KKS {schema_kks} для порта '
                       f'с PART {port.part}')
         return None
 
@@ -352,6 +480,9 @@ class FillRef2:
         if template is None:
             logging.error(f'Не найден шаблон с именем {template_name}')
             return None
+        if schema_part not in template.input_ports or schema_part not in template.output_ports:
+            logging.error(f'Не найдены сигналы для шаблона {template_name} для PART {schema_part}')
+            return None
         kksp: str | None = self._get_kksp_for_template(template=template,
                                                        schema_kks=schema_kks,
                                                        schema_part=schema_part,
@@ -392,7 +523,7 @@ class FillRef2:
         :return: None
         """
         for ref in ref_list:
-            self._access.insert_row(table_name=self._options.ref_table_name,
+            self._access.insert_row(table_name=self._options.ref_table,
                                     column_names=['KKS', 'PART', 'REF', 'UNREL_REF'],
                                     values=[ref.kks, ref.part, ref.ref, ref.unrel_ref])
         self._access.commit()

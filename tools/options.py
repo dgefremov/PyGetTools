@@ -146,7 +146,8 @@ class Options:
                                                           OutputPort(name='Port2', page=2, cell_num=8, kks=None,
                                                                      part='XA02')]
         template_dsw1: Template = Template(name='DSW1',
-                                           input_ports={'XA00': template_dsw1_input_ports},
+                                           input_ports={'XA00': template_dsw1_input_ports,
+                                                        'XA70': template_dsw1_input_ports},
                                            output_ports={'XA00': template_dsw1_output_ports_1,
                                                          'XA70': template_dsw1_output_ports_2})
 
@@ -174,7 +175,7 @@ class Options:
                                                                 unrel_ref_cell_num=16),
                                                       InputPort(page=3, cell_num=6, kks=None, part='XB08',
                                                                 unrel_ref_cell_num=17),
-                                                      InputPort(page=3, cell_num=7, kks=None, part='XB19',
+                                                      InputPort(page=3, cell_num=7, kks=None, part='XF19',
                                                                 unrel_ref_cell_num=18)]
         template_dsw3_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
                                                                    part='XL01'),
@@ -214,31 +215,29 @@ class Options:
                                             input_ports={'XA10': template_davr2_input_ports},
                                             output_ports={'XA10': template_davr2_output_ports})
 
-        template_dltc2_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks='10BBT0#EK001', part='XB10',
+        template_dltc2_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks='10BBT0_EK001', part='XB10',
                                                                  unrel_ref_cell_num=16),
-                                                       InputPort(page=3, cell_num=4, kks='10BBT0#EK001', part='XN10',
+                                                       InputPort(page=3, cell_num=4, kks='10BBT0_EK001', part='XN10',
                                                                  unrel_ref_cell_num=17),
-                                                       InputPort(page=3, cell_num=5, kks='10BBT0#EK001', part='XF34',
+                                                       InputPort(page=3, cell_num=5, kks='10BBT0_EK001', part='XF34',
                                                                  unrel_ref_cell_num=18),
-                                                       InputPort(page=3, cell_num=6, kks='10BBT0#EK001', part='XB14',
+                                                       InputPort(page=3, cell_num=6, kks='10BBT0_EK001', part='XB14',
                                                                  unrel_ref_cell_num=19),
-                                                       InputPort(page=3, cell_num=7, kks='10BBT0#EK002', part='XM30',
+                                                       InputPort(page=3, cell_num=7, kks='10BBT0_EK002', part='XM30',
                                                                  unrel_ref_cell_num=20),
-                                                       InputPort(page=3, cell_num=8, kks='10BBT0#EK002', part='XM29',
+                                                       InputPort(page=3, cell_num=8, kks='10BBT0_EK002', part='XM29',
                                                                  unrel_ref_cell_num=21),
-                                                       InputPort(page=3, cell_num=9, kks='10BBT0#GH103', part='XF24',
+                                                       InputPort(page=3, cell_num=9, kks='10BBT0_GH103', part='XF24',
                                                                  unrel_ref_cell_num=22),
-                                                       InputPort(page=3, cell_num=10, kks='10BBT0#GH103', part='XF35',
+                                                       InputPort(page=3, cell_num=10, kks='10BBT0_GH103', part='XF35',
                                                                  unrel_ref_cell_num=23),
-                                                       InputPort(page=3, cell_num=11, kks='10BBT0#GH103', part='XF15',
+                                                       InputPort(page=3, cell_num=11, kks='10BBT0_GH103', part='XF15',
                                                                  unrel_ref_cell_num=24)]
         template_dltc2_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
                                                                     part='XL11'),
                                                          OutputPort(name='Port2', page=2, cell_num=8, kks=None,
-                                                                    part='XL12'),
-                                                         OutputPort(name='Port3', page=2, cell_num=11, kks=None,
-                                                                    part='XF33')]
-        template_dltc2: Template = Template(name='DLTC2',
+                                                                    part='XL12')]
+        template_dltc2: Template = Template(name='DLTС2',
                                             input_ports={'XA20': template_dltc2_input_ports},
                                             output_ports={'XA20': template_dltc2_output_ports})
         template_ddgs_input_ports: list[InputPort] = []
@@ -260,15 +259,16 @@ class Options:
                                                                       part='XL50')]
         template_dsign_output_ports_2: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
                                                                       part='XL51')]
-        template_sign: Template = Template(name='DSINC',
-                                           input_ports={'XA50': template_dsign_input_ports},
+        template_sign: Template = Template(name='DSIGN',
+                                           input_ports={'XA50': template_dsign_input_ports,
+                                                        'XA51': template_dsign_input_ports},
                                            output_ports={'XA50': template_dsign_output_ports_1,
                                                          'XA51': template_dsign_output_ports_2})
 
         template_dsync_input_ports: list[InputPort] = []
         template_dsync_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
                                                                     part='XL03')]
-        template_dsync: Template = Template(name='DACNPS',
+        template_dsync: Template = Template(name='DSYNC',
                                             input_ports={'XA60': template_dsync_input_ports},
                                             output_ports={'XA60': template_dsync_output_ports})
 

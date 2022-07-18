@@ -10,7 +10,7 @@ from tools.utils.log_utils import configure_logger
 def run_scripts():
     configure_logger('log', 'log')
     options: Options = Options.load_ruppur()
-    base_path: str = 'C:\\Data\\Downloads\\ПТК СКУ ЭЧ ЭБ_3.11.accdb'
+    base_path: str = 'C:\\Data\\ПТК СКУ ЭЧ ЭБ_3.12.accdb'
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
