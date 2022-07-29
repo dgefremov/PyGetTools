@@ -24,6 +24,27 @@ class OutputPort:
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class Signal:
+    kks: str
+    part: str
+    cabinet: str
+    type: 'SignalType'
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class TSODUPanel:
+    name: str
+    confirm_part: str
+    abonent: int
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class DynamicTemplate:
+    target: Signal
+    source: list[Signal]
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class Template:
     name: str
     input_ports: dict[str, list[InputPort]]
@@ -45,9 +66,13 @@ class SignalRef:
 class FillRef2Options:
     control_schemas_table: str
     predifend_control_schemas_table: str
+    ts_odu_algorithm: str
+    ts_odu_table: str
+    ts_odu_panels: list[TSODUPanel]
     ref_table: str
     sim_table: str
     iec_table: str
+    abonent_table: str
     templates: [Template]
     wired_signal_input_page: int
     wired_signal_input_cell: int
@@ -58,6 +83,12 @@ class ErrorType(Enum):
     NOERROR = 0
     NOVALUES = 1
     TOOMANYVALUES = 2
+
+
+class SignalType(Enum):
+    WIRED = 0
+    DIGITAL = 1
+    TS_ODU = 2
 
 
 class FillRef2:
@@ -434,6 +465,103 @@ class FillRef2:
         if error_flag:
             return None
         return ref_list
+
+    def _get_abonent_map(self) -> dict[str, int]:
+        values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.abonent_table,
+                                                                  fields=['CABINET', 'ABONENT'])
+        return {value['CABINET']: int(value['ABONENT']) for value in values}
+
+    def _get_signal_from_dynamic_algorithm(self, kks: str, part: str) -> \
+            tuple[Signal | None, ErrorType]:
+        values_from_sim: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table,
+                                                                           fields=['CABINET'],
+                                                                           key_names=['KKS', 'PART'],
+                                                                           key_values=[kks, part])
+        if len(values_from_sim) == 1:
+            cabinet: str = values_from_sim[0]['CABINET']
+            return Signal(kks=kks,
+                          part=part,
+                          cabinet=cabinet,
+                          type=SignalType.WIRED), ErrorType.NOERROR
+        values_from_iec: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.iec_table,
+                                                                           fields=['CABINET'],
+                                                                           key_names=['KKS', 'PART'],
+                                                                           key_values=[kks, part])
+        if len(values_from_iec) == 1:
+            cabinet: str = values_from_iec[0]['CABINET']
+            return Signal(kks=kks,
+                          part=part,
+                          cabinet=cabinet,
+                          type=SignalType.DIGITAL), ErrorType.NOERROR
+        values_from_ts_odu: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
+                                                                              fields=['CABINET'],
+                                                                              key_names=['KKS', 'PART'],
+                                                                              key_values=[kks, part])
+        if len(values_from_ts_odu) == 1:
+            cabinet: str = values_from_ts_odu[0]['CABINET']
+            return Signal(kks=kks,
+                          part=part,
+                          cabinet=cabinet,
+                          type=SignalType.TS_ODU), ErrorType.NOERROR
+        logging.error(f'Сигнал {kks}_{part} не найден ни в одной таблице')
+        return None, ErrorType.NOVALUES
+
+    def _get_ref_for_ts_odu(self) -> list[SignalRef] | None:
+        abonent_map: dict[str, int] = self._get_abonent_map()
+        ok_flag: bool = True
+        dynamic_templates: list[DynamicTemplate] = []
+        values: list[dict[str, str]] = self._access.retrieve_data(
+            table_name=self._options.ts_odu_algorithm,
+            fields=['KKS_SOURCE', 'PART_SOURCE', 'KKS_TARGET', 'PART_TARGET'])
+        for value in values:
+            source_signal, source_error = self._get_signal_from_dynamic_algorithm(kks=value['KKS_SOURCE'],
+                                                                                  part=value['PART_SOURCE'])
+            target_signal, target_error = self._get_signal_from_dynamic_algorithm(kks=value['KKS_TARGET'],
+                                                                                  part=value['PART_TARGET'])
+            if source_error != ErrorType.NOERROR or target_error != ErrorType.NOERROR:
+                ok_flag = False
+                continue
+
+            dynamic_template: DynamicTemplate | None = next((template for template in dynamic_templates
+                                                             if template.target.kks == target_signal.kks and
+                                                             template.target.part == target_signal.part), None)
+            if dynamic_template is None:
+                dynamic_template = DynamicTemplate(target=target_signal,
+                                                   source=[source_signal])
+                dynamic_templates.append(dynamic_template)
+            else:
+                dynamic_template.source.append(source_signal)
+        if not ok_flag:
+            return None
+
+    def _get_refs_for_dynamic_template(self, dynamic_templates: list[DynamicTemplate]):
+        ok_flag: bool = True
+        abonent_map: dict[str, int] = self._get_abonent_map()
+        for dynamic_template in dynamic_templates:
+            source_signals_dict: dict[str, list[Signal]] = {}
+            # Сначала формируется словарь, где ключ - это имя стойки, значение - список сигналов от этой стойки,
+            # т.е. группировка сигналов по имени стойки
+            for source_signal in dynamic_template.source:
+                signals_in_cabinet: list[Signal] | None = source_signals_dict[source_signal.cabinet]
+                if signals_in_cabinet is None:
+                    signals_in_cabinet = [source_signal]
+                    source_signals_dict[source_signal.cabinet] = signals_in_cabinet
+                else:
+                    signals_in_cabinet.append(source_signal)
+            # Дальше обрабатываем списки сигналов от каждой стойки
+            for cabinet in source_signals_dict:
+                abonent: int
+                ts_odu_panel: TSODUPanel | None = None
+                ts_odu_panel = next((panel for panel in self._options.ts_odu_panels
+                                                        if panel.name == cabinet), None)
+                if ts_odu_panel is None:
+                    logging.error(f"Не найден абонент для стойки {cabinet}")
+                    ok_flag = False
+
+
+
+
+
 
     def _get_ref_for_wired_schemas(self) -> list[SignalRef] | None:
         """
