@@ -29,6 +29,13 @@ class Signal:
     part: str
     cabinet: str
     type: 'SignalType'
+    descr: str | None = None
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class MozaicElement:
+    cabinet: str
+    place: str
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -40,8 +47,17 @@ class TSODUPanel:
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class DynamicTemplate:
-    target: Signal
+    target: MozaicElement
     source: list[Signal]
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class VirtualSchema:
+    kks: str
+    part: str
+    schema: str
+    descr: str
+    channel: int = 0
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -77,6 +93,10 @@ class FillRef2Options:
     wired_signal_input_page: int
     wired_signal_input_cell: int
     wired_signal_input_port: str
+    or_schema_name_prefix: str = 'OR_'
+    or_schema_start_cell: int = 3
+    or_schema_end_cell: int = 25
+    or_schema_kks_postfix: str = 'XM'
 
 
 class ErrorType(Enum):
@@ -233,7 +253,7 @@ class FillRef2:
             return values[0]['KKS'], ErrorType.NOERROR
 
     def _get_signal_for_port(self, schema_kks: str, cabinet: str, kksp: str, port: InputPort | OutputPort,
-                             template_name) -> tuple[str, str, str, bool] | None:
+                             template_name) -> Signal | None:
         """
         Функция поиска сигнала для порта шаблона
         :param schema_kks: KKS схемы управления
@@ -254,7 +274,10 @@ class FillRef2:
                           f'с PART {port.part}')
             return None
         if error == ErrorType.NOERROR:
-            return found_kks, port.part, cabinet, False
+            return Signal(kks=kks,
+                          part=port.part,
+                          cabinet=cabinet,
+                          type=SignalType.WIRED)
 
         # Поиск сигнала в таблице МЭК по KKS, PART
         kks, _, result = self._get_signal_from_iec_by_kks(kks=kks,
@@ -266,10 +289,13 @@ class FillRef2:
                           f'с PART {port.part}')
             return None
         if result == ErrorType.NOERROR:
-            return kks, port.part, cabinet, True
+            return Signal(kks=kks,
+                          part=port.part,
+                          cabinet=cabinet,
+                          type=SignalType.DIGITAL)
         # Если сигнал задан шаблоном, то на этом этапе он уже должен быть найден
         if port.kks is not None:
-            logging.error(f'Не найден сигнао для шаблона {template_name} с KKS {schema_kks} для порта '
+            logging.error(f'Не найден сигнал для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
         # Поиск сигнала в таблице СИМ по PART и KKSp
         kks, result = self._get_signal_from_sim_by_kksp(kksp=kksp,
@@ -280,7 +306,10 @@ class FillRef2:
                           f'с PART {port.part}')
             return None
         if result == ErrorType.NOERROR:
-            return kks, port.part, cabinet, False
+            return Signal(kks=kks,
+                          part=port.part,
+                          cabinet=cabinet,
+                          type=SignalType.WIRED)
         # Поиск сигнала в таблице МЭК по PART и KKSp
         kks, result = self._get_signal_from_iec_by_kksp(kksp=kksp,
                                                         port=port,
@@ -290,7 +319,10 @@ class FillRef2:
                           f'с PART {port.part}')
             return None
         if result == ErrorType.NOERROR:
-            return kks, port.part, cabinet, True
+            return Signal(kks=kks,
+                          part=port.part,
+                          cabinet=cabinet,
+                          type=SignalType.DIGITAL)
         # Поиск межстоечных сигналов (только если указан KKS)
         if port.kks is not None:
             # Поиск сигнала в другой стойке в таблице СИМ по ККС
@@ -303,7 +335,10 @@ class FillRef2:
                               f'с PART {port.part}')
                 return None
             if result == ErrorType.NOERROR:
-                return kks, port.part, cabinet, False
+                return Signal(kks=kks,
+                              part=port.part,
+                              cabinet=cabinet,
+                              type=SignalType.WIRED)
             # Поиск сигнала в другой стойке в таблице МЭК по KKS, PART
             kks, cabinet, result = self._get_signal_from_iec_by_kks(kks=kks,
                                                                     kksp=None,
@@ -314,7 +349,10 @@ class FillRef2:
                               f'с PART {port.part}')
                 return None
             if result == ErrorType.NOERROR:
-                return kks, port.part, cabinet, True
+                return Signal(kks=kks,
+                              part=port.part,
+                              cabinet=cabinet,
+                              type=SignalType.DIGITAL)
 
         logging.error(f'Не найден сигнал для шаблона {template_name} с KKS {schema_kks} для порта '
                       f'с PART {port.part}')
@@ -375,32 +413,29 @@ class FillRef2:
         :param template_name: Имя шаблона (для диагностических сообщений)
         :return: SignalRef или None
         """
-        signal: tuple[str, str, bool] | None = self._get_signal_for_port(schema_kks=schema_kks,
-                                                                         cabinet=cabinet,
-                                                                         port=input_port,
-                                                                         kksp=kksp,
-                                                                         template_name=template_name)
+        signal: Signal | None = self._get_signal_for_port(schema_kks=schema_kks,
+                                                          cabinet=cabinet,
+                                                          port=input_port,
+                                                          kksp=kksp,
+                                                          template_name=template_name)
         if signal is None:
             return None
-        signal_kks: str = signal[0]
-        signal_part: str = signal[1]
-        is_digital: bool = signal[2]
-        cabinet_prefix: str = '' if signal[3] == cabinet else f'{cabinet}\\'
+        cabinet_prefix: str = '' if signal.cabinet == cabinet else f'{cabinet}\\'
         ref: str
         unrel_ref: str | None
-        if is_digital:
-            ref: str = f'{cabinet_prefix}{schema_kks}_{schema_part}\\{input_port.page}\\{input_port.cell_num}'
+        if signal.type == SignalType.DIGITAL:
+            ref: str = f'{cabinet_prefix}\\{schema_kks}_{schema_part}\\{input_port.page}\\{input_port.cell_num}'
             if input_port.unrel_ref_cell_num is not None:
-                unrel_ref = f'{cabinet_prefix}{schema_kks}_{schema_part}\\{input_port.page}\\' \
+                unrel_ref = f'{cabinet_prefix}\\{schema_kks}_{schema_part}\\{input_port.page}\\' \
                             f'{input_port.unrel_ref_cell_num}'
             else:
                 unrel_ref = None
         else:
-            ref: str = f'{cabinet_prefix}{self._options.wired_signal_input_port}:{schema_kks}_{schema_part}\\' \
-                       f'{cabinet_prefix}{input_port.page}\\{input_port.cell_num}'
+            ref: str = f'{cabinet_prefix}\\{self._options.wired_signal_input_port}:{schema_kks}_{schema_part}\\' \
+                       f'{input_port.page}\\{input_port.cell_num}'
             unrel_ref = None
-        signal_ref: SignalRef = SignalRef(kks=signal_kks,
-                                          part=signal_part,
+        signal_ref: SignalRef = SignalRef(kks=signal.kks,
+                                          part=signal.part,
                                           ref=ref,
                                           unrel_ref=unrel_ref)
         return signal_ref
@@ -416,25 +451,22 @@ class FillRef2:
         :param template_name: Имя шаблона (для диагностических сообщений)
         :return: SignalRef или None
         """
-        signal: tuple[str, str, bool] | None = self._get_signal_for_port(schema_kks=schema_kks,
-                                                                         cabinet=cabinet,
-                                                                         port=output_port,
-                                                                         kksp=kksp,
-                                                                         template_name=template_name)
+        signal: Signal | None = self._get_signal_for_port(schema_kks=schema_kks,
+                                                          cabinet=cabinet,
+                                                          port=output_port,
+                                                          kksp=kksp,
+                                                          template_name=template_name)
         if signal is None:
             return None
-        signal_kks: str = signal[0]
-        signal_part: str = signal[1]
-        is_digital: bool = signal[2]
-        cabinet_prefix: str = '' if signal[3] == cabinet else f'{signal[3]}\\'
+        cabinet_prefix: str = '' if signal.cabinet == cabinet else f'{signal.cabinet}\\'
         ref: str
-        if is_digital:
-            ref = f'{cabinet_prefix}{output_port.name}:{signal_kks}_{signal_part}'
+        if signal.type == SignalType.DIGITAL:
+            ref = f'{cabinet_prefix}\\{output_port.name}:{signal.kks}_{signal.part}'
         else:
-            ref = f'{cabinet_prefix}{output_port.name}:{signal_kks}_{signal_part}\\' \
+            ref = f'{cabinet_prefix}\\{output_port.name}:{signal.kks}_{signal.part}\\' \
                   f'{self._options.wired_signal_input_page}\\{self._options.wired_signal_input_cell}'
-        signal_ref: SignalRef = SignalRef(kks=signal_kks,
-                                          part=signal_part,
+        signal_ref: SignalRef = SignalRef(kks=signal.kks,
+                                          part=signal.part,
                                           ref=ref,
                                           unrel_ref=None)
         return signal_ref
@@ -507,26 +539,25 @@ class FillRef2:
         return None, ErrorType.NOVALUES
 
     def _get_ref_for_ts_odu(self) -> list[SignalRef] | None:
-        abonent_map: dict[str, int] = self._get_abonent_map()
         ok_flag: bool = True
         dynamic_templates: list[DynamicTemplate] = []
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.ts_odu_algorithm,
-            fields=['KKS_SOURCE', 'PART_SOURCE', 'KKS_TARGET', 'PART_TARGET'])
+            fields=['KKS', 'PART', 'CABINET', 'INST_PLACE'])
         for value in values:
-            source_signal, source_error = self._get_signal_from_dynamic_algorithm(kks=value['KKS_SOURCE'],
-                                                                                  part=value['PART_SOURCE'])
-            target_signal, target_error = self._get_signal_from_dynamic_algorithm(kks=value['KKS_TARGET'],
-                                                                                  part=value['PART_TARGET'])
-            if source_error != ErrorType.NOERROR or target_error != ErrorType.NOERROR:
+            source_signal, source_error = self._get_signal_from_dynamic_algorithm(kks=value['KKS'],
+                                                                                  part=value['PART'])
+            if source_error != ErrorType.NOERROR != ErrorType.NOERROR:
                 ok_flag = False
                 continue
+            mozaic_element: MozaicElement = MozaicElement(cabinet=value['CABINET'],
+                                                          place=value['INST_PLACE'])
 
             dynamic_template: DynamicTemplate | None = next((template for template in dynamic_templates
-                                                             if template.target.kks == target_signal.kks and
-                                                             template.target.part == target_signal.part), None)
+                                                             if template.target.cabinet == mozaic_element.cabinet and
+                                                             template.target.place == mozaic_element.place), None)
             if dynamic_template is None:
-                dynamic_template = DynamicTemplate(target=target_signal,
+                dynamic_template = DynamicTemplate(target=mozaic_element,
                                                    source=[source_signal])
                 dynamic_templates.append(dynamic_template)
             else:
@@ -534,34 +565,168 @@ class FillRef2:
         if not ok_flag:
             return None
 
-    def _get_refs_for_dynamic_template(self, dynamic_templates: list[DynamicTemplate]):
-        ok_flag: bool = True
-        abonent_map: dict[str, int] = self._get_abonent_map()
-        for dynamic_template in dynamic_templates:
-            source_signals_dict: dict[str, list[Signal]] = {}
+    def _get_target_signals_for_dynamic_template(self, dynamic_template: DynamicTemplate) -> list[Signal]:
+        signals: list[Signal] = []
+        values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
+                                                                  fields=['KKS', 'PART', 'NAME_RUS'],
+                                                                  key_names=['INST_PLACE', 'CABINET'],
+                                                                  key_values=[dynamic_template.target.place,
+                                                                              dynamic_template.target.cabinet])
+        for value in values:
+            signals.append(Signal(kks=value['KKS'],
+                                  part=value['PART'],
+                                  cabinet=dynamic_template.target.cabinet,
+                                  type=SignalType.TS_ODU,
+                                  descr=value['NAME_RUS']))
+        return signals
+
+    def _create_virtual_schema(self, target_signal: Signal, target_abonent: int, index: str,
+                               source_signals: list[Signal]) -> tuple[VirtualSchema, list[SignalRef]]:
+        kks: str = f'{target_signal.kks[0:7]}{self._options.or_schema_kks_postfix}{index}'
+        schema: str = f'{self._options.or_schema_name_prefix}{len(source_signals)}'
+        virtual_schema: VirtualSchema = VirtualSchema(kks=kks,
+                                                      part=target_signal.part,
+                                                      descr=target_signal.descr,
+                                                      schema=schema)
+        refs: list[SignalRef] = []
+        refs_on_page: int = self._options.or_schema_end_cell - self._options.or_schema_start_cell + 1
+
+        index: int = 0
+        for signal in source_signals:
+            index += 1
+            cell_num: int = index % refs_on_page + self._options.or_schema_start_cell
+            page_num: int = index // refs_on_page + 1
+            refs.append(self._get_ref_for_signal(source_signal=signal,
+                                                 target_kks=kks,
+                                                 target_cabinet=target_abonent,
+                                                 target_part=target_signal.part,
+                                                 target_page=page_num,
+                                                 target_cell=cell_num))
+        return virtual_schema, refs
+
+    def _get_refs_for_dynamic_template(self, dynamic_template: DynamicTemplate, abonent_map: dict[str, int]) -> \
+            tuple[list[VirtualSchema] | None, list[SignalRef]] | None:
+        target_ts_odu_panel: TSODUPanel | None = next((panel for panel in self._options.ts_odu_panels
+                                                       if panel.name == dynamic_template.target.cabinet), None)
+        if target_ts_odu_panel is None:
+            logging.error(f"Не найдена панель ТС ОДУ с именем {dynamic_template.target.cabinet}")
+            return None
+        target_signals: list[Signal] = self._get_target_signals_for_dynamic_template(dynamic_template=dynamic_template)
+        if len(target_signals) == 1:
+            target_signal: Signal = target_signals[0]
+            # Если в шаблоне 1 сигнал-источник и 1 сигнал приемник, то сразу формируется ссылка
+            if len(dynamic_template.source) == 1:
+                return None, [self._get_ref_for_signal(source_signal=dynamic_template.source[0],
+                                                       target_kks=target_signal.kks,
+                                                       target_part=target_signal.part,
+                                                       target_cabinet=target_ts_odu_panel.abonent,
+                                                       target_page=self._options.wired_signal_input_page,
+                                                       target_cell=self._options.wired_signal_input_page)]
+            # Случай, когда несколько сигналов источников на один сигнал приемник
+            # В этом случае формируются схемы управления OR
+
             # Сначала формируется словарь, где ключ - это имя стойки, значение - список сигналов от этой стойки,
             # т.е. группировка сигналов по имени стойки
+            source_signals_by_cabinet: dict[str, list[Signal]] = {}
             for source_signal in dynamic_template.source:
-                signals_in_cabinet: list[Signal] | None = source_signals_dict[source_signal.cabinet]
+                signals_in_cabinet: list[Signal] | None = source_signals_by_cabinet[source_signal.cabinet]
                 if signals_in_cabinet is None:
                     signals_in_cabinet = [source_signal]
-                    source_signals_dict[source_signal.cabinet] = signals_in_cabinet
+                    source_signals_by_cabinet[source_signal.cabinet] = signals_in_cabinet
                 else:
                     signals_in_cabinet.append(source_signal)
-            # Дальше обрабатываем списки сигналов от каждой стойки
-            for cabinet in source_signals_dict:
-                abonent: int
-                ts_odu_panel: TSODUPanel | None = None
-                ts_odu_panel = next((panel for panel in self._options.ts_odu_panels
-                                                        if panel.name == cabinet), None)
-                if ts_odu_panel is None:
-                    logging.error(f"Не найден абонент для стойки {cabinet}")
-                    ok_flag = False
+            # Если стойка одна, то только для нее формируем схему OR
+            if len(source_signals_by_cabinet.keys()) == 1:
+                virtual_schema, refs = self._create_virtual_schema(target_signal=target_signal,
+                                                                   source_signals=list(list(source_signals_by_cabinet.
+                                                                                            values())[0]),
+                                                                   target_abonent=target_ts_odu_panel.abonent,
+                                                                   index='001')
+                return [virtual_schema], refs
+            # Если стоек несколько - для каждой формируем схему OR и общую схему OR в панели ТС ОДУ
+            cabinet_index: int = 0
+            virtual_schemas: list[VirtualSchema] = []
+            source_cabinet_or_signals: list[Signal] = []
+            refs: list[SignalRef] = []
+            target_or_schema_signal: Signal = Signal(
+                kks=f'{target_signal.kks[0:7]}{self._options.or_schema_kks_postfix}'
+                    f'000',
+                part=target_signal.part,
+                cabinet=target_signal.cabinet,
+                type=SignalType.TS_ODU,
+                descr=target_signal.descr)
+            for cabinet in source_signals_by_cabinet.keys():
+                cabinet_index += 1
+                if len(source_signals_by_cabinet[cabinet]) == 1:
+                    # Если сигнал в стойке один - сразу создаем ссылку без создания OR схемы
+                    source_signal: Signal = source_signals_by_cabinet[cabinet][0]
+                    refs.append(self._get_ref_for_signal(source_signal=source_signal,
+                                                         target_cabinet=target_ts_odu_panel.abonent,
+                                                         target_kks=target_or_schema_signal.kks,
+                                                         target_part=target_or_schema_signal.part,
+                                                         target_page=self._options.wired_signal_input_page,
+                                                         target_cell=self._options.wired_signal_input_cell))
+                else:
+                    # Если сигналов несколько, предварительно создаем OR схему в шкафу
+                    cabinet_schema, cabinet_refs = self._create_virtual_schema(
+                        target_signal=target_or_schema_signal,
+                        source_signals=source_signals_by_cabinet[cabinet],
+                        target_abonent=target_ts_odu_panel.abonent,
+                        index=str(cabinet_index).zfill(3))
+                    source_cabinet_or_signal: Signal = Signal(kks=cabinet_schema.kks,
+                                                              part=cabinet_schema.part,
+                                                              cabinet=cabinet,
+                                                              type=SignalType.TS_ODU)
+                    virtual_schemas.append(cabinet_schema)
+                    refs += cabinet_refs
+                    source_cabinet_or_signals.append(source_cabinet_or_signal)
+            # Создаем схему OR в шкафу ТС ОДУ
+            target_or_schema, target_refs = self._create_virtual_schema(target_signal=target_signal,
+                                                                        target_abonent=target_ts_odu_panel.abonent,
+                                                                        source_signals=source_cabinet_or_signals,
+                                                                        index='000')
+            virtual_schemas.append(target_or_schema)
+            refs += target_refs
+            return virtual_schemas, refs
 
+        if len(target_signals) > 1:
+            # Если сигналов приемников несколько, то сигналы источники должны с ними совпадать по количеству
+            # и по PART
+            if len(dynamic_template.source) != len(target_signals):
+                logging.error(f"Несоответствие количества сигналов для МЭ {dynamic_template.target.place} для панели "
+                              f"ТС ОДУ {dynamic_template.target.cabinet}")
+                return None
+            refs: list[SignalRef] = []
+            # Формируются словари из сигналов источников и сигналов приемников. Ключи - PART
+            source_signal_dict: dict[str, Signal] = {signal.part: signal for signal in dynamic_template.source}
+            target_signal_dict: dict[str, Signal] = {signal.part: signal for signal in target_signals}
+            diff_keys: set[str] = set(source_signal_dict.keys()) - set(target_signal_dict.keys())
+            if len(diff_keys) > 0:
+                logging.error(f"Несоответствие сигналов для МЭ {dynamic_template.target.place} для панели "
+                              f"ТС ОДУ {dynamic_template.target.cabinet}")
+                return None
+            for part in source_signal_dict:
+                refs.append(self._get_ref_for_signal(source_signal=source_signal_dict[part],
+                                                     target_kks=target_signal_dict[part].kks,
+                                                     target_cabinet=target_ts_odu_panel.abonent,
+                                                     target_part=part,
+                                                     target_page=self._options.wired_signal_input_page,
+                                                     target_cell=self._options.wired_signal_input_cell))
+            return None, refs
 
-
-
-
+    def _get_ref_for_signal(self, source_signal: Signal, target_kks: str, target_part: str, target_cabinet: int,
+                            target_page, target_cell) -> SignalRef:
+        ref: str
+        if source_signal.type == SignalType.DIGITAL:
+            ref: str = f'{target_cabinet}\\{target_kks}_{target_part}\\{target_page}\\{target_cell}'
+        else:
+            ref: str = f'{target_cabinet}\\{self._options.wired_signal_input_port}:{target_kks}_{target_part}\\' \
+                       f'{target_page}\\{target_cell}'
+        signal_ref: SignalRef = SignalRef(kks=source_signal.kks,
+                                          part=source_signal.part,
+                                          ref=ref,
+                                          unrel_ref=None)
+        return signal_ref
 
     def _get_ref_for_wired_schemas(self) -> list[SignalRef] | None:
         """

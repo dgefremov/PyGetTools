@@ -10,11 +10,11 @@ from tools.utils.log_utils import configure_logger
 def run_scripts():
     configure_logger('log', 'log')
     options: Options = Options.load_ruppur()
-    base_path: str = 'C:\\Data\\ПТК СКУ ЭЧ ЭБ_3.12.accdb'
+    base_path: str = 'C:\\Data\\Руппур\\ПТК СКУ ЭЧ ЭБ_3.14.accdb'
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
-    # GenerateTables.run(options=options.generate_table_options, base_path=base_path)
+    GenerateTables.run(options=options.generate_table_options, base_path=base_path)
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
@@ -26,7 +26,7 @@ def run_scripts():
 
     # Расстановка ссылок
     # Закомментировать если не используется
-    FillRef2.run(options=options.fill_ref2_options, base_path=base_path)
+    # FillRef2.run(options=options.fill_ref2_options, base_path=base_path)
 
     # Поиск вариантов схем
     # Закомментировать если не используется

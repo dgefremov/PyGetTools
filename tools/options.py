@@ -304,6 +304,10 @@ class Options:
                                                                         wired_template_dsw2, wired_template_avr],
                                                              wired_signal_input_page=2,
                                                              wired_signal_input_cell=5,
+                                                             ts_odu_algorithm=None,
+                                                             ts_odu_table=None,
+                                                             ts_odu_panels=None,
+                                                             abonent_table=None,
                                                              wired_signal_input_port='Port1')
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
