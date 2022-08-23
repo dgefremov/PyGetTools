@@ -14,7 +14,7 @@ def run_scripts():
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
-    GenerateTables.run(options=options.generate_table_options, base_path=base_path)
+    # GenerateTables.run(options=options.generate_table_options, base_path=base_path)
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
@@ -26,7 +26,7 @@ def run_scripts():
 
     # Расстановка ссылок
     # Закомментировать если не используется
-    # FillRef2.run(options=options.fill_ref2_options, base_path=base_path)
+    FillRef2.run(options=options.fill_ref2_options, base_path=base_path)
 
     # Поиск вариантов схем
     # Закомментировать если не используется

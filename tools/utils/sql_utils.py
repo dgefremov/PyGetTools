@@ -27,7 +27,7 @@ class Connection:
 
     def retrieve_data(self, table_name: str, fields: list[str],
                       key_names: list[str] | None = None,
-                      key_values: list[str] | None = None,
+                      key_values: list[str | int | bool | None] | None = None,
                       uniq_values: bool = False,
                       sort_by: list[str] | None = None,
                       key_operator: list[str] | None = None) -> list[dict[str, str]]:
@@ -44,9 +44,9 @@ class Connection:
                 raise Exception("AccessError")
 
             key_column_placeholder: str = ''
-            key_values_for_query = []
+            key_values_for_query: list[str | int | bool] = []
             for index in range(len(key_values)):
-                if key_values[index].casefold() == 'null'.casefold():
+                if key_values[index] is None:
                     part_string = '{0} {1} NULL'.format(key_names[index],
                                                         'IS' if key_operator is None else key_operator[index])
                 else:

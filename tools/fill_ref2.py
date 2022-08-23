@@ -480,7 +480,9 @@ class FillRef2:
         ref_list: list[SignalRef] = []
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.predifend_control_schemas_table,
-            fields=['KKS', 'SCHEMA', 'PART', 'CABINET'])
+            fields=['KKS', 'SCHEMA', 'PART', 'CABINET'],
+            key_names=['ONLY_FOR_REF'],
+            key_values=[False])
         for value in values:
             schema_kks = value['KKS']
             schema_part = value['PART']
@@ -837,6 +839,8 @@ class FillRef2:
         ref_for_wired_schemas: list[SignalRef] | None = self._get_ref_for_wired_schemas()
         if ref_for_wired_schemas is not None and ref_for_predefined_schemas is not None:
             ref_list: list[SignalRef] = ref_for_predefined_schemas + ref_for_wired_schemas
+            ts_odu_ref_list, virtual_schemas = self._get_ref_for_ts_odu()
+            ref_list += ts_odu_ref_list
             self._access.clear_table(table_name=self._options.ref_table)
             self._access.clear_table(table_name=self._options.control_schemas_table)
             self._write_ref(ref_list=ref_list)

@@ -3,7 +3,7 @@ from tools.generate_tables import GenerateTableOptions, DoublePointSignal, SWTem
 from tools.fill_mms_address import FillMMSAddressOptions, DPCSignal, DatasetDescription, DatasetDescriptionList, \
     BSCSignal, SignalRange
 from tools.fill_ref import FillRefOptions, VirtualTemplate, TemplateVariant, DefinedVariant
-from tools.fill_ref2 import FillRef2Options, InputPort, OutputPort, Template
+from tools.fill_ref2 import FillRef2Options, InputPort, OutputPort, Template, TSODUPanel
 from tools.find_schemas import FindSchemasOptions, Schema
 
 from dataclasses import dataclass
@@ -254,17 +254,6 @@ class Options:
                                              input_ports={'XA40': template_dacnps_input_ports},
                                              output_ports={'XA40': template_dacnps_output_ports})
 
-        template_dsign_input_ports: list[InputPort] = []
-        template_dsign_output_ports_1: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
-                                                                      part='XL50')]
-        template_dsign_output_ports_2: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
-                                                                      part='XL51')]
-        template_sign: Template = Template(name='DSIGN',
-                                           input_ports={'XA50': template_dsign_input_ports,
-                                                        'XA51': template_dsign_input_ports},
-                                           output_ports={'XA50': template_dsign_output_ports_1,
-                                                         'XA51': template_dsign_output_ports_2})
-
         template_dsync_input_ports: list[InputPort] = []
         template_dsync_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
                                                                     part='XL03')]
@@ -292,6 +281,16 @@ class Options:
         wired_template_avr: Template = Template(name='SW_1623_AVR',
                                                 input_ports={'XA00': wired_template_avr_input_ports},
                                                 output_ports={'XA00': wired_template_avr_output_ports})
+        ts_odu_panel1: TSODUPanel = TSODUPanel(name='10CWG09',
+                                               confirm_part='XA1',
+                                               abonent=321)
+        ts_odu_panel2: TSODUPanel = TSODUPanel(name='10CWG10',
+                                               confirm_part='XA1',
+                                               abonent=321)
+        ts_odu_panel3: TSODUPanel = TSODUPanel(name='10CWB40',
+                                               confirm_part='XA1',
+                                               abonent=321)
+
         fill_ref2_options: FillRef2Options = FillRef2Options(control_schemas_table='[VIRTUAL SCHEMAS]',
                                                              predifend_control_schemas_table='[PREDEFINED SCHEMAS]',
                                                              ref_table='[REF]',
@@ -299,15 +298,16 @@ class Options:
                                                              iec_table='[МЭК 61850]',
                                                              templates=[template_dsw1, template_dsw2, template_dsw3,
                                                                         template_dsw4, template_davr2, template_dltc2,
-                                                                        template_ddgs, template_dacnps, template_sign,
+                                                                        template_ddgs, template_dacnps,
                                                                         template_dsync, wired_template_dsw1,
                                                                         wired_template_dsw2, wired_template_avr],
                                                              wired_signal_input_page=2,
                                                              wired_signal_input_cell=5,
-                                                             ts_odu_algorithm=None,
-                                                             ts_odu_table=None,
-                                                             ts_odu_panels=None,
-                                                             abonent_table=None,
+                                                             ts_odu_algorithm='TS_ODU_LOGIC',
+                                                             ts_odu_table='Сигналы и механизмы ТС ОДУ',
+                                                             ts_odu_panels=[ts_odu_panel1, ts_odu_panel2,
+                                                                            ts_odu_panel3],
+                                                             abonent_table='TPTS',
                                                              wired_signal_input_port='Port1')
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
