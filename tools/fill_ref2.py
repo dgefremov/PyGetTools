@@ -17,8 +17,8 @@ class InputPort:
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class OutputPort:
     name: str
-    page: int
-    cell_num: int
+    page: int | None
+    cell_num: int | None
     kks: str | None
     part: str
 
@@ -173,7 +173,7 @@ class FillRef2:
         if len(values) == 0:
             return None, None, ErrorType.NOVALUES
         if len(values) == 1:
-            return values[0]['KKS'], values[1]['CABINET'], ErrorType.NOERROR
+            return values[0]['KKS'], values[0]['CABINET'], ErrorType.NOERROR
 
     def _get_signal_from_iec_by_kks(self, kks: str, kksp: str | None,
                                     port: InputPort | OutputPort, cabinet: str | None) -> tuple[str | None,
@@ -366,9 +366,12 @@ class FillRef2:
         :return: KKSp для данного KKS
         """
         kksp_list: list[str] = []
-        for output_port in template.output_ports[schema_part]:
+        port_list: list[InputPort | OutputPort] = template.output_ports[schema_part] \
+            if len(template.output_ports[schema_part]) > 0 else template.input_ports[schema_part]
+        for output_port in port_list:
             values_from_sim: list[dict[str, str]]
-            kks: str = output_port.kks if output_port.kks is not None else schema_kks
+            kks: str = output_port.kks if isinstance(output_port,
+                                                     OutputPort) and output_port.kks is not None else schema_kks
             values_from_sim = self._access.retrieve_data(table_name=self._options.sim_table,
                                                          fields=['KKSp'],
                                                          key_names=['KKS', 'PART', 'MODULE', 'CABINET'],
@@ -390,7 +393,8 @@ class FillRef2:
                               f' c KKS={schema_kks}')
                 return None
             if len(values_from_iec) == 0 and len(values_from_sim) == 0:
-                logging.error(f'Не найдена команда {output_port.part} для шаблона {template.name} c KKS={schema_kks}')
+                # Не ставить сюдя бряк! Дебаг почему-то падает :(
+                logging.error(f'Не найдена команда {output_port.part} для шаблона {template.name} c KKS={kks}')
                 return None
             kksp: str = values_from_sim[0]['KKSp'] if len(values_from_sim) == 1 else values_from_iec[0]['KKSp']
             kksp_list.append(kksp)
@@ -431,7 +435,7 @@ class FillRef2:
             else:
                 unrel_ref = None
         else:
-            ref: str = f'{cabinet_prefix}\\{self._options.wired_signal_input_port}:{schema_kks}_{schema_part}\\' \
+            ref: str = f'{self._options.wired_signal_input_port}{cabinet_prefix}\\{schema_kks}_{schema_part}\\' \
                        f'{input_port.page}\\{input_port.cell_num}'
             unrel_ref = None
         signal_ref: SignalRef = SignalRef(kks=signal.kks,
@@ -458,13 +462,15 @@ class FillRef2:
                                                           template_name=template_name)
         if signal is None:
             return None
-        cabinet_prefix: str = '' if signal.cabinet == cabinet else f'{signal.cabinet}\\'
         ref: str
-        if signal.type == SignalType.DIGITAL:
-            ref = f'{cabinet_prefix}\\{output_port.name}:{signal.kks}_{signal.part}'
-        else:
-            ref = f'{cabinet_prefix}\\{output_port.name}:{signal.kks}_{signal.part}\\' \
-                  f'{self._options.wired_signal_input_page}\\{self._options.wired_signal_input_cell}'
+        ref = '' if output_port.name is None else output_port.name
+        ref += '' if signal.cabinet == cabinet else f'{signal.cabinet}\\'
+        ref += f'{signal.kks}_{signal.part}'
+        if signal == SignalType.WIRED:
+            if output_port.page is None or output_port.cell_num is None:
+                ref += f'{self._options.wired_signal_input_page}\\{self._options.wired_signal_input_cell}'
+            else:
+                ref += f'{output_port.page}\\{output_port.cell_num}'
         signal_ref: SignalRef = SignalRef(kks=signal.kks,
                                           part=signal.part,
                                           ref=ref,
@@ -739,18 +745,21 @@ class FillRef2:
         ref_list: list[SignalRef] = []
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.sim_table,
-            fields=['KKS', 'SCHEMA', 'PART', 'CABINET'],
+            fields=['KKS', 'SCHEMA', 'PART', 'CABINET', 'KKSp'],
             key_names=['OBJECT_TYP'],
             key_values=['SW'])
         for value in values:
-            schema_kks = value['KKS']
-            schema_part = value['PART']
-            cabinet = value['CABINET']
-            template_name = value['SCHEMA']
+            schema_kks: str = value['KKS']
+            schema_part: str = value['PART']
+            cabinet: str = value['CABINET']
+            template_name: str = value['SCHEMA']
+            kksp: str = value['KKSp']
+
             ref_list_for_schema: list[SignalRef] | None = self._get_ref_for_schema(schema_kks=schema_kks,
                                                                                    schema_part=schema_part,
                                                                                    cabinet=cabinet,
-                                                                                   template_name=template_name)
+                                                                                   template_name=template_name,
+                                                                                   kksp=kksp)
             if ref_list_for_schema is None:
                 error_flag = True
             else:
@@ -759,14 +768,15 @@ class FillRef2:
             return None
         return ref_list
 
-    def _get_ref_for_schema(self, schema_kks: str, schema_part: str, cabinet: str, template_name: str) \
-            -> list[SignalRef] | None:
+    def _get_ref_for_schema(self, schema_kks: str, schema_part: str, cabinet: str, template_name: str,
+                            kksp: str | None = None) -> list[SignalRef] | None:
         """
         Генерация ссылок для схемы управления
         :param schema_kks: KKS схемы управления
         :param schema_part: PART схемы управления
         :param cabinet: Имя стойки
         :param template_name: Имя шаблона (для диагностических сообщений)
+        :param kksp: Код терминала (если известен)
         :return: Список ссылок либо None при ошибке
         """
         ref_list: list[SignalRef] = []
@@ -778,12 +788,16 @@ class FillRef2:
         if schema_part not in template.input_ports or schema_part not in template.output_ports:
             logging.error(f'Не найдены сигналы для шаблона {template_name} для PART {schema_part}')
             return None
-        kksp: str | None = self._get_kksp_for_template(template=template,
-                                                       schema_kks=schema_kks,
-                                                       schema_part=schema_part,
-                                                       cabinet=cabinet)
+        if len(template.input_ports[schema_part]) == 0 and len(template.output_ports[schema_part]) == 0:
+            return ref_list
         if kksp is None:
-            return None
+
+            kksp = self._get_kksp_for_template(template=template,
+                                               schema_kks=schema_kks,
+                                               schema_part=schema_part,
+                                               cabinet=cabinet)
+            if kksp is None:
+                return None
 
         input_port_list: list[InputPort] | None = template.input_ports[schema_part]
         if input_port_list is not None:
