@@ -61,13 +61,21 @@ class VirtualSchema:
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class TSODUData:
+    confirm_command: InputPort
+    input_ports: list[InputPort]
+    output_ports: list[OutputPort]
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class Template:
     name: str
     input_ports: dict[str, list[InputPort]]
     output_ports: dict[str, list[OutputPort]]
+    ts_odu_data: TSODUData | None = None
 
     def clone(self) -> 'Template':
-        return Template(self.name, self.input_ports, self.output_ports)
+        return Template(self.name, self.input_ports, self.output_ports, self.ts_odu_data)
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -511,7 +519,7 @@ class FillRef2:
                                                                   fields=['CABINET', 'ABONENT'])
         return {value['CABINET']: int(value['ABONENT']) for value in values}
 
-    def _get_signal_from_dynamic_algorithm(self, kks: str, part: str) -> \
+    def _get_signal_for_ts_odu_logic(self, kks: str, part: str) -> \
             tuple[Signal | None, ErrorType]:
         values_from_sim: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table,
                                                                            fields=['CABINET'],
@@ -553,8 +561,8 @@ class FillRef2:
             table_name=self._options.ts_odu_algorithm,
             fields=['KKS', 'PART', 'CABINET', 'INST_PLACE'])
         for value in values:
-            source_signal, source_error = self._get_signal_from_dynamic_algorithm(kks=value['KKS'],
-                                                                                  part=value['PART'])
+            source_signal, source_error = self._get_signal_for_ts_odu_logic(kks=value['KKS'],
+                                                                            part=value['PART'])
             if source_error != ErrorType.NOERROR != ErrorType.NOERROR:
                 ok_flag = False
                 continue
@@ -573,7 +581,34 @@ class FillRef2:
         if not ok_flag:
             return None
 
-    def _get_target_signals_for_dynamic_template(self, dynamic_template: DynamicTemplate) -> list[Signal]:
+    def _get_refs_for_ts_odu_in_define_schema(self, schema_kks: str, schema_part: str, ts_odu_data: TSODUData,
+                                              mozaic_element: MozaicElement) -> list[SignalRef] | None:
+        refs: list[SignalRef] = []
+        ts_odu_panel: TSODUPanel | None = next((panel for panel in self._options.ts_odu_panels if panel.name ==
+                                                mozaic_element.cabinet), None)
+        if ts_odu_panel is None:
+            logging.error(f'Не найдена панель ТС ОДУ {mozaic_element.cabinet}')
+            return None
+        signals_in_mozaic_element: list[Signal] = []
+        values: list[dict[str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
+                                                             fields=['KKS_NEW', 'PART'],
+                                                             key_names=['INST_PLACE', 'CABINET'],
+                                                             key_values=[mozaic_element.place, mozaic_element.cabinet])
+        if len(values) == 0:
+            logging.error(f'Не найден сигналы для мозаичного элемента {mozaic_element.place} панели '
+                          f'{mozaic_element.cabinet}')
+            return None
+        if len(values) != (len(ts_odu_data.output_ports) + len(ts_odu_data.input_ports)):
+            logging.error(f'Число сигналов для мозаичного элемента {mozaic_element.place} панели '
+                          f'{mozaic_element.cabinet} не совпадает с числом сигналов в шаблоне')
+            return None
+        if list.([value for value in values if value['PART'].startswith('XL')]) !=
+            
+        if ts_odu_data.confirm_command is not None:
+            pass
+        return refs
+
+    def _get_target_signals_for_ts_odu(self, dynamic_template: DynamicTemplate) -> list[Signal]:
         signals: list[Signal] = []
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
                                                                   fields=['KKS', 'PART', 'NAME_RUS'],
@@ -612,14 +647,14 @@ class FillRef2:
                                                  target_cell=cell_num))
         return virtual_schema, refs
 
-    def _get_refs_for_dynamic_template(self, dynamic_template: DynamicTemplate, abonent_map: dict[str, int]) -> \
+    def _get_refs_for_dynamic_template(self, dynamic_template: DynamicTemplate) -> \
             tuple[list[VirtualSchema] | None, list[SignalRef]] | None:
         target_ts_odu_panel: TSODUPanel | None = next((panel for panel in self._options.ts_odu_panels
                                                        if panel.name == dynamic_template.target.cabinet), None)
         if target_ts_odu_panel is None:
             logging.error(f"Не найдена панель ТС ОДУ с именем {dynamic_template.target.cabinet}")
             return None
-        target_signals: list[Signal] = self._get_target_signals_for_dynamic_template(dynamic_template=dynamic_template)
+        target_signals: list[Signal] = self._get_target_signals_for_ts_odu(dynamic_template=dynamic_template)
         if len(target_signals) == 1:
             target_signal: Signal = target_signals[0]
             # Если в шаблоне 1 сигнал-источник и 1 сигнал приемник, то сразу формируется ссылка
@@ -769,7 +804,8 @@ class FillRef2:
         return ref_list
 
     def _get_ref_for_schema(self, schema_kks: str, schema_part: str, cabinet: str, template_name: str,
-                            kksp: str | None = None) -> list[SignalRef] | None:
+                            kksp: str | None = None, mozaic_element: MozaicElement | None = None) -> \
+            list[SignalRef] | None:
         """
         Генерация ссылок для схемы управления
         :param schema_kks: KKS схемы управления
@@ -777,6 +813,7 @@ class FillRef2:
         :param cabinet: Имя стойки
         :param template_name: Имя шаблона (для диагностических сообщений)
         :param kksp: Код терминала (если известен)
+        :param mozaic_element: Мозаичный элемент (если есть)
         :return: Список ссылок либо None при ошибке
         """
         ref_list: list[SignalRef] = []
@@ -791,7 +828,6 @@ class FillRef2:
         if len(template.input_ports[schema_part]) == 0 and len(template.output_ports[schema_part]) == 0:
             return ref_list
         if kksp is None:
-
             kksp = self._get_kksp_for_template(template=template,
                                                schema_kks=schema_kks,
                                                schema_part=schema_part,
@@ -824,6 +860,8 @@ class FillRef2:
                     return None
                 ref_list.append(signal_ref)
             return ref_list
+        if template.ts_odu_data is not None:
+            pass
 
     def _write_ref(self, ref_list: list[SignalRef]) -> None:
         """
