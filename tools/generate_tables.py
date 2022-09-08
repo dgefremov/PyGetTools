@@ -263,16 +263,13 @@ class GenerateTables:
         sw_containers: dict[SWTemplate, dict[str, list[Signal]]] = {}
         for sw_template in self._options.sw_templates:
             sw_containers[sw_template] = {}
-        undubled_container: list[Signal] = []
         for value in values:
             ProgressBar.update_progress()
             signal: Signal = Signal.create_from_row(value)
             if signal.module in ['1623', '1631', '1661', '1662', '1671', '1673']:
                 self._process_wired_signal(signal=signal, sw_containers=sw_containers)
             elif signal.module == '1691':
-                self._process_digital_signal(signal=signal,
-                                             undubled_signal_container=undubled_container)
-        self._check_undubled_signals(undubled_signal_container=undubled_container)
+                self._process_digital_signal(signal=signal)
         self._flush_sw_container(sw_containers=sw_containers)
         self._access_base.commit()
 
@@ -303,47 +300,12 @@ class GenerateTables:
             return next(dps_signal.on_part for dps_signal in self._options.dps_signals
                         if dps_signal.off_part.casefold() == part.casefold())
 
-    def _check_undubled_signals(self, undubled_signal_container: list[Signal]) -> None:
-        """
-        Проверка пар для раздвоенных сигналов (которые изначально были в базе). Для сигналов без пары создается сигнал
-        :param undubled_signal_container: Хранилище для раздвоенных сигналов
-        :return: None
-        """
-        dict_with_status: dict[Signal, bool] = {signal: False for signal in undubled_signal_container}
-        for signal in dict_with_status:
-            if dict_with_status[signal]:
-                continue
-            paired_part: str = self._get_part_pair(signal.part)
-            paired_signal: Signal = next((signal for signal in list(dict_with_status.keys())
-                                          if signal.part.casefold() == paired_part.casefold()), None)
-            if paired_signal is not None:
-                dict_with_status[paired_signal] = True
-                continue
-            else:
-                new_signal: Signal = signal.clone()
-                new_signal.part = paired_part
-                self._add_signal_to_iec_table(signal=new_signal)
-                if self._options.copy_ds_to_sim_table:
-                    self._add_signal_to_sim_table(signal=new_signal)
-
-    def _process_digital_signal(self, signal: Signal, undubled_signal_container: list[Signal]) -> None:
+    def _process_digital_signal(self, signal: Signal) -> None:
         """
         Обработка цифрового сигнала
         :param signal: Сигнал (строка из базы)
-        :param undubled_signal_container: хранилище для раздвоенных сигналов (которые изначально были в базе)
         :return: None
         """
-        if signal.part in list(sum([(dps_signal.on_part, dps_signal.off_part) for dps_signal in
-                                    self._options.dps_signals], ())):
-            if signal.name_rus is not None:
-                signal.name_rus = self._sanitizate_signal_name(signal.name_rus)
-            if signal.full_name_rus is not None:
-                signal.full_name_rus = self._sanitizate_signal_name(signal.full_name_rus)
-            if signal.name_eng is not None:
-                signal.name_eng = self._sanitizate_signal_name(signal.name_eng)
-            if signal.full_name_eng is not None:
-                signal.full_name_eng = self._sanitizate_signal_name(signal.full_name_eng)
-            undubled_signal_container.append(signal)
         if signal.part in [dps_signal.single_part for dps_signal in self._options.dps_signals
                            if dps_signal.single_part is not None] and \
                 not any(signal.kks.upper().startswith(item_kks.upper()) and signal.part.upper() == item_part.upper()

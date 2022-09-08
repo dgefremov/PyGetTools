@@ -272,7 +272,7 @@ class FillRef2:
         :return: Сигнал как кортеж KKS, PART, ФлагЦифровогоСигнала
         """
         kks: str = port.kks if port.kks is not None else schema_kks
-        # Поиск сигнала в таблице СИМ по KKS, PART
+        # Поиск сигнала в таблице СИМ  по KKS, PART
         found_kks, _, error = self._get_signal_from_sim_by_kks(cabinet=cabinet,
                                                                kks=kks,
                                                                kksp=kksp,
@@ -301,10 +301,17 @@ class FillRef2:
                           part=port.part,
                           cabinet=cabinet,
                           type=SignalType.DIGITAL)
-        # Если сигнал задан шаблоном, то на этом этапе он уже должен быть найден
         if port.kks is not None:
-            logging.error(f'Не найден сигнал для шаблона {template_name} с KKS {schema_kks} для порта '
-                          f'с PART {port.part}')
+            # Если сигнал задан шаблоном, то можно попробовать поискать во втором комплекте:
+            if kksp.endswith('A01') or kksp.endswith('A11'):
+                return self._get_signal_for_port(schema_kks=schema_kks,
+                                                 cabinet=cabinet,
+                                                 port=port,
+                                                 template_name=template_name,
+                                                 kksp=kksp[:-1] + '2')
+            else:
+                logging.error(f'Не найден сигнал для шаблона {template_name} с KKS {schema_kks} для порта '
+                              f'с PART {port.part}')
         # Поиск сигнала в таблице СИМ по PART и KKSp
         kks, result = self._get_signal_from_sim_by_kksp(kksp=kksp,
                                                         port=port,
@@ -504,7 +511,7 @@ class FillRef2:
             template_name = value['SCHEMA']
             ref_list_for_schema: list[SignalRef] | None = self._get_ref_for_schema(schema_kks=schema_kks,
                                                                                    schema_part=schema_part,
-                                                                                   cabinet=cabinet,
+                                                                                   schema_cabinet=cabinet,
                                                                                    template_name=template_name)
             if ref_list_for_schema is None:
                 error_flag = True
@@ -516,8 +523,8 @@ class FillRef2:
 
     def _get_abonent_map(self) -> dict[str, int]:
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.abonent_table,
-                                                                  fields=['CABINET', 'ABONENT'])
-        return {value['CABINET']: int(value['ABONENT']) for value in values}
+                                                                  fields=['CABINET', 'ABONENT_ID'])
+        return {value['CABINET']: int(value['ABONENT_ID']) for value in values}
 
     def _get_signal_for_ts_odu_logic(self, kks: str, part: str) -> \
             tuple[Signal | None, ErrorType]:
@@ -581,8 +588,9 @@ class FillRef2:
         if not ok_flag:
             return None
 
-    def _get_refs_for_ts_odu_in_define_schema(self, schema_kks: str, schema_part: str, ts_odu_data: TSODUData,
-                                              mozaic_element: MozaicElement) -> list[SignalRef] | None:
+    def _get_refs_for_ts_odu_in_define_schema(self, schema_kks: str, schema_part: str, schema_abonent: int,
+                                              schema_cabinet, ts_odu_data: TSODUData, mozaic_element: MozaicElement) \
+            -> list[SignalRef] | None:
         refs: list[SignalRef] = []
         ts_odu_panel: TSODUPanel | None = next((panel for panel in self._options.ts_odu_panels if panel.name ==
                                                 mozaic_element.cabinet), None)
@@ -602,8 +610,44 @@ class FillRef2:
             logging.error(f'Число сигналов для мозаичного элемента {mozaic_element.place} панели '
                           f'{mozaic_element.cabinet} не совпадает с числом сигналов в шаблоне')
             return None
-        if list.([value for value in values if value['PART'].startswith('XL')]) !=
-            
+        if sum(value['PART'].startswith('XL') for value in values) != ts_odu_data.output_ports:
+            logging.error(f'Число команд для мозаичного элемента {mozaic_element.place} панели '
+                          f'{mozaic_element.cabinet} не совпадает с числом сигналов в шаблоне')
+            return None
+        for value in values:
+            signals_in_mozaic_element.append(Signal(kks=value['KKS'],
+                                                    part=value['PART'],
+                                                    cabinet=mozaic_element.cabinet,
+                                                    type=SignalType.TS_ODU))
+        for ouput_port in ts_odu_data.output_ports:
+            output_signal: Signal | None = next((signal for signal in signals_in_mozaic_element
+                                                 if signal.part == ouput_port.part), None)
+            if output_signal is None:
+                logging.error(f'Не найден сигнал {ouput_port.part}')
+                return None
+            refs.append(self._get_ref_for_signal(source_signal=Signal(kks=schema_kks,
+                                                                      part=schema_part,
+                                                                      cabinet=schema_cabinet,
+                                                                      type=SignalType.WIRED),
+                                                 target_kks=output_signal.kks,
+                                                 target_part=output_signal.part,
+                                                 target_cabinet=ts_odu_panel.abonent,
+                                                 target_page=self._options.wired_signal_input_page,
+                                                 target_cell=self._options.wired_signal_input_cell,
+                                                 source_port=ouput_port.name))
+        for input_port in ts_odu_data.input_ports:
+            input_signal: Signal | None = next((signal for signal in signals_in_mozaic_element
+                                                if signal.part == input_port.part), None)
+            if input_signal is None:
+                logging.error(f'Не найден сигнал {input_port.part}')
+                return None
+            refs.append(self._get_ref_for_signal(source_signal=input_signal,
+                                                 target_kks=schema_kks,
+                                                 target_part=schema_part,
+                                                 target_cabinet=schema_abonent,
+                                                 target_page=input_port.page,
+                                                 target_cell=input_port.cell_num))
+
         if ts_odu_data.confirm_command is not None:
             pass
         return refs
@@ -758,13 +802,13 @@ class FillRef2:
             return None, refs
 
     def _get_ref_for_signal(self, source_signal: Signal, target_kks: str, target_part: str, target_cabinet: int,
-                            target_page, target_cell) -> SignalRef:
+                            target_page, target_cell, source_port: str | None = None) -> SignalRef:
         ref: str
         if source_signal.type == SignalType.DIGITAL:
             ref: str = f'{target_cabinet}\\{target_kks}_{target_part}\\{target_page}\\{target_cell}'
         else:
-            ref: str = f'{target_cabinet}\\{self._options.wired_signal_input_port}:{target_kks}_{target_part}\\' \
-                       f'{target_page}\\{target_cell}'
+            port_prefix = self._options.wired_signal_input_port if source_port is None else source_port
+            ref: str = f'{port_prefix}:{target_cabinet}\\{target_kks}_{target_part}\\{target_page}\\{target_cell}'
         signal_ref: SignalRef = SignalRef(kks=source_signal.kks,
                                           part=source_signal.part,
                                           ref=ref,
@@ -792,7 +836,7 @@ class FillRef2:
 
             ref_list_for_schema: list[SignalRef] | None = self._get_ref_for_schema(schema_kks=schema_kks,
                                                                                    schema_part=schema_part,
-                                                                                   cabinet=cabinet,
+                                                                                   schema_cabinet=cabinet,
                                                                                    template_name=template_name,
                                                                                    kksp=kksp)
             if ref_list_for_schema is None:
@@ -803,14 +847,14 @@ class FillRef2:
             return None
         return ref_list
 
-    def _get_ref_for_schema(self, schema_kks: str, schema_part: str, cabinet: str, template_name: str,
-                            kksp: str | None = None, mozaic_element: MozaicElement | None = None) -> \
-            list[SignalRef] | None:
+    def _get_ref_for_schema(self, schema_kks: str, schema_part: str, schema_cabinet: str,
+                            template_name: str, kksp: str | None = None,
+                            mozaic_element: MozaicElement | None = None) -> list[SignalRef] | None:
         """
         Генерация ссылок для схемы управления
         :param schema_kks: KKS схемы управления
         :param schema_part: PART схемы управления
-        :param cabinet: Имя стойки
+        :param schema_cabinet: Имя стойки
         :param template_name: Имя шаблона (для диагностических сообщений)
         :param kksp: Код терминала (если известен)
         :param mozaic_element: Мозаичный элемент (если есть)
@@ -819,6 +863,10 @@ class FillRef2:
         ref_list: list[SignalRef] = []
         template: Template | None = next((templ for templ in self._options.templates
                                           if templ.name == template_name), None)
+        schema_abonent: int | None = self._get_abonent_map()[schema_cabinet]
+        if schema_abonent is None:
+            logging.error(f'Не найден абонент для стойки {schema_cabinet}')
+            return None
         if template is None:
             logging.error(f'Не найден шаблон с именем {template_name}')
             return None
@@ -831,7 +879,7 @@ class FillRef2:
             kksp = self._get_kksp_for_template(template=template,
                                                schema_kks=schema_kks,
                                                schema_part=schema_part,
-                                               cabinet=cabinet)
+                                               cabinet=schema_cabinet)
             if kksp is None:
                 return None
 
@@ -840,7 +888,7 @@ class FillRef2:
             for port in input_port_list:
                 signal_ref: SignalRef | None = self._creare_ref_for_input_port(schema_kks=schema_kks,
                                                                                schema_part=schema_part,
-                                                                               cabinet=cabinet,
+                                                                               cabinet=schema_cabinet,
                                                                                input_port=port,
                                                                                kksp=kksp,
                                                                                template_name=template_name)
@@ -852,7 +900,7 @@ class FillRef2:
         if output_port_list is not None:
             for port in output_port_list:
                 signal_ref: SignalRef | None = self._creare_ref_for_output_port(schema_kks=schema_kks,
-                                                                                cabinet=cabinet,
+                                                                                cabinet=schema_cabinet,
                                                                                 output_port=port,
                                                                                 kksp=kksp,
                                                                                 template_name=template_name)
@@ -861,7 +909,14 @@ class FillRef2:
                 ref_list.append(signal_ref)
             return ref_list
         if template.ts_odu_data is not None:
-            pass
+            refs: list[SignalRef] | None = self._get_refs_for_ts_odu_in_define_schema(schema_kks=schema_kks,
+                                                                                      schema_part=schema_part,
+                                                                                      schema_abonent=schema_abonent,
+                                                                                      schema_cabinet=schema_cabinet,
+                                                                                      mozaic_element=mozaic_element,
+                                                                                      ts_odu_data=template.ts_odu_data)
+            if refs is None:
+                return None
 
     def _write_ref(self, ref_list: list[SignalRef]) -> None:
         """
