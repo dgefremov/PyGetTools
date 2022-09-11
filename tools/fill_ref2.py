@@ -105,6 +105,7 @@ class FillRef2Options:
     or_schema_start_cell: int = 3
     or_schema_end_cell: int = 25
     or_schema_kks_postfix: str = 'XM'
+    or_schema_name_postfix: str = 'V'
 
 
 class ErrorType(Enum):
@@ -443,15 +444,16 @@ class FillRef2:
         ref: str
         unrel_ref: str | None
         if signal.type == SignalType.DIGITAL:
-            ref: str = f'{cabinet_prefix}\\{schema_kks}_{schema_part}\\{input_port.page}\\{input_port.cell_num}'
+            ref: str = f'{cabinet_prefix}\\{schema_kks}{self._options.or_schema_name_postfix}_' \
+                       f'{schema_part}\\{input_port.page}\\{input_port.cell_num}'
             if input_port.unrel_ref_cell_num is not None:
-                unrel_ref = f'{cabinet_prefix}\\{schema_kks}_{schema_part}\\{input_port.page}\\' \
-                            f'{input_port.unrel_ref_cell_num}'
+                unrel_ref = f'{cabinet_prefix}\\{schema_kks}{self._options.or_schema_name_postfix}_' \
+                            f'{schema_part}\\{input_port.page}\\{input_port.unrel_ref_cell_num}'
             else:
                 unrel_ref = None
         else:
-            ref: str = f'{self._options.wired_signal_input_port}{cabinet_prefix}\\{schema_kks}_{schema_part}\\' \
-                       f'{input_port.page}\\{input_port.cell_num}'
+            ref: str = f'{self._options.wired_signal_input_port}:{cabinet_prefix}\\{schema_kks}' \
+                       f'{self._options.or_schema_name_postfix}_{schema_part}\\{input_port.page}\\{input_port.cell_num}'
             unrel_ref = None
         signal_ref: SignalRef = SignalRef(kks=signal.kks,
                                           part=signal.part,
@@ -691,6 +693,74 @@ class FillRef2:
                                                  target_cell=cell_num))
         return virtual_schema, refs
 
+    def _create_schemas_for_or_logic(self, source_signals: list[Signal], target_signal: Signal,
+                                     target_ts_odu_panel: TSODUPanel) -> tuple[list[VirtualSchema], list[SignalRef]]:
+
+        # Сначала формируется словарь, где ключ - это имя стойки, значение - список сигналов от этой стойки,
+        # т.е. группировка сигналов по имени стойки
+        source_signals_by_cabinet: dict[str, list[Signal]] = {}
+        for source_signal in source_signals:
+            signals_in_cabinet: list[Signal] | None = source_signals_by_cabinet[source_signal.cabinet]
+            if signals_in_cabinet is None:
+                signals_in_cabinet = [source_signal]
+                source_signals_by_cabinet[source_signal.cabinet] = signals_in_cabinet
+            else:
+                signals_in_cabinet.append(source_signal)
+        # Если стойка одна, то только для нее формируем схему OR
+        if len(source_signals_by_cabinet.keys()) == 1:
+            virtual_schema, refs = self._create_virtual_schema(target_signal=target_signal,
+                                                               source_signals=list(list(source_signals_by_cabinet.
+                                                                                        values())[0]),
+                                                               target_abonent=target_ts_odu_panel.abonent,
+                                                               index='001')
+            return [virtual_schema], refs
+        # Если стоек несколько - для каждой формируем схему OR и общую схему OR в панели ТС ОДУ
+        cabinet_index: int = 0
+        virtual_schemas: list[VirtualSchema] = []
+        source_cabinet_or_signals: list[Signal] = []
+        refs: list[SignalRef] = []
+        target_or_schema_signal: Signal = Signal(
+            kks=f'{target_signal.kks[0:7]}{self._options.or_schema_kks_postfix}'
+                f'000',
+            part=target_signal.part,
+            cabinet=target_signal.cabinet,
+            type=SignalType.TS_ODU,
+            descr=target_signal.descr)
+        for cabinet in source_signals_by_cabinet.keys():
+            cabinet_index += 1
+            if len(source_signals_by_cabinet[cabinet]) == 1:
+                # Если сигнал в стойке один - сразу создаем ссылку без создания OR схемы
+                source_signal: Signal = source_signals_by_cabinet[cabinet][0]
+                refs.append(self._get_ref_for_signal(source_signal=source_signal,
+                                                     target_cabinet=target_ts_odu_panel.abonent,
+                                                     target_kks=target_or_schema_signal.kks,
+                                                     target_part=target_or_schema_signal.part,
+                                                     target_page=self._options.wired_signal_input_page,
+                                                     target_cell=self._options.wired_signal_input_cell))
+            else:
+                # Если сигналов несколько, предварительно создаем OR схему в шкафу
+                cabinet_schema, cabinet_refs = self._create_virtual_schema(
+                    target_signal=target_or_schema_signal,
+                    source_signals=source_signals_by_cabinet[cabinet],
+                    target_abonent=target_ts_odu_panel.abonent,
+                    index=str(cabinet_index).zfill(3))
+                source_cabinet_or_signal: Signal = Signal(kks=cabinet_schema.kks,
+                                                          part=cabinet_schema.part,
+                                                          cabinet=cabinet,
+                                                          type=SignalType.TS_ODU)
+                virtual_schemas.append(cabinet_schema)
+                refs += cabinet_refs
+                source_cabinet_or_signals.append(source_cabinet_or_signal)
+            # Создаем схему OR в шкафу ТС ОДУ
+            target_or_schema, target_refs = self._create_virtual_schema(target_signal=target_signal,
+                                                                        target_abonent=target_ts_odu_panel.abonent,
+                                                                        source_signals=source_cabinet_or_signals,
+                                                                        index='000')
+            virtual_schemas.append(target_or_schema)
+            refs += target_refs
+
+            return virtual_schemas, refs
+
     def _get_refs_for_dynamic_template(self, dynamic_template: DynamicTemplate) -> \
             tuple[list[VirtualSchema] | None, list[SignalRef]] | None:
         target_ts_odu_panel: TSODUPanel | None = next((panel for panel in self._options.ts_odu_panels
@@ -699,6 +769,7 @@ class FillRef2:
             logging.error(f"Не найдена панель ТС ОДУ с именем {dynamic_template.target.cabinet}")
             return None
         target_signals: list[Signal] = self._get_target_signals_for_ts_odu(dynamic_template=dynamic_template)
+
         if len(target_signals) == 1:
             target_signal: Signal = target_signals[0]
             # Если в шаблоне 1 сигнал-источник и 1 сигнал приемник, то сразу формируется ссылка
@@ -712,78 +783,46 @@ class FillRef2:
             # Случай, когда несколько сигналов источников на один сигнал приемник
             # В этом случае формируются схемы управления OR
 
-            # Сначала формируется словарь, где ключ - это имя стойки, значение - список сигналов от этой стойки,
-            # т.е. группировка сигналов по имени стойки
-            source_signals_by_cabinet: dict[str, list[Signal]] = {}
-            for source_signal in dynamic_template.source:
-                signals_in_cabinet: list[Signal] | None = source_signals_by_cabinet[source_signal.cabinet]
-                if signals_in_cabinet is None:
-                    signals_in_cabinet = [source_signal]
-                    source_signals_by_cabinet[source_signal.cabinet] = signals_in_cabinet
-                else:
-                    signals_in_cabinet.append(source_signal)
-            # Если стойка одна, то только для нее формируем схему OR
-            if len(source_signals_by_cabinet.keys()) == 1:
-                virtual_schema, refs = self._create_virtual_schema(target_signal=target_signal,
-                                                                   source_signals=list(list(source_signals_by_cabinet.
-                                                                                            values())[0]),
-                                                                   target_abonent=target_ts_odu_panel.abonent,
-                                                                   index='001')
-                return [virtual_schema], refs
-            # Если стоек несколько - для каждой формируем схему OR и общую схему OR в панели ТС ОДУ
-            cabinet_index: int = 0
-            virtual_schemas: list[VirtualSchema] = []
-            source_cabinet_or_signals: list[Signal] = []
-            refs: list[SignalRef] = []
-            target_or_schema_signal: Signal = Signal(
-                kks=f'{target_signal.kks[0:7]}{self._options.or_schema_kks_postfix}'
-                    f'000',
-                part=target_signal.part,
-                cabinet=target_signal.cabinet,
-                type=SignalType.TS_ODU,
-                descr=target_signal.descr)
-            for cabinet in source_signals_by_cabinet.keys():
-                cabinet_index += 1
-                if len(source_signals_by_cabinet[cabinet]) == 1:
-                    # Если сигнал в стойке один - сразу создаем ссылку без создания OR схемы
-                    source_signal: Signal = source_signals_by_cabinet[cabinet][0]
-                    refs.append(self._get_ref_for_signal(source_signal=source_signal,
-                                                         target_cabinet=target_ts_odu_panel.abonent,
-                                                         target_kks=target_or_schema_signal.kks,
-                                                         target_part=target_or_schema_signal.part,
-                                                         target_page=self._options.wired_signal_input_page,
-                                                         target_cell=self._options.wired_signal_input_cell))
-                else:
-                    # Если сигналов несколько, предварительно создаем OR схему в шкафу
-                    cabinet_schema, cabinet_refs = self._create_virtual_schema(
-                        target_signal=target_or_schema_signal,
-                        source_signals=source_signals_by_cabinet[cabinet],
-                        target_abonent=target_ts_odu_panel.abonent,
-                        index=str(cabinet_index).zfill(3))
-                    source_cabinet_or_signal: Signal = Signal(kks=cabinet_schema.kks,
-                                                              part=cabinet_schema.part,
-                                                              cabinet=cabinet,
-                                                              type=SignalType.TS_ODU)
-                    virtual_schemas.append(cabinet_schema)
-                    refs += cabinet_refs
-                    source_cabinet_or_signals.append(source_cabinet_or_signal)
-            # Создаем схему OR в шкафу ТС ОДУ
-            target_or_schema, target_refs = self._create_virtual_schema(target_signal=target_signal,
-                                                                        target_abonent=target_ts_odu_panel.abonent,
-                                                                        source_signals=source_cabinet_or_signals,
-                                                                        index='000')
-            virtual_schemas.append(target_or_schema)
-            refs += target_refs
-            return virtual_schemas, refs
+            return self._create_schemas_for_or_logic(source_signals=dynamic_template.source,
+                                                     target_signal=target_signal,
+                                                     target_ts_odu_panel=target_ts_odu_panel)
 
         if len(target_signals) > 1:
-            # Если сигналов приемников несколько, то сигналы источники должны с ними совпадать по количеству
-            # и по PART
-            if len(dynamic_template.source) != len(target_signals):
-                logging.error(f"Несоответствие количества сигналов для МЭ {dynamic_template.target.place} для панели "
-                              f"ТС ОДУ {dynamic_template.target.cabinet}")
-                return None
             refs: list[SignalRef] = []
+            # Если число сигналов не совпадает, то должен быть всего один сигнал для объединения по или, остальные
+            # прямые ссылки
+            if len(dynamic_template.source) != len(target_signals):
+                result = self._get_mutual_signals(target_signals=target_signals,
+                                                  source_signals=dynamic_template.source)
+                if result is None:
+                    logging.error(
+                        f"Несоответствие количества сигналов для МЭ {dynamic_template.target.place} для панели "
+                        f"ТС ОДУ {dynamic_template.target.cabinet}")
+                    return None
+                # or_signal - сигнал, на который будет объединение по or
+                # mutual_signals - сигналы, на которые будут прямые ссылки
+                or_signal, mutual_signals = result[0], result[1]
+                # необходимо исключить из списки сигналов из базы те сигналы, на которые будут прямые ссылки
+                source_signals_filtered: list[Signal] = []
+                for source_signal in dynamic_template.source:
+                    paired_signal: Signal | None = next(
+                        (source_signal.part == signal.part for signal in mutual_signals), None)
+                    if paired_signal is None:
+                        source_signals_filtered.append(source_signal)
+                    else:
+                        refs.append(self._get_ref_for_signal(source_signal=source_signal,
+                                                             target_kks=paired_signal.kks,
+                                                             target_part=paired_signal.part,
+                                                             target_cabinet=target_ts_odu_panel.abonent,
+                                                             target_page=self._options.wired_signal_input_page,
+                                                             target_cell=self._options.wired_signal_input_page))
+                # Для сигнала, для которого нужно объедиение (or_signal), создаем схемы и ссылки
+                virtual_schemas, refs2 = self._create_schemas_for_or_logic(source_signals=source_signals_filtered,
+                                                                           target_signal=or_signal,
+                                                                           target_ts_odu_panel=target_ts_odu_panel)
+                return virtual_schemas, refs + refs2
+            # Если число сигналов из базы и для ТС ОДУ совпадает, то должно совпадать все PART
+
             # Формируются словари из сигналов источников и сигналов приемников. Ключи - PART
             source_signal_dict: dict[str, Signal] = {signal.part: signal for signal in dynamic_template.source}
             target_signal_dict: dict[str, Signal] = {signal.part: signal for signal in target_signals}
@@ -800,6 +839,21 @@ class FillRef2:
                                                      target_page=self._options.wired_signal_input_page,
                                                      target_cell=self._options.wired_signal_input_cell))
             return None, refs
+
+    @staticmethod
+    def _get_mutual_signals(target_signals: list[Signal], source_signals: list[Signal]) -> \
+            tuple[Signal, list[Signal]] | None:
+        mutual_signals: list[Signal] = []
+        or_signal: Signal | None = None
+        for target_signal in target_signals:
+            if any(source_signal.part == target_signal.part for source_signal in source_signals):
+                mutual_signals.append(target_signal)
+            else:
+                if or_signal is not None:
+                    return None
+                else:
+                    or_signal = target_signal
+        return or_signal, mutual_signals
 
     def _get_ref_for_signal(self, source_signal: Signal, target_kks: str, target_part: str, target_cabinet: int,
                             target_page, target_cell, source_port: str | None = None) -> SignalRef:
