@@ -18,7 +18,7 @@ def run_scripts():
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
-    # FillMMSAdress.run(options=options.fill_mms_address_options, base_path=base_path)
+    FillMMSAdress.run(options=options.fill_mms_address_options, base_path=base_path)
 
     # Расстановка ссылок
     # Закомментировать если не используется
@@ -26,7 +26,7 @@ def run_scripts():
 
     # Расстановка ссылок
     # Закомментировать если не используется
-    FillRef2.run(options=options.fill_ref2_options, base_path=base_path)
+    # FillRef2.run(options=options.fill_ref2_options, base_path=base_path)
 
     # Поиск вариантов схем
     # Закомментировать если не используется

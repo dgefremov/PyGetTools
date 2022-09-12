@@ -1,8 +1,8 @@
 import logging
 from dataclasses import dataclass
 
-from tools.utils.sql_utils import Connection
 from tools.utils.progress_utils import ProgressBar
+from tools.utils.sql_utils import Connection
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -10,18 +10,26 @@ class DPCSignal:
     """
     Класс хранения двухпозицонного сигнала
     """
-    signal_part_dupl: tuple[str, str] | None
-    command_part_dupl: tuple[str, str] | None
+    signal_part: tuple[str, str] | None
+    command_part: tuple[str, str] | None
 
     def is_command(self, value: str) -> bool:
-        if self.command_part_dupl is None:
+        if self.command_part is None:
             return False
-        return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
+        return value.upper() in (command_part.upper() for command_part in self.command_part)
 
     def is_signal(self, value: str) -> bool:
-        if self.signal_part_dupl is None:
+        if self.signal_part is None:
             return False
-        return value.upper() in (signal_part.upper() for signal_part in self.signal_part_dupl)
+        return value.upper() in (signal_part.upper() for signal_part in self.signal_part)
+
+    def get_signals_num(self):
+        signals: int = 0
+        if self.signal_part is not None:
+            signals += 2
+        if self.command_part is not None:
+            signals += 2
+        return signals
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -30,13 +38,18 @@ class BSCSignal:
     Класс хранения сигнала РПН типа BSC
     """
     signal_part: str
-    command_part_dupl: tuple[str, str] | None
+    command_part: tuple[str, str] | None
 
     def is_command(self, value: str) -> bool:
-        return value.upper() in (command_part.upper() for command_part in self.command_part_dupl)
+        return value.upper() in (command_part.upper() for command_part in self.command_part)
 
     def is_signal(self, value: str) -> bool:
         return value.upper() == self.signal_part
+
+    def get_signals_num(self):
+        if self.command_part is not None:
+            return 3
+        return 1
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -123,10 +136,13 @@ class MMSGenerator:
     ied_name: str
     kksp: str
 
-    dpc_container: dict[DPCSignal, dict[str, str]]
-    bsc_container: dict[BSCSignal, dict[str, str]]
+    dpc_signals: list[DPCSignal]
+    bsc_signals: list[BSCSignal]
+
+    dpc_container: dict[str, list[str]]
+    bsc_container: dict[str, list[str]]
     dataset_container: list[DatasetDescription]
-    dataset_descriptions: DatasetDescriptionList | None
+    dataset_descriptions: DatasetDescriptionList
 
     MV_PREFIX = 'Device/GGIO1.AnIn'
     MV_POSTFIX = '.mag.f'
@@ -141,9 +157,9 @@ class MMSGenerator:
     BSC_COMMAND_POSTFIX = '.TapChg.Oper'
     BSC_POS_POSTFIX = '.TapChg.valWTr.posVal'
 
-    DPS_PREFIX = 'Device/GGIO1.DPCSO'
+    DPC_PREFIX = 'Device/GGIO1.DPCSO'
     DPS_COMMAND_POSTFIX = '.Oper'
-    DPS_POS_POSTFIX = '.stVal'
+    DPC_POS_POSTFIX = '.stVal'
 
     def __init__(self, kksp: str, dpc_signals: list[DPCSignal],
                  bsc_signals: list[BSCSignal], dataset_descriptions: DatasetDescriptionList):
@@ -154,70 +170,92 @@ class MMSGenerator:
         self.bsc_index = 0
         self.ied_name = 'IED_' + kksp.replace('-', '_')
         self.kksp = kksp
+        self.dpc_signals = dpc_signals
+        self.bsc_signals = bsc_signals
         self.dpc_container = {}
         self.bsc_container = {}
         self.dataset_container = []
         self.dataset_descriptions = dataset_descriptions
-        for dpc_signal in dpc_signals:
-            self.dpc_container[dpc_signal] = {}
-        for bsc_signal in bsc_signals:
-            self.bsc_container[bsc_signal] = {}
 
-    def get_mms(self, kks: str, part: str):
-        for dpc_signal in self.dpc_container:
+    def get_mms_for_dpc(self, kks: str, part: str) -> list[tuple[str, str, str]] | None:
+        for dpc_signal in self.dpc_signals:
             if dpc_signal.is_signal(part) or dpc_signal.is_command(part):
-                postfix: str = self.DPS_COMMAND_POSTFIX if dpc_signal.is_command(part) else \
-                    self.DPS_POS_POSTFIX
-                if kks not in self.dpc_container[dpc_signal]:
+                if kks not in self.dpc_container:
+                    self.dpc_container[kks] = [part]
+                    return None
+                else:
+                    self.dpc_container[kks].append(part)
+                if len(self.dpc_container[kks]) == dpc_signal.get_signals_num():
+                    del self.dpc_container[kks]
                     self.dpc_index += 1
-                    self.dpc_container[dpc_signal][kks] = self.DPS_PREFIX + str(self.dpc_index)
-                    if self.dataset_descriptions is not None:
-                        dataset: DatasetDescription = self.dataset_descriptions.get_by_dpc_index(self.dpc_index)
-                        if dataset is None:
-                            logging.error(f'Не найден Dataset для DPS {self.dpc_index}')
-                            raise Exception('DatasetError')
-                        if not self.dataset_container.__contains__(dataset):
-                            self.dataset_container.append(dataset)
-                return self.ied_name + self.dpc_container[dpc_signal][kks] + postfix
+                    dataset: DatasetDescription | None = self.dataset_descriptions.get_by_dpc_index(self.dpc_index)
+                    if dataset is None:
+                        logging.error(f'Не найден Dataset для DPC {self.bsc_index}')
+                        raise Exception('DatasetError')
+                    if not self.dataset_container.__contains__(dataset):
+                        self.dataset_container.append(dataset)
+                    command_adress: str = self.ied_name + self.DPC_PREFIX + str(
+                        self.dpc_index) + self.DPS_COMMAND_POSTFIX
+                    signal_address: str = self.ied_name + self.DPC_PREFIX + str(self.dpc_index) + self.DPC_POS_POSTFIX
+                    mms_addresses: list[tuple[str, str, str]] = []
+                    if dpc_signal.signal_part is not None:
+                        mms_addresses.append((kks, dpc_signal.signal_part[0], signal_address))
+                        mms_addresses.append((kks, dpc_signal.signal_part[1], signal_address))
+                    if dpc_signal.command_part is not None:
+                        mms_addresses.append((kks, dpc_signal.command_part[0], command_adress))
+                        mms_addresses.append((kks, dpc_signal.command_part[1], command_adress))
+                    return mms_addresses
 
-        for bsc_signal in self.bsc_container:
+                return None
+        return None
+
+    def get_mms_for_bsc(self, kks: str, part: str) -> list[tuple[str, str, str]] | None:
+        for bsc_signal in self.bsc_signals:
             if bsc_signal.is_signal(part) or bsc_signal.is_command(part):
-                postfix: str = self.BSC_COMMAND_POSTFIX if bsc_signal.is_command(part) else \
-                    self.BSC_POS_POSTFIX
-                if kks not in self.bsc_container[bsc_signal]:
+                if kks not in self.bsc_container:
+                    self.bsc_container[kks] = [part]
+                    return None
+                else:
+                    self.bsc_container[kks].append(part)
+                if len(self.bsc_container[kks]) == bsc_signal.get_signals_num():
+                    del self.bsc_container[kks]
                     self.bsc_index += 1
-                    self.bsc_container[bsc_signal][kks] = self.BSC_PREFIX + str(self.bsc_index)
-                    if self.dataset_descriptions is not None:
-                        dataset: DatasetDescription = self.dataset_descriptions.get_by_bsc_index(self.bsc_index)
-                        if dataset is None:
-                            logging.error(f'Не найден Dataset для BSC {self.bsc_index}')
-                            raise Exception('DatasetError')
-                        if not self.dataset_container.__contains__(dataset):
-                            self.dataset_container.append(dataset)
-                return self.ied_name + self.bsc_container[bsc_signal][kks] + postfix
+                    dataset: DatasetDescription | None = self.dataset_descriptions.get_by_bsc_index(self.bsc_index)
+                    if dataset is None:
+                        logging.error(f'Не найден Dataset для BSC {self.bsc_index}')
+                        raise Exception('DatasetError')
+                    if not self.dataset_container.__contains__(dataset):
+                        self.dataset_container.append(dataset)
+                    command_adress: str = self.ied_name + self.BSC_PREFIX + str(
+                        self.bsc_index) + self.BSC_COMMAND_POSTFIX
+                    signal_address: str = self.ied_name + self.BSC_PREFIX + str(self.bsc_index) + self.BSC_POS_POSTFIX
+                    return [(kks, bsc_signal.signal_part, signal_address),
+                            (kks, bsc_signal.command_part[0], command_adress),
+                            (kks, bsc_signal.command_part[1], command_adress)]
+        return None
 
-        if part.upper().startswith('XL'):
-            self.spc_index += 1
-            if self.dataset_descriptions is not None:
-                dataset: DatasetDescription = self.dataset_descriptions.get_by_spc_index(self.spc_index)
-                if dataset is None:
-                    logging.error(f'Не найден Dataset для SPC {self.spc_index}')
-                    raise Exception('DatasetError')
-                if not self.dataset_container.__contains__(dataset):
-                    self.dataset_container.append(dataset)
-            return self.ied_name + self.SPC_PREFIX + str(self.spc_index) + self.SPC_POSTFIX
+    def get_mms_for_spc(self, kks: str, part: str) -> list[tuple[str, str, str]]:
+        self.spc_index += 1
+        dataset: DatasetDescription = self.dataset_descriptions.get_by_spc_index(self.spc_index)
+        if dataset is None:
+            logging.error(f'Не найден Dataset для SPC {self.spc_index}')
+            raise Exception('DatasetError')
+        if not self.dataset_container.__contains__(dataset):
+            self.dataset_container.append(dataset)
+        return [(kks, part, self.ied_name + self.SPC_PREFIX + str(self.spc_index) + self.SPC_POSTFIX)]
 
-        if part.upper().startswith('XQ'):
-            self.mv_index += 1
-            if self.dataset_descriptions is not None:
-                dataset: DatasetDescription = self.dataset_descriptions.get_by_mv_index(self.mv_index)
-                if dataset is None:
-                    logging.error(f'Не найден Dataset для MV {self.mv_index}')
-                    raise Exception('DatasetError')
-                if not self.dataset_container.__contains__(dataset):
-                    self.dataset_container.append(dataset)
-            return self.ied_name + self.MV_PREFIX + str(self.mv_index) + self.MV_POSTFIX
+    def get_mms_for_mv(self, kks: str, part: str) -> list[tuple[str, str, str]]:
+        self.mv_index += 1
+        if self.dataset_descriptions is not None:
+            dataset: DatasetDescription = self.dataset_descriptions.get_by_mv_index(self.mv_index)
+            if dataset is None:
+                logging.error(f'Не найден Dataset для MV {self.mv_index}')
+                raise Exception('DatasetError')
+            if not self.dataset_container.__contains__(dataset):
+                self.dataset_container.append(dataset)
+        return [(kks, part, self.ied_name + self.MV_PREFIX + str(self.mv_index) + self.MV_POSTFIX)]
 
+    def get_mms_for_sps(self, kks: str, part: str) -> list[tuple[str, str, str]]:
         self.sps_index += 1
         if self.dataset_descriptions is not None:
             dataset: DatasetDescription = self.dataset_descriptions.get_by_sps_index(self.sps_index)
@@ -226,7 +264,105 @@ class MMSGenerator:
                 raise Exception('DatasetError')
             if not self.dataset_container.__contains__(dataset):
                 self.dataset_container.append(dataset)
-        return self.ied_name + self.SPS_PREFIX + str(self.sps_index) + self.SPS_POSTFIX
+        return [(kks, part, self.ied_name + self.SPS_PREFIX + str(self.sps_index) + self.SPS_POSTFIX)]
+
+    def get_mms(self, kks: str, part: str) -> list[tuple[str, str, str]] | None:
+        if any(dpc_signal.is_signal(part) or dpc_signal.is_command(part) for dpc_signal in self.dpc_signals):
+            return self.get_mms_for_dpc(kks=kks,
+                                        part=part)
+        if any(bsc_signal.is_signal(part) or bsc_signal.is_command(part) for bsc_signal in self.bsc_signals):
+            return self.get_mms_for_bsc(kks=kks,
+                                        part=part)
+        if part.upper().startswith('XL'):
+            return self.get_mms_for_spc(kks=kks,
+                                        part=part)
+        if part.upper().startswith('XQ'):
+            return self.get_mms_for_mv(kks=kks,
+                                       part=part)
+        return self.get_mms_for_sps(kks=kks,
+                                    part=part)
+
+    def add_undubled_signals(self) -> list[tuple[str, str, str]]:
+        mms_addresses: list[tuple[str, str, str]] = []
+        # Сначала ищем ККС в котором только команды
+        for dpc_signal in self.dpc_signals:
+            keys: list[str] = list(self.dpc_container)
+            # Только для команд у которых есть и команды и сигналы
+            if dpc_signal.signal_part is None or dpc_signal.command_part is None:
+                continue
+            commands_parts_set: set[str] = {part for part in dpc_signal.command_part}
+            signals_parts_set: set[str] = {part for part in dpc_signal.signal_part}
+            removed_keys: list[str] = []
+            for kks_with_commands in keys:
+                if kks_with_commands in removed_keys:
+                    continue
+                if commands_parts_set == set(self.dpc_container[kks_with_commands]):
+                    # дальше пытаемся найти ККС в котором есть сигналы для данных команд
+                    for kks_with_signals in keys:
+                        if kks_with_signals in removed_keys:
+                            continue
+                        if signals_parts_set == set(self.dpc_container[kks_with_signals]) \
+                                and kks_with_signals[:6] == kks_with_commands[:6]:
+                            del self.dpc_container[kks_with_signals]
+                            del self.dpc_container[kks_with_commands]
+                            removed_keys.append(kks_with_signals)
+                            removed_keys.append(kks_with_commands)
+                            self.dpc_index += 1
+                            dataset: DatasetDescription | None = self.dataset_descriptions.get_by_dpc_index(
+                                self.dpc_index)
+                            if dataset is None:
+                                logging.error(f'Не найден Dataset для DPC {self.bsc_index}')
+                                raise Exception('DatasetError')
+                            if not self.dataset_container.__contains__(dataset):
+                                self.dataset_container.append(dataset)
+                            command_adress: str = self.ied_name + self.DPC_PREFIX + str(
+                                self.dpc_index) + self.DPS_COMMAND_POSTFIX
+                            signal_address: str = self.ied_name + self.DPC_PREFIX + str(
+                                self.dpc_index) + self.DPC_POS_POSTFIX
+
+                            mms_addresses.append((kks_with_signals, dpc_signal.signal_part[0], signal_address))
+                            mms_addresses.append((kks_with_signals, dpc_signal.signal_part[1], signal_address))
+                            mms_addresses.append((kks_with_commands, dpc_signal.command_part[0], command_adress))
+                            mms_addresses.append((kks_with_commands, dpc_signal.command_part[1], command_adress))
+            if len(self.dpc_container) == 0:
+                return mms_addresses
+        # Следующий шаг: ищем ККС в которых есть только сигналы
+        for dpc_signal in self.dpc_signals:
+            keys: list[str] = list(self.dpc_container)
+            removed_keys: list[str] = []
+            if dpc_signal.command_part is not None:
+                continue
+            signals_parts_set: set[str] = {part for part in dpc_signal.signal_part}
+            for kks_with_signals in keys:
+                if kks_with_signals in removed_keys:
+                    continue
+                if set(self.dpc_container[kks_with_signals]) == signals_parts_set:
+                    del self.dpc_container[kks_with_signals]
+                    removed_keys.append(kks_with_signals)
+                    self.dpc_index += 1
+                    dataset: DatasetDescription | None = self.dataset_descriptions.get_by_dpc_index(
+                        self.dpc_index)
+                    if dataset is None:
+                        logging.error(f'Не найден Dataset для DPC {self.bsc_index}')
+                        raise Exception('DatasetError')
+                    if not self.dataset_container.__contains__(dataset):
+                        self.dataset_container.append(dataset)
+                    signal_address: str = self.ied_name + self.DPC_PREFIX + str(
+                        self.dpc_index) + self.DPC_POS_POSTFIX
+
+                    mms_addresses.append((kks_with_signals, dpc_signal.signal_part[0], signal_address))
+                    mms_addresses.append((kks_with_signals, dpc_signal.signal_part[1], signal_address))
+        # Все оставшиеся сигналы классифицируются как SPC\SPS
+        for kks in self.dpc_container:
+            part_list: list[str] = self.dpc_container[kks]
+            for part in part_list:
+                if any(dpc_signal.is_signal(part) for dpc_signal in self.dpc_signals):
+                    mms_addresses.append((kks, part, self.ied_name + self.SPS_PREFIX + str(self.sps_index) +
+                                          self.SPS_POSTFIX))
+                else:
+                    mms_addresses.append((kks, part, self.ied_name + self.SPC_PREFIX + str(self.spc_index) +
+                                          self.SPC_POSTFIX))
+        return mms_addresses
 
 
 class FillMMSAdress:
@@ -264,20 +400,25 @@ class FillMMSAdress:
                                                                        fields=['KKS', 'PART'],
                                                                        key_names=['KKSp'],
                                                                        key_values=[kksp])
+        mms_addresses: list[tuple[str, str, str]] = []
         for value in values:
             kks: str = value['KKS']
             part: str = value['PART']
-            mms_path: str = mms_generator.get_mms(kks=kks,
-                                                  part=part)
+            result: tuple[str, str, str] | None = mms_generator.get_mms(kks=kks,
+                                                                        part=part)
+            if result is not None:
+                mms_addresses += result
+        mms_addresses += mms_generator.add_undubled_signals()
+        for kks, part, mms_address in mms_addresses:
             mms: str = ''
             mms_pos: str = ''
             mms_com: str = ''
             if part.startswith('XL') or part.startswith('XA'):
-                mms_com = mms_path
+                mms_com = mms_address
             elif part.upper().startswith('XB'):
-                mms_pos = mms_path
+                mms_pos = mms_address
             else:
-                mms = mms_path
+                mms = mms_address
             self._access_base.update_field(table_name=self._options.iec_table_name,
                                            fields=['MMS', 'MMS_POS', 'MMS_COM'],
                                            values=[mms, mms_pos, mms_com],

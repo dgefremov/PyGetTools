@@ -86,20 +86,23 @@ class Options:
         # <-------------------------------generate_table_options------------------------------------------------------->
 
         # <-------------------------------fill_mms_address_options----------------------------------------------------->
-        dps_signal_cb = DPCSignal(signal_part_dupl=('XB01', 'XB02'),
-                                  command_part_dupl=('XL01', 'XL02'))
+        dps_signal_cb = DPCSignal(signal_part=('XB01', 'XB02'),
+                                  command_part=('XL01', 'XL02'))
 
-        dps_signal_alt = DPCSignal(signal_part_dupl=('XB21', 'XB22'),
-                                   command_part_dupl=('XL21', 'XL22'))
+        dps_signal_cb3 = DPCSignal(signal_part=('XB01', 'XB02'),
+                                   command_part=None)
 
-        dps_signal_gb = DPCSignal(signal_part_dupl=('XB31', 'XB32'),
-                                  command_part_dupl=None)
+        dps_signal_alt = DPCSignal(signal_part=('XB21', 'XB22'),
+                                   command_part=('XL21', 'XL22'))
 
-        dps_signal_cb2 = DPCSignal(signal_part_dupl=('XB01', 'XB02'),
-                                   command_part_dupl=('XA01', 'XA02'))
+        dps_signal_gb = DPCSignal(signal_part=('XB31', 'XB32'),
+                                  command_part=None)
+
+        dps_signal_cb2 = DPCSignal(signal_part=('XB01', 'XB02'),
+                                   command_part=('XA01', 'XA02'))
 
         bsc_signal = BSCSignal(signal_part='XB10',
-                               command_part_dupl=('XL11', 'XL12'))
+                               command_part=('XL11', 'XL12'))
 
         dataset_1: DatasetDescription = DatasetDescription(name='Dataset01',
                                                            sps_range=SignalRange(1, 50),
@@ -122,7 +125,7 @@ class Options:
                                                            rcb_main='Device/LLN0.RP.Report_A_DS3',
                                                            rcb_res='Device/LLN0.RP.Report_B_DS3')
 
-        dpc_signals: list[DPCSignal] = [dps_signal_cb, dps_signal_cb2, dps_signal_alt, dps_signal_gb]
+        dpc_signals: list[DPCSignal] = [dps_signal_cb, dps_signal_cb2, dps_signal_alt, dps_signal_gb, dps_signal_cb3]
 
         fill_mms_options: FillMMSAddressOptions = FillMMSAddressOptions(iec_table_name='[МЭК 61850]',
                                                                         ied_table_name='[IED]',
