@@ -17,10 +17,16 @@ class InputPort:
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class OutputPort:
     name: str
-    page: int | None
-    cell_num: int | None
-    kks: str | None
     part: str
+    kks: str | None
+    page: int | None = None
+    cell_num: int | None = None
+    blink_port_name: str | None = None
+    blink_page: int | None = None
+    blink_cell_num: int | None = None
+    flicker_port_name: str | None = None
+    flicker_page: int | None = None
+    flicker_cell_num: int | None = None
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -62,7 +68,8 @@ class VirtualSchema:
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class TSODUData:
-    confirm_command: InputPort
+    confirm_command_page: str | None
+    confirm_command_cell: int | None
     input_ports: list[InputPort]
     output_ports: list[OutputPort]
 
@@ -98,9 +105,13 @@ class FillRef2Options:
     iec_table: str
     abonent_table: str
     templates: [Template]
-    wired_signal_input_page: int
-    wired_signal_input_cell: int
-    wired_signal_input_port: str
+    wired_signal_output_default_page: int
+    wired_signal_output_default_cell: int
+    wired_signal_output_blink_default_page: int
+    wired_signal_output_blink_default_cell: int
+    wired_signal_output_flicker_default_page: int
+    wired_signal_output_flicker_default_cell: int
+    wired_signal_default_input_port: str
     or_schema_name_prefix: str = 'OR_'
     or_schema_start_cell: int = 3
     or_schema_end_cell: int = 25
@@ -304,7 +315,7 @@ class FillRef2:
                           type=SignalType.DIGITAL)
         if port.kks is not None:
             # Если сигнал задан шаблоном, то можно попробовать поискать во втором комплекте:
-            if kksp.endswith('A01') or kksp.endswith('A11'):
+            if kksp.endswith('A01') or kksp.endswith('A11') or kksp.endswith('A1'):
                 return self._get_signal_for_port(schema_kks=schema_kks,
                                                  cabinet=cabinet,
                                                  port=port,
@@ -452,7 +463,7 @@ class FillRef2:
             else:
                 unrel_ref = None
         else:
-            ref: str = f'{self._options.wired_signal_input_port}:{cabinet_prefix}\\{schema_kks}' \
+            ref: str = f'{self._options.wired_signal_default_input_port}:{cabinet_prefix}\\{schema_kks}' \
                        f'{self._options.or_schema_name_postfix}_{schema_part}\\{input_port.page}\\{input_port.cell_num}'
             unrel_ref = None
         signal_ref: SignalRef = SignalRef(kks=signal.kks,
@@ -462,7 +473,7 @@ class FillRef2:
         return signal_ref
 
     def _creare_ref_for_output_port(self, schema_kks: str, cabinet: str, output_port: OutputPort, kksp: str,
-                                    template_name: str) -> SignalRef | None:
+                                    template_name: str) -> list[SignalRef] | None:
         """
         Создание ссылки для выходного сигналы схемы управления
         :param schema_kks: KKS схемы управления
@@ -470,7 +481,7 @@ class FillRef2:
         :param output_port: Выходной порт
         :param kksp: KKS терминала
         :param template_name: Имя шаблона (для диагностических сообщений)
-        :return: SignalRef или None
+        :return: SignalRefs или None
         """
         signal: Signal | None = self._get_signal_for_port(schema_kks=schema_kks,
                                                           cabinet=cabinet,
@@ -479,20 +490,50 @@ class FillRef2:
                                                           template_name=template_name)
         if signal is None:
             return None
+        signal_refs: list[SignalRef] = []
         ref: str
         ref = '' if output_port.name is None else output_port.name
         ref += '' if signal.cabinet == cabinet else f'{signal.cabinet}\\'
         ref += f'{signal.kks}_{signal.part}'
-        if signal == SignalType.WIRED:
+        if signal.type == SignalType.WIRED or signal.type == SignalType.TS_ODU:
             if output_port.page is None or output_port.cell_num is None:
-                ref += f'{self._options.wired_signal_input_page}\\{self._options.wired_signal_input_cell}'
+                ref += f'{self._options.wired_signal_output_default_page}\\' \
+                       f'{self._options.wired_signal_output_default_cell}'
+                signal_ref: SignalRef = SignalRef(kks=signal.kks,
+                                                  part=signal.part,
+                                                  ref=ref,
+                                                  unrel_ref=None)
+                signal_refs.append(signal_ref)
+            if output_port.blink_port_name is not None:
+                ref_blink: str = output_port.blink_port_name
+                ref_blink += '' if signal.cabinet == cabinet else f'{signal.cabinet}\\'
+                ref_blink += f'{signal.kks}_{signal.part}'
+                ref += f'{self._options.wired_signal_output_blink_default_page}\\' \
+                       f'{self._options.wired_signal_output_default_cell}'
+                signal_blink_ref: SignalRef = SignalRef(kks=signal.kks,
+                                                        part=signal.part,
+                                                        ref=ref_blink,
+                                                        unrel_ref=None)
+                signal_refs.append(signal_blink_ref)
+            if output_port.flicker_port_name is not None:
+                ref_flicker: str = output_port.flicker_port_name
+                ref_flicker += '' if signal.cabinet == cabinet else f'{signal.cabinet}\\'
+                ref_flicker += f'{signal.kks}_{signal.part}'
+                ref_flicker += f'{self._options.wired_signal_output_flicker_default_page}\\' \
+                               f'{self._options.wired_signal_output_flicker_default_cell}'
+                signal_ref_flicker: SignalRef = SignalRef(kks=signal.kks,
+                                                          part=signal.part,
+                                                          ref=ref_flicker,
+                                                          unrel_ref=None)
+                signal_refs.append(signal_ref_flicker)
             else:
                 ref += f'{output_port.page}\\{output_port.cell_num}'
-        signal_ref: SignalRef = SignalRef(kks=signal.kks,
-                                          part=signal.part,
-                                          ref=ref,
-                                          unrel_ref=None)
-        return signal_ref
+                signal_ref: SignalRef = SignalRef(kks=signal.kks,
+                                                  part=signal.part,
+                                                  ref=ref,
+                                                  unrel_ref=None)
+                signal_refs.append(signal_ref)
+        return signal_refs
 
     def _get_ref_for_defined_schemas(self) -> list[SignalRef] | None:
         """
@@ -634,8 +675,8 @@ class FillRef2:
                                                  target_kks=output_signal.kks,
                                                  target_part=output_signal.part,
                                                  target_cabinet=ts_odu_panel.abonent,
-                                                 target_page=self._options.wired_signal_input_page,
-                                                 target_cell=self._options.wired_signal_input_cell,
+                                                 target_page=self._options.wired_signal_output_default_page,
+                                                 target_cell=self._options.wired_signal_output_default_cell,
                                                  source_port=ouput_port.name))
         for input_port in ts_odu_data.input_ports:
             input_signal: Signal | None = next((signal for signal in signals_in_mozaic_element
@@ -735,8 +776,8 @@ class FillRef2:
                                                      target_cabinet=target_ts_odu_panel.abonent,
                                                      target_kks=target_or_schema_signal.kks,
                                                      target_part=target_or_schema_signal.part,
-                                                     target_page=self._options.wired_signal_input_page,
-                                                     target_cell=self._options.wired_signal_input_cell))
+                                                     target_page=self._options.wired_signal_output_default_page,
+                                                     target_cell=self._options.wired_signal_output_default_cell))
             else:
                 # Если сигналов несколько, предварительно создаем OR схему в шкафу
                 cabinet_schema, cabinet_refs = self._create_virtual_schema(
@@ -778,8 +819,8 @@ class FillRef2:
                                                        target_kks=target_signal.kks,
                                                        target_part=target_signal.part,
                                                        target_cabinet=target_ts_odu_panel.abonent,
-                                                       target_page=self._options.wired_signal_input_page,
-                                                       target_cell=self._options.wired_signal_input_page)]
+                                                       target_page=self._options.wired_signal_output_default_page,
+                                                       target_cell=self._options.wired_signal_output_default_page)]
             # Случай, когда несколько сигналов источников на один сигнал приемник
             # В этом случае формируются схемы управления OR
 
@@ -814,8 +855,8 @@ class FillRef2:
                                                              target_kks=paired_signal.kks,
                                                              target_part=paired_signal.part,
                                                              target_cabinet=target_ts_odu_panel.abonent,
-                                                             target_page=self._options.wired_signal_input_page,
-                                                             target_cell=self._options.wired_signal_input_page))
+                                                             target_page=self._options.wired_signal_output_default_page,
+                                                             target_cell=self._options.wired_signal_output_default_page))
                 # Для сигнала, для которого нужно объедиение (or_signal), создаем схемы и ссылки
                 virtual_schemas, refs2 = self._create_schemas_for_or_logic(source_signals=source_signals_filtered,
                                                                            target_signal=or_signal,
@@ -836,8 +877,8 @@ class FillRef2:
                                                      target_kks=target_signal_dict[part].kks,
                                                      target_cabinet=target_ts_odu_panel.abonent,
                                                      target_part=part,
-                                                     target_page=self._options.wired_signal_input_page,
-                                                     target_cell=self._options.wired_signal_input_cell))
+                                                     target_page=self._options.wired_signal_output_default_page,
+                                                     target_cell=self._options.wired_signal_output_default_cell))
             return None, refs
 
     @staticmethod
@@ -861,7 +902,7 @@ class FillRef2:
         if source_signal.type == SignalType.DIGITAL:
             ref: str = f'{target_cabinet}\\{target_kks}_{target_part}\\{target_page}\\{target_cell}'
         else:
-            port_prefix = self._options.wired_signal_input_port if source_port is None else source_port
+            port_prefix = self._options.wired_signal_default_input_port if source_port is None else source_port
             ref: str = f'{port_prefix}:{target_cabinet}\\{target_kks}_{target_part}\\{target_page}\\{target_cell}'
         signal_ref: SignalRef = SignalRef(kks=source_signal.kks,
                                           part=source_signal.part,
