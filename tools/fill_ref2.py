@@ -15,6 +15,16 @@ class InputPort:
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class TSODUDescription:
+    panels: list['TSODUPanel']
+    alarm_sound_kks: str
+    alarm_sound_part: str
+    warning_sound_kks: str
+    warning_sound_part: str
+    cabinet: str
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class OutputPort:
     name: str
     part: str
@@ -40,14 +50,15 @@ class Signal:
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class MozaicElement:
-    cabinet: str
     place: str
+    ts_odu_panel: str
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class TSODUPanel:
     name: str
-    confirm_part: str
+    confirm_part: str | None
+    confirm_kks: str | None
     abonent: int
 
 
@@ -68,10 +79,12 @@ class VirtualSchema:
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class TSODUData:
-    confirm_command_page: str | None
-    confirm_command_cell: int | None
     input_ports: list[InputPort]
     output_ports: list[OutputPort]
+    confirm_command_page: str | None = None
+    confirm_command_cell: int | None = None
+    emergency_sound_port_name: str | None = None
+    warning_sound_port_name: str | None = None
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -99,7 +112,7 @@ class FillRef2Options:
     predifend_control_schemas_table: str
     ts_odu_algorithm: str
     ts_odu_table: str
-    ts_odu_panels: list[TSODUPanel]
+    ts_odu_info: TSODUDescription
     ref_table: str
     sim_table: str
     iec_table: str
@@ -115,7 +128,6 @@ class FillRef2Options:
     or_schema_name_prefix: str = 'OR_'
     or_schema_start_cell: int = 3
     or_schema_end_cell: int = 25
-    or_schema_kks_postfix: str = 'XM'
     or_schema_name_postfix: str = 'V'
 
 
@@ -134,10 +146,12 @@ class SignalType(Enum):
 class FillRef2:
     _options: FillRef2Options
     _access: Connection
+    _abonent_map: dict[str, int]
 
     def __init__(self, options: FillRef2Options, access: Connection):
         self._options = options
         self._access = access
+        self._abonent_map = self._get_abonent_map()
 
     @staticmethod
     def choose_signal_by_kksp(values: list[dict, str], kksp: str) -> tuple[str | None, ErrorType]:
@@ -431,9 +445,8 @@ class FillRef2:
             return None
         return kksp_list[0]
 
-    def _creare_ref_for_input_port(self, schema_kks: str, schema_part: str, cabinet: str, input_port: InputPort,
-                                   kksp: str,
-                                   template_name: str) -> SignalRef | None:
+    def _creare_ref_for_input_port(self, schema_kks: str, schema_part: str, cabinet: str,
+                                   input_port: InputPort, kksp: str, template_name: str) -> SignalRef | None:
         """
         Создание ссылки для входного сигналы схемы управления
         :param schema_kks: KKS схемы управления
@@ -451,19 +464,19 @@ class FillRef2:
                                                           template_name=template_name)
         if signal is None:
             return None
-        cabinet_prefix: str = '' if signal.cabinet == cabinet else f'{cabinet}\\'
+        cabinet_prefix: str = '' if signal.cabinet == cabinet else f'{self._abonent_map[signal.cabinet]}\\'
         ref: str
         unrel_ref: str | None
         if signal.type == SignalType.DIGITAL:
-            ref: str = f'{cabinet_prefix}\\{schema_kks}{self._options.or_schema_name_postfix}_' \
+            ref: str = f'{cabinet_prefix}{schema_kks}{self._options.or_schema_name_postfix}_' \
                        f'{schema_part}\\{input_port.page}\\{input_port.cell_num}'
             if input_port.unrel_ref_cell_num is not None:
-                unrel_ref = f'{cabinet_prefix}\\{schema_kks}{self._options.or_schema_name_postfix}_' \
+                unrel_ref = f'{cabinet_prefix}{schema_kks}{self._options.or_schema_name_postfix}_' \
                             f'{schema_part}\\{input_port.page}\\{input_port.unrel_ref_cell_num}'
             else:
                 unrel_ref = None
         else:
-            ref: str = f'{self._options.wired_signal_default_input_port}:{cabinet_prefix}\\{schema_kks}' \
+            ref: str = f'{self._options.wired_signal_default_input_port}:{cabinet_prefix}{schema_kks}' \
                        f'{self._options.or_schema_name_postfix}_{schema_part}\\{input_port.page}\\{input_port.cell_num}'
             unrel_ref = None
         signal_ref: SignalRef = SignalRef(kks=signal.kks,
@@ -472,8 +485,8 @@ class FillRef2:
                                           unrel_ref=unrel_ref)
         return signal_ref
 
-    def _creare_ref_for_output_port(self, schema_kks: str, cabinet: str, output_port: OutputPort, kksp: str,
-                                    template_name: str) -> list[SignalRef] | None:
+    def _creare_ref_for_output_port(self, schema_kks: str, schema_part: str,  cabinet: str, output_port: OutputPort, kksp: str,
+                                    template_name: str, signal: Signal | None = None) -> list[SignalRef] | None:
         """
         Создание ссылки для выходного сигналы схемы управления
         :param schema_kks: KKS схемы управления
@@ -483,56 +496,65 @@ class FillRef2:
         :param template_name: Имя шаблона (для диагностических сообщений)
         :return: SignalRefs или None
         """
-        signal: Signal | None = self._get_signal_for_port(schema_kks=schema_kks,
-                                                          cabinet=cabinet,
-                                                          port=output_port,
-                                                          kksp=kksp,
-                                                          template_name=template_name)
+        if signal is None:
+            signal: Signal | None = self._get_signal_for_port(schema_kks=schema_kks,
+                                                              cabinet=cabinet,
+                                                              port=output_port,
+                                                              kksp=kksp,
+                                                              template_name=template_name)
         if signal is None:
             return None
         signal_refs: list[SignalRef] = []
         ref: str
-        ref = '' if output_port.name is None else output_port.name
-        ref += '' if signal.cabinet == cabinet else f'{signal.cabinet}\\'
+        ref = '' if output_port.name is None else f'{output_port.name}:'
+        ref += '' if signal.cabinet == cabinet else f'{self._abonent_map[cabinet]}\\'
         ref += f'{signal.kks}_{signal.part}'
         if signal.type == SignalType.WIRED or signal.type == SignalType.TS_ODU:
             if output_port.page is None or output_port.cell_num is None:
-                ref += f'{self._options.wired_signal_output_default_page}\\' \
+                ref += f'\\{self._options.wired_signal_output_default_page}\\' \
                        f'{self._options.wired_signal_output_default_cell}'
-                signal_ref: SignalRef = SignalRef(kks=signal.kks,
-                                                  part=signal.part,
-                                                  ref=ref,
-                                                  unrel_ref=None)
-                signal_refs.append(signal_ref)
+            else:
+                ref += f'\\{output_port.page}\\{output_port.cell_num}'
+
+            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.or_schema_name_postfix,
+                                              part=schema_part,
+                                              ref=ref,
+                                              unrel_ref=None)
+            signal_refs.append(signal_ref)
             if output_port.blink_port_name is not None:
-                ref_blink: str = output_port.blink_port_name
-                ref_blink += '' if signal.cabinet == cabinet else f'{signal.cabinet}\\'
+                ref_blink: str = f'{output_port.blink_port_name}:'
+                ref_blink += '' if signal.cabinet == cabinet else f'{self._abonent_map[cabinet]}\\'
                 ref_blink += f'{signal.kks}_{signal.part}'
-                ref += f'{self._options.wired_signal_output_blink_default_page}\\' \
-                       f'{self._options.wired_signal_output_default_cell}'
-                signal_blink_ref: SignalRef = SignalRef(kks=signal.kks,
-                                                        part=signal.part,
+                if output_port.blink_page is None or output_port.blink_cell_num is None:
+                    ref_blink += f'\\{self._options.wired_signal_output_blink_default_page}\\' \
+                                 f'{self._options.wired_signal_output_blink_default_cell}'
+                else:
+                    ref_blink += f'\\{output_port.blink_page}\\{output_port.blink_cell_num}'
+                signal_blink_ref: SignalRef = SignalRef(kks=schema_kks + self._options.or_schema_name_postfix,
+                                                        part=schema_part,
                                                         ref=ref_blink,
                                                         unrel_ref=None)
                 signal_refs.append(signal_blink_ref)
             if output_port.flicker_port_name is not None:
-                ref_flicker: str = output_port.flicker_port_name
-                ref_flicker += '' if signal.cabinet == cabinet else f'{signal.cabinet}\\'
+                ref_flicker: str = f'{output_port.flicker_port_name:}'
+                ref_flicker += '' if signal.cabinet == cabinet else f'{self._abonent_map[cabinet]}\\'
                 ref_flicker += f'{signal.kks}_{signal.part}'
-                ref_flicker += f'{self._options.wired_signal_output_flicker_default_page}\\' \
-                               f'{self._options.wired_signal_output_flicker_default_cell}'
-                signal_ref_flicker: SignalRef = SignalRef(kks=signal.kks,
-                                                          part=signal.part,
+                if output_port.flicker_page is None or output_port.flicker_cell_num is None:
+                    ref_flicker += f'\\{self._options.wired_signal_output_flicker_default_page}\\' \
+                                   f'{self._options.wired_signal_output_flicker_default_cell}'
+                else:
+                    ref_flicker += f'\\{output_port.flicker_page}\\{output_port.flicker_cell_num}'
+                signal_ref_flicker: SignalRef = SignalRef(kks=schema_kks + self._options.or_schema_name_postfix,
+                                                          part=schema_part,
                                                           ref=ref_flicker,
                                                           unrel_ref=None)
                 signal_refs.append(signal_ref_flicker)
-            else:
-                ref += f'{output_port.page}\\{output_port.cell_num}'
-                signal_ref: SignalRef = SignalRef(kks=signal.kks,
-                                                  part=signal.part,
-                                                  ref=ref,
-                                                  unrel_ref=None)
-                signal_refs.append(signal_ref)
+        else:
+            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.or_schema_name_postfix,
+                                              part=schema_part,
+                                              ref=ref,
+                                              unrel_ref=None)
+            signal_refs.append(signal_ref)
         return signal_refs
 
     def _get_ref_for_defined_schemas(self) -> list[SignalRef] | None:
@@ -544,18 +566,22 @@ class FillRef2:
         ref_list: list[SignalRef] = []
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.predifend_control_schemas_table,
-            fields=['KKS', 'SCHEMA', 'PART', 'CABINET'],
-            key_names=['ONLY_FOR_REF'],
-            key_values=[False])
+            fields=['KKS', 'SCHEMA', 'PART', 'CABINET', 'TS_ODU_PANEL', 'INST_PLACE'])
         for value in values:
             schema_kks = value['KKS']
             schema_part = value['PART']
             cabinet = value['CABINET']
             template_name = value['SCHEMA']
+            mozaic_element: MozaicElement | None = None
+            if value['TS_ODU_PANEL'] is not None and value['TS_ODU_PANEL'] != '' and \
+                    value['INST_PLACE'] is not None and value['INST_PLACE'] != '':
+                mozaic_element = MozaicElement(ts_odu_panel=value['TS_ODU_PANEL'],
+                                               place=value['INST_PLACE'])
             ref_list_for_schema: list[SignalRef] | None = self._get_ref_for_schema(schema_kks=schema_kks,
                                                                                    schema_part=schema_part,
                                                                                    schema_cabinet=cabinet,
-                                                                                   template_name=template_name)
+                                                                                   template_name=template_name,
+                                                                                   mozaic_element=mozaic_element)
             if ref_list_for_schema is None:
                 error_flag = True
             else:
@@ -609,18 +635,19 @@ class FillRef2:
         dynamic_templates: list[DynamicTemplate] = []
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.ts_odu_algorithm,
-            fields=['KKS', 'PART', 'CABINET', 'INST_PLACE'])
+            fields=['KKS', 'PART', 'CABINET', 'INST_PLACE', 'TS_ODU_PANEL'])
         for value in values:
             source_signal, source_error = self._get_signal_for_ts_odu_logic(kks=value['KKS'],
                                                                             part=value['PART'])
             if source_error != ErrorType.NOERROR != ErrorType.NOERROR:
                 ok_flag = False
                 continue
-            mozaic_element: MozaicElement = MozaicElement(cabinet=value['CABINET'],
-                                                          place=value['INST_PLACE'])
+            mozaic_element: MozaicElement = MozaicElement(place=value['INST_PLACE'],
+                                                          ts_odu_panel=value['TS_ODU_PANEL'])
 
             dynamic_template: DynamicTemplate | None = next((template for template in dynamic_templates
-                                                             if template.target.cabinet == mozaic_element.cabinet and
+                                                             if
+                                                             template.target.ts_odu_panel == mozaic_element.ts_odu_panel and
                                                              template.target.place == mozaic_element.place), None)
             if dynamic_template is None:
                 dynamic_template = DynamicTemplate(target=mozaic_element,
@@ -635,32 +662,45 @@ class FillRef2:
                                               schema_cabinet, ts_odu_data: TSODUData, mozaic_element: MozaicElement) \
             -> list[SignalRef] | None:
         refs: list[SignalRef] = []
-        ts_odu_panel: TSODUPanel | None = next((panel for panel in self._options.ts_odu_panels if panel.name ==
-                                                mozaic_element.cabinet), None)
+        if mozaic_element is None:
+            return []
+        ts_odu_panel: TSODUPanel | None = next((panel for panel in self._options.ts_odu_info.panels if panel.name ==
+                                                mozaic_element.ts_odu_panel), None)
         if ts_odu_panel is None:
-            logging.error(f'Не найдена панель ТС ОДУ {mozaic_element.cabinet}')
+            logging.error(f'Не найдена панель ТС ОДУ {mozaic_element.ts_odu_panel}')
             return None
+        if ts_odu_data.confirm_command_page is not None and ts_odu_data.confirm_command_cell is not None:
+            if ts_odu_panel.confirm_part is None or ts_odu_panel.confirm_kks is None:
+                logging.error('Для панели не предусмотрена подтверждение')
+            confirm_ref: str = f'Port1:{schema_abonent}\\{schema_kks}V_{schema_part}\\' \
+                               f'{ts_odu_data.confirm_command_page}\\{ts_odu_data.confirm_command_cell}'
+            refs.append(SignalRef(kks=ts_odu_panel.confirm_kks,
+                                  part=ts_odu_panel.confirm_part,
+                                  ref=confirm_ref,
+                                  unrel_ref=None))
+
         signals_in_mozaic_element: list[Signal] = []
         values: list[dict[str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
                                                              fields=['KKS_NEW', 'PART'],
-                                                             key_names=['INST_PLACE', 'CABINET'],
-                                                             key_values=[mozaic_element.place, mozaic_element.cabinet])
+                                                             key_names=['INST_PLACE', 'KKSp'],
+                                                             key_values=[mozaic_element.place,
+                                                                         mozaic_element.ts_odu_panel])
         if len(values) == 0:
             logging.error(f'Не найден сигналы для мозаичного элемента {mozaic_element.place} панели '
-                          f'{mozaic_element.cabinet}')
+                          f'{mozaic_element.ts_odu_panel}')
             return None
         if len(values) != (len(ts_odu_data.output_ports) + len(ts_odu_data.input_ports)):
             logging.error(f'Число сигналов для мозаичного элемента {mozaic_element.place} панели '
-                          f'{mozaic_element.cabinet} не совпадает с числом сигналов в шаблоне')
+                          f'{mozaic_element.ts_odu_panel} не совпадает с числом сигналов в шаблоне')
             return None
-        if sum(value['PART'].startswith('XL') for value in values) != ts_odu_data.output_ports:
+        if sum(value['PART'].startswith('XL') for value in values) != len(ts_odu_data.input_ports):
             logging.error(f'Число команд для мозаичного элемента {mozaic_element.place} панели '
-                          f'{mozaic_element.cabinet} не совпадает с числом сигналов в шаблоне')
+                          f'{mozaic_element.ts_odu_panel} не совпадает с числом сигналов в шаблоне')
             return None
         for value in values:
-            signals_in_mozaic_element.append(Signal(kks=value['KKS'],
+            signals_in_mozaic_element.append(Signal(kks=value['KKS_NEW'],
                                                     part=value['PART'],
-                                                    cabinet=mozaic_element.cabinet,
+                                                    cabinet=mozaic_element.ts_odu_panel,
                                                     type=SignalType.TS_ODU))
         for ouput_port in ts_odu_data.output_ports:
             output_signal: Signal | None = next((signal for signal in signals_in_mozaic_element
@@ -668,31 +708,28 @@ class FillRef2:
             if output_signal is None:
                 logging.error(f'Не найден сигнал {ouput_port.part}')
                 return None
-            refs.append(self._get_ref_for_signal(source_signal=Signal(kks=schema_kks,
-                                                                      part=schema_part,
-                                                                      cabinet=schema_cabinet,
-                                                                      type=SignalType.WIRED),
-                                                 target_kks=output_signal.kks,
-                                                 target_part=output_signal.part,
-                                                 target_cabinet=ts_odu_panel.abonent,
-                                                 target_page=self._options.wired_signal_output_default_page,
-                                                 target_cell=self._options.wired_signal_output_default_cell,
-                                                 source_port=ouput_port.name))
+            refs_for_output_port = self._creare_ref_for_output_port(schema_kks=schema_kks,
+                                                                    schema_part=schema_part,
+                                                                    cabinet=self._options.ts_odu_info.cabinet,
+                                                                    output_port=ouput_port,
+                                                                    kksp=ts_odu_panel.name,
+                                                                    template_name='ТС ОДУ',
+                                                                    signal=output_signal)
+            refs += refs_for_output_port
         for input_port in ts_odu_data.input_ports:
             input_signal: Signal | None = next((signal for signal in signals_in_mozaic_element
                                                 if signal.part == input_port.part), None)
             if input_signal is None:
                 logging.error(f'Не найден сигнал {input_port.part}')
                 return None
-            refs.append(self._get_ref_for_signal(source_signal=input_signal,
-                                                 target_kks=schema_kks,
-                                                 target_part=schema_part,
-                                                 target_cabinet=schema_abonent,
-                                                 target_page=input_port.page,
-                                                 target_cell=input_port.cell_num))
+            ref = self._get_ref_for_signal(source_signal=input_signal,
+                                           target_kks=schema_kks + 'V',
+                                           target_part=schema_part,
+                                           target_cabinet=schema_abonent,
+                                           target_page=input_port.page,
+                                           target_cell=input_port.cell_num)
+            refs.append(ref)
 
-        if ts_odu_data.confirm_command is not None:
-            pass
         return refs
 
     def _get_target_signals_for_ts_odu(self, dynamic_template: DynamicTemplate) -> list[Signal]:
@@ -701,18 +738,18 @@ class FillRef2:
                                                                   fields=['KKS', 'PART', 'NAME_RUS'],
                                                                   key_names=['INST_PLACE', 'CABINET'],
                                                                   key_values=[dynamic_template.target.place,
-                                                                              dynamic_template.target.cabinet])
+                                                                              dynamic_template.target.ts_odu_panel])
         for value in values:
             signals.append(Signal(kks=value['KKS'],
                                   part=value['PART'],
-                                  cabinet=dynamic_template.target.cabinet,
+                                  cabinet=self._options.ts_odu_info.cabinet,
                                   type=SignalType.TS_ODU,
                                   descr=value['NAME_RUS']))
         return signals
 
     def _create_virtual_schema(self, target_signal: Signal, target_abonent: int, index: str,
                                source_signals: list[Signal]) -> tuple[VirtualSchema, list[SignalRef]]:
-        kks: str = f'{target_signal.kks[0:7]}{self._options.or_schema_kks_postfix}{index}'
+        kks: str = f'{target_signal.kks[0:7]}{self._options.or_schema_name_postfix}{index}'
         schema: str = f'{self._options.or_schema_name_prefix}{len(source_signals)}'
         virtual_schema: VirtualSchema = VirtualSchema(kks=kks,
                                                       part=target_signal.part,
@@ -761,8 +798,7 @@ class FillRef2:
         source_cabinet_or_signals: list[Signal] = []
         refs: list[SignalRef] = []
         target_or_schema_signal: Signal = Signal(
-            kks=f'{target_signal.kks[0:7]}{self._options.or_schema_kks_postfix}'
-                f'000',
+            kks=f'{target_signal.kks[0:9]}000V',
             part=target_signal.part,
             cabinet=target_signal.cabinet,
             type=SignalType.TS_ODU,
@@ -804,10 +840,10 @@ class FillRef2:
 
     def _get_refs_for_dynamic_template(self, dynamic_template: DynamicTemplate) -> \
             tuple[list[VirtualSchema] | None, list[SignalRef]] | None:
-        target_ts_odu_panel: TSODUPanel | None = next((panel for panel in self._options.ts_odu_panels
-                                                       if panel.name == dynamic_template.target.cabinet), None)
+        target_ts_odu_panel: TSODUPanel | None = next((panel for panel in self._options.ts_odu_info.panels
+                                                       if panel.name == dynamic_template.target.ts_odu_panel), None)
         if target_ts_odu_panel is None:
-            logging.error(f"Не найдена панель ТС ОДУ с именем {dynamic_template.target.cabinet}")
+            logging.error(f"Не найдена панель ТС ОДУ с именем {dynamic_template.target.ts_odu_panel}")
             return None
         target_signals: list[Signal] = self._get_target_signals_for_ts_odu(dynamic_template=dynamic_template)
 
@@ -838,7 +874,7 @@ class FillRef2:
                 if result is None:
                     logging.error(
                         f"Несоответствие количества сигналов для МЭ {dynamic_template.target.place} для панели "
-                        f"ТС ОДУ {dynamic_template.target.cabinet}")
+                        f"ТС ОДУ {dynamic_template.target.ts_odu_panel}")
                     return None
                 # or_signal - сигнал, на который будет объединение по or
                 # mutual_signals - сигналы, на которые будут прямые ссылки
@@ -856,7 +892,8 @@ class FillRef2:
                                                              target_part=paired_signal.part,
                                                              target_cabinet=target_ts_odu_panel.abonent,
                                                              target_page=self._options.wired_signal_output_default_page,
-                                                             target_cell=self._options.wired_signal_output_default_page))
+                                                             target_cell=self._options.wired_signal_output_default_page)
+                                    )
                 # Для сигнала, для которого нужно объедиение (or_signal), создаем схемы и ссылки
                 virtual_schemas, refs2 = self._create_schemas_for_or_logic(source_signals=source_signals_filtered,
                                                                            target_signal=or_signal,
@@ -870,7 +907,7 @@ class FillRef2:
             diff_keys: set[str] = set(source_signal_dict.keys()) - set(target_signal_dict.keys())
             if len(diff_keys) > 0:
                 logging.error(f"Несоответствие сигналов для МЭ {dynamic_template.target.place} для панели "
-                              f"ТС ОДУ {dynamic_template.target.cabinet}")
+                              f"ТС ОДУ {dynamic_template.target.ts_odu_panel}")
                 return None
             for part in source_signal_dict:
                 refs.append(self._get_ref_for_signal(source_signal=source_signal_dict[part],
@@ -986,7 +1023,8 @@ class FillRef2:
                                                                                cabinet=schema_cabinet,
                                                                                input_port=port,
                                                                                kksp=kksp,
-                                                                               template_name=template_name)
+                                                                               template_name=template_name,
+                                                                               )
                 if signal_ref is None:
                     return None
                 ref_list.append(signal_ref)
@@ -994,15 +1032,15 @@ class FillRef2:
         output_port_list: list[OutputPort] | None = template.output_ports[schema_part]
         if output_port_list is not None:
             for port in output_port_list:
-                signal_ref: SignalRef | None = self._creare_ref_for_output_port(schema_kks=schema_kks,
-                                                                                cabinet=schema_cabinet,
-                                                                                output_port=port,
-                                                                                kksp=kksp,
-                                                                                template_name=template_name)
+                signal_ref: list[SignalRef] | None = self._creare_ref_for_output_port(schema_kks=schema_kks,
+                                                                                      schema_part=schema_part,
+                                                                                      cabinet=schema_cabinet,
+                                                                                      output_port=port,
+                                                                                      kksp=kksp,
+                                                                                      template_name=template_name)
                 if signal_ref is None:
                     return None
-                ref_list.append(signal_ref)
-            return ref_list
+                ref_list += signal_ref
         if template.ts_odu_data is not None:
             refs: list[SignalRef] | None = self._get_refs_for_ts_odu_in_define_schema(schema_kks=schema_kks,
                                                                                       schema_part=schema_part,
@@ -1012,6 +1050,8 @@ class FillRef2:
                                                                                       ts_odu_data=template.ts_odu_data)
             if refs is None:
                 return None
+            ref_list += refs
+        return ref_list
 
     def _write_ref(self, ref_list: list[SignalRef]) -> None:
         """
