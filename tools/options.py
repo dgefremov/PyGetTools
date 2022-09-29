@@ -155,11 +155,11 @@ class Options:
                                                              unrel_ref_cell_num=18),
                                                    InputPort(page=3, cell_num=4, kks=None, part='XB01',
                                                              unrel_ref_cell_num=None),
-                                                   InputPort(page=3, cell_num=5, kks=None, part='XF02',
+                                                   InputPort(page=3, cell_num=5, kks=None, part='XM36',
                                                              unrel_ref_cell_num=19),
-                                                   InputPort(page=3, cell_num=6, kks=None, part='XF03',
+                                                   InputPort(page=3, cell_num=6, kks=None, part='XK51',
                                                              unrel_ref_cell_num=20),
-                                                   InputPort(page=3, cell_num=7, kks=None, part='XF19',
+                                                   InputPort(page=3, cell_num=7, kks='00BCE__EW905', part='XK15',
                                                              unrel_ref_cell_num=21)]
         cb_ts_input: list[InputPort] = [InputPort(page=3, cell_num=14, kks=None, part='XL01',
                                                   unrel_ref_cell_num=None),
@@ -177,13 +177,25 @@ class Options:
                                           output_ports=cb_ts_output,
                                           warning_sound_port_name='11',
                                           emergency_sound_port_name='Port3')
+        sc_kru_10_3_sign_output: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA01'),
+                                                     OutputPort(name='Port2', kks=None, part='XA02')]
 
         sc_kru_10_3_sign: Template = Template(name='SC_KRU_10_3_SIGN',
                                               input_ports={'XA70': sc_kru_10_3_sign_input},
-                                              output_ports={'XA70': cb_output},
+                                              output_ports={'XA70': sc_kru_10_3_sign_output},
                                               ts_odu_data=cb_ts_data)
 
-        sc_kru_10_6_sign_input: list[InputPort] = sc_kru_10_3_sign_input + [
+        sc_kru_10_6_sign_input: list[InputPort] = [
+            InputPort(page=3, cell_num=3, kks=None, part='XB02',
+                      unrel_ref_cell_num=18),
+            InputPort(page=3, cell_num=4, kks=None, part='XB01',
+                      unrel_ref_cell_num=None),
+            InputPort(page=3, cell_num=5, kks=None, part='XF02',
+                      unrel_ref_cell_num=19),
+            InputPort(page=3, cell_num=6, kks=None, part='XF03',
+                      unrel_ref_cell_num=20),
+            InputPort(page=3, cell_num=7, kks=None, part='XF19',
+                      unrel_ref_cell_num=21),
             InputPort(page=3, cell_num=8, kks=None, part='XF26',
                       unrel_ref_cell_num=22),
             InputPort(page=3, cell_num=9, kks=None, part='XK00',
@@ -276,8 +288,7 @@ class Options:
                                                     InputPort(page=3, cell_num=13, kks=None, part='XF07',
                                                               unrel_ref_cell_num=None)]
 
-        cbw_ts_output: list[OutputPort] = [OutputPort(name='Port1', kks='10CWG10GH001', part='XN05'),
-                                           OutputPort(name='Port2', kks=None, part='XB02',
+        cbw_ts_output: list[OutputPort] = [OutputPort(name='Port2', kks=None, part='XB02',
                                                       blink_port_name='Port3', flicker_port_name='Port4'),
                                            OutputPort(name='Port5', kks=None, part='XB01',
                                                       blink_port_name='Port6', flicker_port_name='Port7'),
@@ -287,26 +298,26 @@ class Options:
                                            input_ports=cb_ts_input,
                                            output_ports=cbw_ts_output)
 
-        scw_nku_04_3_sign: Template = Template(name='scw_nku_04_3_sign',
+        scw_nku_04_3_sign: Template = Template(name='SCW_NKU_04_3_SIGN',
                                                input_ports={'XA00': scw_nku_04_3_sign_input},
                                                output_ports={'XA00': []},
                                                ts_odu_data=cbw_ts_data)
 
-        scw_nku_04_0_sign: Template = Template(name='scw_nku_04_0_sign',
+        scw_nku_04_0_sign: Template = Template(name='SCW_NKU_04_0_SIGN',
                                                input_ports={'XA00': []},
                                                output_ports={'XA00': []},
                                                ts_odu_data=cbw_ts_data)
 
         scw_nku_04_4_sign_input: list[InputPort] = [InputPort(page=3, cell_num=5, kks=None, part='XK52',
                                                               unrel_ref_cell_num=None),
-                                                    InputPort(page=3, cell_num=6, kks=None, part='XK00',
+                                                    InputPort(page=3, cell_num=6, kks='10_____EW204', part='XK00',
                                                               unrel_ref_cell_num=None),
                                                     InputPort(page=3, cell_num=7, kks=None, part='XK39',
                                                               unrel_ref_cell_num=None),
                                                     InputPort(page=3, cell_num=8, kks=None, part='XB07',
                                                               unrel_ref_cell_num=None)]
 
-        scw_nku_04_4_sign: Template = Template(name='scw_nku_04_4_sign',
+        scw_nku_04_4_sign: Template = Template(name='SCW_NKU_04_4_SIGN',
                                                input_ports={'XA00': scw_nku_04_4_sign_input},
                                                output_ports={'XA00': []},
                                                ts_odu_data=cbw_ts_data)
@@ -324,7 +335,7 @@ class Options:
                                             confirm_command_cell=16,
                                             input_ports=atsw_ts_input,
                                             output_ports=atsw_ts_output)
-        atsw: Template = Template(name='ATSW',
+        atsw: Template = Template(name='ATSW_1623',
                                   input_ports={'XA10': []},
                                   output_ports={'XA10': []},
                                   ts_odu_data=atsw_ts_data)
@@ -446,7 +457,7 @@ class Options:
                                                              sim_table='[Сигналы и механизмы]',
                                                              iec_table='[МЭК 61850]',
                                                              templates=[ats, ltc, sc_cb_24, sc_kru_10_3_sign,
-                                                                        sc_kru_10_6_sign,sc_kru_10_6_sign_wc,
+                                                                        sc_kru_10_6_sign, sc_kru_10_6_sign_wc,
                                                                         sc_kru_10_7_sign,
                                                                         sc_nku_04_1_sign, scw_nku_04_0_sign,
                                                                         scw_nku_04_3_sign, scw_nku_04_4_sign, atsw,
