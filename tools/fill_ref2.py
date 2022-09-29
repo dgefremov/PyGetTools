@@ -401,64 +401,6 @@ class FillRef2:
                       f'с PART {port.part}')
         return None
 
-    def _get_kksp_for_template(self, template: Template, schema_part: str, schema_kks: str, cabinet: str) -> str | None:
-        """
-        Функция определения KKSp для заданного шаблона и ККС
-        :param template: шаблон схемы управления
-        :param: kks: ККС схемы управления
-        :return: KKSp для данного KKS
-        """
-        kksp_list: list[str] = []
-        search_by_input_ports: bool = False
-        port_list: list[InputPort | OutputPort]
-
-        if len(template.output_ports[schema_part]) == 0:
-            search_by_input_ports = True
-            port_list = template.input_ports[schema_part]
-        else:
-            port_list = template.output_ports[schema_part]
-        for port in port_list:
-            values_from_sim: list[dict[str, str]]
-            kks: str = port.kks if isinstance(port,
-                                              OutputPort) and port.kks is not None else schema_kks
-            values_from_sim = self._access.retrieve_data(table_name=self._options.sim_table,
-                                                         fields=['KKSp'],
-                                                         key_names=['KKS', 'PART', 'MODULE', 'CABINET'],
-                                                         key_values=[kks, port.part, '1691', cabinet],
-                                                         key_operator=['LIKE', '=', '<>', '='])
-            if len(values_from_sim) > 1:
-                logging.error(f'Найдено больше одной команды {port.part} для шаблона {template.name} '
-                              f'c KKS={schema_kks}')
-                return None
-
-            values_from_iec: list[dict[str, str]]
-            values_from_iec = self._access.retrieve_data(table_name=self._options.iec_table,
-                                                         fields=['KKSp'],
-                                                         key_names=['KKS', 'PART', 'CABINET'],
-                                                         key_values=[kks, port.part, cabinet],
-                                                         key_operator=['LIKE', '=', '='])
-            if len(values_from_iec) > 1 or (len(values_from_iec) == 1 and len(values_from_sim) == 1):
-                logging.error(f'Найдено больше одной команды {port.part} для шаблона {template.name}'
-                              f' c KKS={schema_kks}')
-                return None
-            if len(values_from_iec) == 0 and len(values_from_sim) == 0:
-                # Если ищем по входам - допустимо не находить KKSp для некоторых сигналов, тк их ККС может
-                # не совпадать с ККС схемы
-                if search_by_input_ports:
-                    continue
-                logging.error(f'Не найдена команда {port.part} для шаблона {template.name} c KKS={kks}')
-                return None
-            kksp: str = values_from_sim[0]['KKSp'] if len(values_from_sim) == 1 else values_from_iec[0]['KKSp']
-            kksp_list.append(kksp)
-        if len(kksp_list) == 0:
-            logging.error(f'Для команд шаблона {template.name} с KKS={schema_kks} не удалось определить KKSp')
-            return None
-        several_kksp = next((True for item in kksp_list[1:] if kksp_list[0] != item), False)
-        if several_kksp:
-            logging.error(f'Для команд шаблона {template.name} с KKS={schema_kks} найдены различные KKSp')
-            return None
-        return kksp_list[0]
-
     def _creare_ref_for_input_port(self, schema_kks: str, schema_part: str, cabinet: str,
                                    input_port: InputPort, kksp: str, template_name: str) -> SignalRef | None:
         """
@@ -942,14 +884,6 @@ class FillRef2:
             return None
         if len(template.input_ports[schema_part]) == 0 and len(template.output_ports[schema_part]) == 0:
             return ref_list
-        if kksp is None:
-            kksp = self._get_kksp_for_template(template=template,
-                                               schema_kks=schema_kks,
-                                               schema_part=schema_part,
-                                               cabinet=schema_cabinet)
-            if kksp is None:
-                return None
-
         input_port_list: list[InputPort] | None = template.input_ports[schema_part]
         if input_port_list is not None:
             for port in input_port_list:
