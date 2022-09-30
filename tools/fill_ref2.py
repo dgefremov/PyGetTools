@@ -19,8 +19,12 @@ class TSODUDescription:
     panels: list['TSODUPanel']
     alarm_sound_kks: str
     alarm_sound_part: str
+    alarm_sound_page: str
+    alarm_sound_cell: int
     warning_sound_kks: str
     warning_sound_part: str
+    warning_sound_page: str
+    warning_sound_cell: int
     cabinet: str
 
 
@@ -92,12 +96,13 @@ class TSODUData:
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class Template:
     name: str
+    alarm_sound_signal_port: str | None
     input_ports: dict[str, list[InputPort]]
     output_ports: dict[str, list[OutputPort]]
     ts_odu_data: TSODUData | None = None
 
     def clone(self) -> 'Template':
-        return Template(self.name, self.input_ports, self.output_ports, self.ts_odu_data)
+        return Template(self.name, self.alarm_sound_signal_port, self.input_ports, self.output_ports, self.ts_odu_data)
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -130,7 +135,8 @@ class FillRef2Options:
     or_schema_name_prefix: str = 'OR_'
     or_schema_start_cell: int = 3
     or_schema_end_cell: int = 25
-    or_schema_name_postfix: str = 'V'
+    control_schema_name_postfix: str = 'V'
+    or_schema_code = 'XM'
 
 
 class ErrorType(Enum):
@@ -156,7 +162,7 @@ class FillRef2:
         self._abonent_map = self._get_abonent_map()
 
     @staticmethod
-    def choose_signal_by_kksp(values: list[dict, str], kksp: str) -> tuple[str | None, ErrorType]:
+    def _choose_signal_by_kksp(values: list[dict, str], kksp: str) -> tuple[str | None, ErrorType]:
         """
         Выбор среди результата запроса ККС, у которого KKSp совпадает с заданным
         :param values: Результат запроса к базе
@@ -200,8 +206,8 @@ class FillRef2:
             # Если не задана стойка и KKSp, то для нескольких сигналов будет попытка выбрать один, относящийся
             # к данному терминалу
             if cabinet is not None and kksp is not None:
-                kks, error = self.choose_signal_by_kksp(values=values,
-                                                        kksp=kksp)
+                kks, error = self._choose_signal_by_kksp(values=values,
+                                                         kksp=kksp)
                 return kks, cabinet, error
             else:
                 return None, None, ErrorType.TOOMANYVALUES
@@ -239,8 +245,8 @@ class FillRef2:
             # Если не задана стойка и KKSp, то для нескольких сигналов будет попытка выбрать один, относящийся
             # к данному терминалу
             if cabinet is not None and kksp is not None:
-                kks, error = self.choose_signal_by_kksp(values=values,
-                                                        kksp=kksp)
+                kks, error = self._choose_signal_by_kksp(values=values,
+                                                         kksp=kksp)
                 return kks, cabinet, error
             else:
                 return None, None, ErrorType.TOOMANYVALUES
@@ -311,22 +317,22 @@ class FillRef2:
                           f'с PART {port.part}')
             return None
         if error == ErrorType.NOERROR:
-            return Signal(kks=kks,
+            return Signal(kks=found_kks,
                           part=port.part,
                           cabinet=cabinet,
                           type=SignalType.WIRED)
 
         # Поиск сигнала в таблице МЭК по KKS, PART
-        kks, _, result = self._get_signal_from_iec_by_kks(kks=kks,
-                                                          port=port,
-                                                          cabinet=cabinet,
-                                                          kksp=kksp)
+        found_kks, _, result = self._get_signal_from_iec_by_kks(kks=kks,
+                                                                port=port,
+                                                                cabinet=cabinet,
+                                                                kksp=kksp)
         if result == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
             return None
         if result == ErrorType.NOERROR:
-            return Signal(kks=kks,
+            return Signal(kks=found_kks,
                           part=port.part,
                           cabinet=cabinet,
                           type=SignalType.DIGITAL)
@@ -341,58 +347,58 @@ class FillRef2:
                 logging.error(f'Не найден сигнал для шаблона {template_name} с KKS {schema_kks} для порта '
                               f'с PART {port.part}')
         # Поиск сигнала в таблице СИМ по PART и KKSp
-        kks, result = self._get_signal_from_sim_by_kksp(kksp=kksp,
-                                                        port=port,
-                                                        cabinet=cabinet)
+        found_kks, result = self._get_signal_from_sim_by_kksp(kksp=kksp,
+                                                              port=port,
+                                                              cabinet=cabinet)
         if result == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
             return None
         if result == ErrorType.NOERROR:
-            return Signal(kks=kks,
+            return Signal(kks=found_kks,
                           part=port.part,
                           cabinet=cabinet,
                           type=SignalType.WIRED)
         # Поиск сигнала в таблице МЭК по PART и KKSp
-        kks, result = self._get_signal_from_iec_by_kksp(kksp=kksp,
-                                                        port=port,
-                                                        cabinet=cabinet)
+        found_kks, result = self._get_signal_from_iec_by_kksp(kksp=kksp,
+                                                              port=port,
+                                                              cabinet=cabinet)
         if result == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
             return None
         if result == ErrorType.NOERROR:
-            return Signal(kks=kks,
+            return Signal(kks=found_kks,
                           part=port.part,
                           cabinet=cabinet,
                           type=SignalType.DIGITAL)
         # Поиск межстоечных сигналов (только если указан KKS)
         if port.kks is not None:
             # Поиск сигнала в другой стойке в таблице СИМ по ККС
-            kks, cabinet, result = self._get_signal_from_iec_by_kks(kks=kks,
-                                                                    kksp=None,
-                                                                    port=port,
-                                                                    cabinet=None)
+            found_kks, cabinet, result = self._get_signal_from_iec_by_kks(kks=kks,
+                                                                          kksp=None,
+                                                                          port=port,
+                                                                          cabinet=None)
             if result == ErrorType.TOOMANYVALUES:
                 logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                               f'с PART {port.part}')
                 return None
             if result == ErrorType.NOERROR:
-                return Signal(kks=kks,
+                return Signal(kks=found_kks,
                               part=port.part,
                               cabinet=cabinet,
                               type=SignalType.WIRED)
             # Поиск сигнала в другой стойке в таблице МЭК по KKS, PART
-            kks, cabinet, result = self._get_signal_from_iec_by_kks(kks=kks,
-                                                                    kksp=None,
-                                                                    port=port,
-                                                                    cabinet=None)
+            found_kks, cabinet, result = self._get_signal_from_iec_by_kks(kks=kks,
+                                                                          kksp=None,
+                                                                          port=port,
+                                                                          cabinet=None)
             if result == ErrorType.TOOMANYVALUES:
                 logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                               f'с PART {port.part}')
                 return None
             if result == ErrorType.NOERROR:
-                return Signal(kks=kks,
+                return Signal(kks=found_kks,
                               part=port.part,
                               cabinet=cabinet,
                               type=SignalType.DIGITAL)
@@ -424,16 +430,17 @@ class FillRef2:
         ref: str
         unrel_ref: str | None
         if signal.type == SignalType.DIGITAL:
-            ref: str = f'{cabinet_prefix}{schema_kks}{self._options.or_schema_name_postfix}_' \
+            ref: str = f'{cabinet_prefix}{schema_kks}{self._options.control_schema_name_postfix}_' \
                        f'{schema_part}\\{input_port.page}\\{input_port.cell_num}'
             if input_port.unrel_ref_cell_num is not None:
-                unrel_ref = f'{cabinet_prefix}{schema_kks}{self._options.or_schema_name_postfix}_' \
+                unrel_ref = f'{cabinet_prefix}{schema_kks}{self._options.control_schema_name_postfix}_' \
                             f'{schema_part}\\{input_port.page}\\{input_port.unrel_ref_cell_num}'
             else:
                 unrel_ref = None
         else:
             ref: str = f'{self._options.wired_signal_default_input_port}:{cabinet_prefix}{schema_kks}' \
-                       f'{self._options.or_schema_name_postfix}_{schema_part}\\{input_port.page}\\{input_port.cell_num}'
+                       f'{self._options.control_schema_name_postfix}_{schema_part}\\{input_port.page}\\' \
+                       f'{input_port.cell_num}'
             unrel_ref = None
         signal_ref: SignalRef = SignalRef(kks=signal.kks,
                                           part=signal.part,
@@ -473,7 +480,7 @@ class FillRef2:
             else:
                 ref += f'\\{output_port.page}\\{output_port.cell_num}'
 
-            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.or_schema_name_postfix,
+            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix,
                                               part=schema_part,
                                               ref=ref,
                                               unrel_ref=None)
@@ -487,7 +494,7 @@ class FillRef2:
                                  f'{self._options.wired_signal_output_blink_default_cell}'
                 else:
                     ref_blink += f'\\{output_port.blink_page}\\{output_port.blink_cell_num}'
-                signal_blink_ref: SignalRef = SignalRef(kks=schema_kks + self._options.or_schema_name_postfix,
+                signal_blink_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix,
                                                         part=schema_part,
                                                         ref=ref_blink,
                                                         unrel_ref=None)
@@ -501,13 +508,13 @@ class FillRef2:
                                    f'{self._options.wired_signal_output_flicker_default_cell}'
                 else:
                     ref_flicker += f'\\{output_port.flicker_page}\\{output_port.flicker_cell_num}'
-                signal_ref_flicker: SignalRef = SignalRef(kks=schema_kks + self._options.or_schema_name_postfix,
+                signal_ref_flicker: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix,
                                                           part=schema_part,
                                                           ref=ref_flicker,
                                                           unrel_ref=None)
                 signal_refs.append(signal_ref_flicker)
         else:
-            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.or_schema_name_postfix,
+            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix,
                                               part=schema_part,
                                               ref=ref,
                                               unrel_ref=None)
@@ -524,6 +531,7 @@ class FillRef2:
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.predifend_control_schemas_table,
             fields=['KKS', 'SCHEMA', 'PART', 'CABINET', 'TS_ODU_PANEL', 'INST_PLACE', 'KKSp'])
+        alarm_sound_signals: dict[Signal, str] = {}
         for value in values:
             schema_kks = value['KKS']
             schema_part = value['PART']
@@ -535,19 +543,38 @@ class FillRef2:
                     value['INST_PLACE'] is not None and value['INST_PLACE'] != '':
                 mozaic_element = MozaicElement(ts_odu_panel=value['TS_ODU_PANEL'],
                                                place=value['INST_PLACE'])
-            ref_list_for_schema: list[SignalRef] | None = self._get_ref_for_schema(schema_kks=schema_kks,
-                                                                                   schema_part=schema_part,
-                                                                                   schema_cabinet=cabinet,
-                                                                                   template_name=template_name,
-                                                                                   mozaic_element=mozaic_element,
-                                                                                   kksp=kksp)
+
+            ref_list_for_schema: list[SignalRef] | None = \
+                self._get_ref_for_schema(schema_kks=schema_kks,
+                                         schema_part=schema_part,
+                                         schema_cabinet=cabinet,
+                                         template_name=template_name,
+                                         mozaic_element=mozaic_element,
+                                         kksp=kksp,
+                                         alarm_sound_signals=alarm_sound_signals)
             if ref_list_for_schema is None:
                 error_flag = True
             else:
                 ref_list = ref_list + ref_list_for_schema
         if error_flag:
             return None
+        ref_list += self._get_ref_for_alarm_sound(alarm_sound_signals=alarm_sound_signals)
         return ref_list
+
+    def _get_ref_for_alarm_sound(self, alarm_sound_signals: dict[Signal, str]) -> list[SignalRef]:
+        refs: list[SignalRef] = []
+        ref_string_part: str = f'{self._options.ts_odu_info.alarm_sound_kks}_{self._options.ts_odu_info.alarm_sound_part}' \
+                               f'\\{self._options.ts_odu_info.alarm_sound_page}' \
+                               f'\\{self._options.ts_odu_info.alarm_sound_cell}'
+        abonent_map: dict[str, int] = self._get_abonent_map()
+        for signal in alarm_sound_signals:
+            cabinet_prefix: str = "" if signal.cabinet == self._options.ts_odu_info.cabinet else \
+                f'{abonent_map[signal.cabinet]}\\'
+            refs.append(SignalRef(kks=signal.kks,
+                                  part=signal.part,
+                                  ref=f'{alarm_sound_signals[signal]}:{cabinet_prefix}{ref_string_part}',
+                                  unrel_ref=None))
+        return refs
 
     def _get_abonent_map(self) -> dict[str, int]:
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.abonent_table,
@@ -725,7 +752,7 @@ class FillRef2:
 
     def _create_virtual_schema(self, target_signal: Signal, target_abonent: int, index: str,
                                source_signals: list[Signal]) -> tuple[VirtualSchema, list[SignalRef]]:
-        kks: str = f'{target_signal.kks[0:7]}{self._options.or_schema_name_postfix}{index}'
+        kks: str = f'{target_signal.kks[0:7]}{self._options.or_schema_code}{index}'
         schema: str = f'{self._options.or_schema_name_prefix}{len(source_signals)}'
         virtual_schema: VirtualSchema = VirtualSchema(kks=kks,
                                                       part=target_signal.part,
@@ -857,6 +884,7 @@ class FillRef2:
         return signal_ref
 
     def _get_ref_for_schema(self, schema_kks: str, schema_part: str, schema_cabinet: str,
+                            alarm_sound_signals: dict[Signal, str],
                             template_name: str, kksp: str | None = None,
                             mozaic_element: MozaicElement | None = None) -> list[SignalRef] | None:
         """
@@ -884,6 +912,12 @@ class FillRef2:
             return None
         if len(template.input_ports[schema_part]) == 0 and len(template.output_ports[schema_part]) == 0:
             return ref_list
+        if template.alarm_sound_signal_port is not None:
+            alarm_sound_signals[Signal(kks=schema_kks,
+                                       part=schema_part,
+                                       cabinet=schema_cabinet,
+                                       type=SignalType.WIRED,
+                                       descr='АварЗвук')] = template.alarm_sound_signal_port
         input_port_list: list[InputPort] | None = template.input_ports[schema_part]
         if input_port_list is not None:
             for port in input_port_list:
@@ -892,8 +926,7 @@ class FillRef2:
                                                                                cabinet=schema_cabinet,
                                                                                input_port=port,
                                                                                kksp=kksp,
-                                                                               template_name=template_name,
-                                                                               )
+                                                                               template_name=template_name)
                 if signal_ref is None:
                     return None
                 ref_list.append(signal_ref)

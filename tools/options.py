@@ -149,7 +149,8 @@ class Options:
                                       ts_odu_data=TSODUData(input_ports=[],
                                                             output_ports=[],
                                                             warning_sound_port_name='Port4',
-                                                            emergency_sound_port_name='Port3'))
+                                                            emergency_sound_port_name='Port3'),
+                                      alarm_sound_signal_port='Port3')
 
         sc_kru_10_3_sign_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB02',
                                                              unrel_ref_cell_num=18),
@@ -183,7 +184,8 @@ class Options:
         sc_kru_10_3_sign: Template = Template(name='SC_KRU_10_3_SIGN',
                                               input_ports={'XA70': sc_kru_10_3_sign_input},
                                               output_ports={'XA70': sc_kru_10_3_sign_output},
-                                              ts_odu_data=cb_ts_data)
+                                              ts_odu_data=cb_ts_data,
+                                              alarm_sound_signal_port='Port3')
 
         sc_kru_10_6_sign_input: list[InputPort] = [
             InputPort(page=3, cell_num=3, kks=None, part='XB02',
@@ -207,7 +209,8 @@ class Options:
         sc_kru_10_6_sign: Template = Template(name='SC_KRU_10_6_SIGN',
                                               input_ports={'XA00': sc_kru_10_6_sign_input},
                                               output_ports={'XA00': cb_output},
-                                              ts_odu_data=cb_ts_data)
+                                              ts_odu_data=cb_ts_data,
+                                              alarm_sound_signal_port='Port3')
         sc_kru_10_6_sign_wc: Template = Template(name='SC_KRU_10_6_SIGN_WC',
                                                  input_ports={'XA00': sc_kru_10_6_sign_input},
                                                  output_ports={'XA00': cb_output},
@@ -216,14 +219,16 @@ class Options:
                                                                        input_ports=[],
                                                                        output_ports=cb_ts_output,
                                                                        warning_sound_port_name='11',
-                                                                       emergency_sound_port_name='Port3'))
+                                                                       emergency_sound_port_name='Port3'),
+                                                 alarm_sound_signal_port='Port3')
         sc_kru_10_7_sign_input: list[InputPort] = sc_kru_10_6_sign_input + [
             InputPort(page=3, cell_num=11, kks='10_____GU012', part='XK00',
                       unrel_ref_cell_num=26)]
         sc_kru_10_7_sign: Template = Template(name='SC_KRU_10_7_SIGN',
                                               input_ports={'XA00': sc_kru_10_7_sign_input},
                                               output_ports={'XA00': cb_output},
-                                              ts_odu_data=cb_ts_data)
+                                              ts_odu_data=cb_ts_data,
+                                              alarm_sound_signal_port='Port3')
 
         sc_nku_04_1_sign_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB02',
                                                              unrel_ref_cell_num=18),
@@ -236,7 +241,8 @@ class Options:
         sc_nku_04_1_sign: Template = Template(name='SC_NKU_04_1_SIGN',
                                               input_ports={'XA00': sc_nku_04_1_sign_input},
                                               output_ports={'XA00': cb_output},
-                                              ts_odu_data=cb_ts_data)
+                                              ts_odu_data=cb_ts_data,
+                                              alarm_sound_signal_port='Port3')
 
         ltc_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB10',
                                                 unrel_ref_cell_num=None)]
@@ -255,7 +261,8 @@ class Options:
         ltc: Template = Template(name='LTC',
                                  input_ports={'XA20': ltc_input},
                                  output_ports={'XA20': ltc_output},
-                                 ts_odu_data=ltc_ts_data)
+                                 ts_odu_data=ltc_ts_data,
+                                 alarm_sound_signal_port=None)
 
         ats_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB22', unrel_ref_cell_num=18),
                                       InputPort(page=3, cell_num=4, kks=None, part='XB21',
@@ -280,7 +287,8 @@ class Options:
         ats: Template = Template(name='ATS',
                                  input_ports={'XA10': ats_input},
                                  output_ports={'XA10': ats_ouput},
-                                 ts_odu_data=ats_ts_data)
+                                 ts_odu_data=ats_ts_data,
+                                 alarm_sound_signal_port='Port3')
         scw_nku_04_3_sign_input: list[InputPort] = [InputPort(page=3, cell_num=11, kks=None, part='XK17',
                                                               unrel_ref_cell_num=None),
                                                     InputPort(page=3, cell_num=12, kks=None, part='XF06',
@@ -301,12 +309,14 @@ class Options:
         scw_nku_04_3_sign: Template = Template(name='SCW_NKU_04_3_SIGN',
                                                input_ports={'XA00': scw_nku_04_3_sign_input},
                                                output_ports={'XA00': []},
-                                               ts_odu_data=cbw_ts_data)
+                                               ts_odu_data=cbw_ts_data,
+                                               alarm_sound_signal_port='Port3')
 
         scw_nku_04_0_sign: Template = Template(name='SCW_NKU_04_0_SIGN',
                                                input_ports={'XA00': []},
                                                output_ports={'XA00': []},
-                                               ts_odu_data=cbw_ts_data)
+                                               ts_odu_data=cbw_ts_data,
+                                               alarm_sound_signal_port='Port3')
 
         scw_nku_04_4_sign_input: list[InputPort] = [InputPort(page=3, cell_num=5, kks=None, part='XK52',
                                                               unrel_ref_cell_num=None),
@@ -320,7 +330,8 @@ class Options:
         scw_nku_04_4_sign: Template = Template(name='SCW_NKU_04_4_SIGN',
                                                input_ports={'XA00': scw_nku_04_4_sign_input},
                                                output_ports={'XA00': []},
-                                               ts_odu_data=cbw_ts_data)
+                                               ts_odu_data=cbw_ts_data,
+                                               alarm_sound_signal_port='Port3')
 
         atsw_ts_output: list[OutputPort] = [OutputPort(name='Port4', kks=None, part='XB22',
                                                        blink_port_name='Port5', flicker_port_name='Port6'),
@@ -338,7 +349,8 @@ class Options:
         atsw: Template = Template(name='ATSW_1623',
                                   input_ports={'XA10': []},
                                   output_ports={'XA10': []},
-                                  ts_odu_data=atsw_ts_data)
+                                  ts_odu_data=atsw_ts_data,
+                                  alarm_sound_signal_port='Port3')
 
         diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks='10BYA__EG801', part='XW01',
                                                                      blink_port_name='Port2')]
@@ -368,7 +380,8 @@ class Options:
                                                         unrel_ref_cell_num=None)]
         diag1: Template = Template(name='DIAG1',
                                    input_ports={'XG00': diag1_input_ports},
-                                   output_ports={'XG00': diag_middle_output_ports})
+                                   output_ports={'XG00': diag_middle_output_ports},
+                                   alarm_sound_signal_port=None)
 
         diag1_first_input_ports: list[InputPort] = \
             diag1_input_ports + [InputPort(page=2, cell_num=16, kks='10BYA__EG953', part='XG01',
@@ -377,7 +390,8 @@ class Options:
                                            unrel_ref_cell_num=None)]
         diag1_first: Template = Template(name='DIAG1_FIRST',
                                          input_ports={'XG00': diag1_first_input_ports},
-                                         output_ports={'XG00': diag_first_in_row_output_ports})
+                                         output_ports={'XG00': diag_first_in_row_output_ports},
+                                         alarm_sound_signal_port=None)
 
         diag2_input_ports: list[InputPort] = \
             diag1_input_ports + [InputPort(page=1, cell_num=9, kks='10BYA__EG601', part='XG01',
@@ -388,7 +402,8 @@ class Options:
                                    input_ports={'XG00': diag2_input_ports,
                                                 'XG20': diag2_input_ports},
                                    output_ports={'XG00': diag_middle_output_ports,
-                                                 'XG20': diag_standalone_output_ports})
+                                                 'XG20': diag_standalone_output_ports},
+                                   alarm_sound_signal_port=None)
         diag2_first_input_ports: list[InputPort] = \
             diag2_input_ports + [InputPort(page=2, cell_num=16, kks='10BYA__EG953', part='XG01',
                                            unrel_ref_cell_num=None),
@@ -397,7 +412,8 @@ class Options:
 
         diag2_first: Template = Template(name='DIAG2_FIRST',
                                          input_ports={'XG00': diag2_first_input_ports},
-                                         output_ports={'XG00': diag_first_in_row_output_ports})
+                                         output_ports={'XG00': diag_first_in_row_output_ports},
+                                         alarm_sound_signal_port=None)
 
         diag_bya03_input_ports: list[InputPort] = \
             diag1_input_ports + [InputPort(page=1, cell_num=9, kks='10BYA__EG311', part='XG01',
@@ -406,19 +422,22 @@ class Options:
                                            unrel_ref_cell_num=None)]
         diag_bya03: Template = Template(name='DIAG_BYA03',
                                         input_ports={'XG00': diag_bya03_input_ports},
-                                        output_ports={'XG00': diag_middle_output_ports})
+                                        output_ports={'XG00': diag_middle_output_ports},
+                                        alarm_sound_signal_port=None)
 
         diag_bya04_input_ports: list[InputPort] = diag_bya03_input_ports
 
         diag_bya04: Template = Template(name='DIAG_BYA04',
                                         input_ports={'XG00': diag_bya04_input_ports},
-                                        output_ports={'XG00': diag_first_in_row_output_ports})
+                                        output_ports={'XG00': diag_first_in_row_output_ports},
+                                        alarm_sound_signal_port=None)
 
         diag_bya10_input_ports: list[InputPort] = diag_bya03_input_ports
 
         diag_bya10: Template = Template(name='DIAG_BYA10',
                                         input_ports={'XG00': diag_bya10_input_ports},
-                                        output_ports={'XG00': diag_middle_output_ports})
+                                        output_ports={'XG00': diag_middle_output_ports},
+                                        alarm_sound_signal_port=None)
 
         diag_bya21_input_ports: list[InputPort] = \
             diag_bya03_input_ports + [InputPort(page=1, cell_num=11, kks='10BYA__EG601', part='XG01',
@@ -428,7 +447,8 @@ class Options:
 
         diag_bya21: Template = Template(name='DIAG_BYA21',
                                         input_ports={'XG00': diag_bya21_input_ports},
-                                        output_ports={'XG00': diag_first_in_row_output_ports})
+                                        output_ports={'XG00': diag_first_in_row_output_ports},
+                                        alarm_sound_signal_port=None)
 
         ts_odu_panel1: TSODUPanel = TSODUPanel(name='10CWG09',
                                                confirm_part='XG01',
@@ -449,7 +469,11 @@ class Options:
                                                                 alarm_sound_part='XN06',
                                                                 warning_sound_kks='10CWG10GH001',
                                                                 warning_sound_part='XN05',
-                                                                cabinet='10BYA02')
+                                                                cabinet='10BYA02',
+                                                                alarm_sound_cell=8,
+                                                                alarm_sound_page='1',
+                                                                warning_sound_cell=8,
+                                                                warning_sound_page='1')
 
         fill_ref2_options: FillRef2Options = FillRef2Options(control_schemas_table='[VIRTUAL SCHEMAS]',
                                                              predifend_control_schemas_table='[PREDEFINED SCHEMAS]',
