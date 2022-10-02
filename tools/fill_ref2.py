@@ -101,8 +101,13 @@ class Template:
     output_ports: dict[str, list[OutputPort]]
     ts_odu_data: TSODUData | None = None
 
-    def clone(self) -> 'Template':
-        return Template(self.name, self.alarm_sound_signal_port, self.input_ports, self.output_ports, self.ts_odu_data)
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class TSODUTemplate:
+    name: str
+    acknolegment_page: str | None
+    acknolegment_cell: str | None
+    warning_port: str | None
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -124,7 +129,8 @@ class FillRef2Options:
     sim_table: str
     iec_table: str
     abonent_table: str
-    templates: [Template]
+    templates: list[Template]
+    ts_odu_templates: list[TSODUTemplate]
     wired_signal_output_default_page: int
     wired_signal_output_default_cell: int
     wired_signal_output_blink_default_page: int
@@ -521,7 +527,7 @@ class FillRef2:
             signal_refs.append(signal_ref)
         return signal_refs
 
-    def _get_ref_for_defined_schemas(self) -> list[SignalRef] | None:
+    def _process_defined_schemas(self) -> list[SignalRef] | None:
         """
         Генерация ссылок для предопределенных схем управления
         :return: Список ошибок либо None при ошибках
@@ -563,7 +569,8 @@ class FillRef2:
 
     def _get_ref_for_alarm_sound(self, alarm_sound_signals: dict[Signal, str]) -> list[SignalRef]:
         refs: list[SignalRef] = []
-        ref_string_part: str = f'{self._options.ts_odu_info.alarm_sound_kks}_{self._options.ts_odu_info.alarm_sound_part}' \
+        ref_string_part: str = f'{self._options.ts_odu_info.alarm_sound_kks}_' \
+                               f'{self._options.ts_odu_info.alarm_sound_part}' \
                                f'\\{self._options.ts_odu_info.alarm_sound_page}' \
                                f'\\{self._options.ts_odu_info.alarm_sound_cell}'
         abonent_map: dict[str, int] = self._get_abonent_map()
@@ -616,7 +623,7 @@ class FillRef2:
         logging.error(f'Сигнал {kks}_{part} не найден ни в одной таблице')
         return None, ErrorType.NOVALUES
 
-    def _get_ref_for_ts_odu(self) -> tuple[list[VirtualSchema], list[SignalRef]] | None:
+    def _process_or_schemas(self) -> tuple[list[VirtualSchema], list[SignalRef]] | None:
         ok_flag: bool = True
         dynamic_templates: list[DynamicTemplate] = []
         values: list[dict[str, str]] = self._access.retrieve_data(
@@ -653,6 +660,28 @@ class FillRef2:
             virtual_schemas += result[0]
             signal_refs += result[1]
         return virtual_schemas, signal_refs
+
+    def _process_ts_odu_signals(self):
+        values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
+                                                                  fields=['KKS_NEW', 'PART', 'KKSp', 'TYPE'])
+        refs: list[SignalRef]
+        for value in values:
+            kks: str = value['KKS_NEW']
+            part: str = value['PART']
+            template_name: str = value['TYPE']
+            ts_odu_panel_name: str = value['TS_ODU_PANEL']
+            template: TSODUTemplate | None = next((templ for templ in self._options.ts_odu_templates
+                                                   if templ.name == template_name), None)
+            ts_odu_panel: TSODUPanel =
+            if template is None:
+                continue
+            signal: Signal = Signal(kks=self,
+                                    part=part,
+                                    cabinet=self._options.ts_odu_info.cabinet,
+                                    type=SignalType.TS_ODU)
+            if template.acknolegment_cell is not None and template.acknolegment_page is not None:
+                self._get_ref_for_signal(signal=)
+
 
     def _get_refs_for_ts_odu_in_define_schema(self, schema_kks: str, schema_part: str, schema_abonent: int,
                                               schema_cabinet, ts_odu_data: TSODUData, mozaic_element: MozaicElement) \
@@ -750,9 +779,13 @@ class FillRef2:
                                 descr=values[0]['NAME_RUS'])
         return signal
 
-    def _create_virtual_schema(self, target_signal: Signal, target_abonent: int, index: str,
+    def _create_virtual_schema(self, target_signal: Signal, target_abonent: int, index: str | None,
                                source_signals: list[Signal]) -> tuple[VirtualSchema, list[SignalRef]]:
-        kks: str = f'{target_signal.kks[0:7]}{self._options.or_schema_code}{index}'
+        kks: str
+        if index is not None:
+            kks = f'{target_signal.kks[0:7]}{self._options.or_schema_code}{index}'
+        else:
+            kks = f'{target_signal.kks}'
         schema: str = f'{self._options.or_schema_name_prefix}{len(source_signals)}'
         virtual_schema: VirtualSchema = VirtualSchema(kks=kks,
                                                       part=target_signal.part,
@@ -803,7 +836,7 @@ class FillRef2:
         source_cabinet_or_signals: list[Signal] = []
         refs: list[SignalRef] = []
         target_or_schema_signal: Signal = Signal(
-            kks=f'{target_signal.kks[0:9]}000V',
+            kks=target_signal.kks,
             part=target_signal.part,
             cabinet=target_signal.cabinet,
             type=SignalType.TS_ODU,
@@ -838,7 +871,7 @@ class FillRef2:
         target_or_schema, target_refs = self._create_virtual_schema(target_signal=target_signal,
                                                                     target_abonent=target_ts_odu_panel.abonent,
                                                                     source_signals=source_cabinet_or_signals,
-                                                                    index='000')
+                                                                    index=None)
         virtual_schemas.append(target_or_schema)
         refs += target_refs
 
@@ -870,7 +903,8 @@ class FillRef2:
                                                  target_ts_odu_panel=target_ts_odu_panel)
 
     def _get_ref_for_signal(self, source_signal: Signal, target_kks: str, target_part: str, target_cabinet: int,
-                            target_page, target_cell, source_port: str | None = None) -> SignalRef:
+                            target_page: str | int, target_cell: str | int, source_port: str | None = None) -> \
+            SignalRef:
         ref: str
         if source_signal.type == SignalType.DIGITAL:
             ref: str = f'{target_cabinet}\\{target_kks}_{target_part}\\{target_page}\\{target_cell}'
@@ -984,10 +1018,10 @@ class FillRef2:
         self._access.commit()
 
     def _fill_ref(self):
-        ref_for_predefined_schemas: list[SignalRef] | None = self._get_ref_for_defined_schemas()
+        ref_for_predefined_schemas: list[SignalRef] | None = self._process_defined_schemas()
         if ref_for_predefined_schemas is not None:
             ref_list: list[SignalRef] = ref_for_predefined_schemas
-            virtual_schemas, ts_odu_ref_list = self._get_ref_for_ts_odu()
+            virtual_schemas, ts_odu_ref_list = self._process_or_schemas()
             ref_list += ts_odu_ref_list
             self._access.clear_table(table_name=self._options.ref_table)
             self._access.clear_table(table_name=self._options.control_schemas_table)
