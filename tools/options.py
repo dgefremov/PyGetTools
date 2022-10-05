@@ -3,7 +3,8 @@ from tools.generate_tables import GenerateTableOptions, DoublePointSignal, SWTem
 from tools.fill_mms_address import FillMMSAddressOptions, DPCSignal, DatasetDescription, DatasetDescriptionList, \
     BSCSignal, SignalRange
 from tools.fill_ref import FillRefOptions, VirtualTemplate, TemplateVariant, DefinedVariant
-from tools.fill_ref2 import FillRef2Options, InputPort, OutputPort, Template, TSODUPanel, TSODUData, TSODUDescription
+from tools.fill_ref2 import FillRef2Options, InputPort, OutputPort, Template, TSODUPanel, TSODUData, TSODUDescription, \
+    TSODUTemplate
 from tools.find_schemas import FindSchemasOptions, Schema
 
 from dataclasses import dataclass
@@ -145,12 +146,11 @@ class Options:
 
         sc_cb_24: Template = Template(name='SC_CB_24',
                                       input_ports={'XA00': sc_cb_24_input},
-                                      output_ports={'XA00': cb_output},
+                                      output_ports={'XA00': []},
                                       ts_odu_data=TSODUData(input_ports=[],
-                                                            output_ports=[],
-                                                            warning_sound_port_name='Port4',
-                                                            emergency_sound_port_name='Port3'),
-                                      alarm_sound_signal_port='Port3')
+                                                            output_ports=[]),
+                                      alarm_sound_signal_port='Port1',
+                                      warn_sound_signal_port='Port2')
 
         sc_kru_10_3_sign_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB02',
                                                              unrel_ref_cell_num=18),
@@ -167,17 +167,15 @@ class Options:
                                         InputPort(page=3, cell_num=15, kks=None, part='XL02',
                                                   unrel_ref_cell_num=None)]
 
-        cb_ts_output: list[OutputPort] = [OutputPort(name='Port4', kks=None, part='XB02',
-                                                     blink_port_name='Port5', flicker_port_name='Port6'),
-                                          OutputPort(name='Port7', kks=None, part='XB01',
-                                                     blink_port_name='Port8', flicker_port_name='Port9'),
-                                          OutputPort(name='Port10', kks=None, part='XF19',
-                                                     blink_port_name='Port11')]
+        cb_ts_output: list[OutputPort] = [OutputPort(name='Port5', kks=None, part='XB02',
+                                                     blink_port_name='Port6', flicker_port_name='Port7'),
+                                          OutputPort(name='Port8', kks=None, part='XB01',
+                                                     blink_port_name='Port9', flicker_port_name='Port10'),
+                                          OutputPort(name='Port11', kks=None, part='XF19',
+                                                     blink_port_name='Port12')]
         cb_ts_data: TSODUData = TSODUData(confirm_command_page='3', confirm_command_cell=17,
                                           input_ports=cb_ts_input,
-                                          output_ports=cb_ts_output,
-                                          warning_sound_port_name='11',
-                                          emergency_sound_port_name='Port3')
+                                          output_ports=cb_ts_output)
         sc_kru_10_3_sign_output: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA01'),
                                                      OutputPort(name='Port2', kks=None, part='XA02')]
 
@@ -185,7 +183,8 @@ class Options:
                                               input_ports={'XA70': sc_kru_10_3_sign_input},
                                               output_ports={'XA70': sc_kru_10_3_sign_output},
                                               ts_odu_data=cb_ts_data,
-                                              alarm_sound_signal_port='Port3')
+                                              alarm_sound_signal_port='Port3',
+                                              warn_sound_signal_port='Port4')
 
         sc_kru_10_6_sign_input: list[InputPort] = [
             InputPort(page=3, cell_num=3, kks=None, part='XB02',
@@ -210,17 +209,17 @@ class Options:
                                               input_ports={'XA00': sc_kru_10_6_sign_input},
                                               output_ports={'XA00': cb_output},
                                               ts_odu_data=cb_ts_data,
-                                              alarm_sound_signal_port='Port3')
+                                              alarm_sound_signal_port='Port3',
+                                              warn_sound_signal_port='Port4')
         sc_kru_10_6_sign_wc: Template = Template(name='SC_KRU_10_6_SIGN_WC',
                                                  input_ports={'XA00': sc_kru_10_6_sign_input},
                                                  output_ports={'XA00': cb_output},
                                                  ts_odu_data=TSODUData(confirm_command_page=None,
                                                                        confirm_command_cell=None,
                                                                        input_ports=[],
-                                                                       output_ports=cb_ts_output,
-                                                                       warning_sound_port_name='11',
-                                                                       emergency_sound_port_name='Port3'),
-                                                 alarm_sound_signal_port='Port3')
+                                                                       output_ports=cb_ts_output),
+                                                 alarm_sound_signal_port='Port1',
+                                                 warn_sound_signal_port='Port2')
         sc_kru_10_7_sign_input: list[InputPort] = sc_kru_10_6_sign_input + [
             InputPort(page=3, cell_num=11, kks='10_____GU012', part='XK00',
                       unrel_ref_cell_num=26)]
@@ -228,7 +227,8 @@ class Options:
                                               input_ports={'XA00': sc_kru_10_7_sign_input},
                                               output_ports={'XA00': cb_output},
                                               ts_odu_data=cb_ts_data,
-                                              alarm_sound_signal_port='Port3')
+                                              alarm_sound_signal_port='Port3',
+                                              warn_sound_signal_port='Port4')
 
         sc_nku_04_1_sign_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB02',
                                                              unrel_ref_cell_num=18),
@@ -242,7 +242,8 @@ class Options:
                                               input_ports={'XA00': sc_nku_04_1_sign_input},
                                               output_ports={'XA00': cb_output},
                                               ts_odu_data=cb_ts_data,
-                                              alarm_sound_signal_port='Port3')
+                                              alarm_sound_signal_port='Port3',
+                                              warn_sound_signal_port='Port4')
 
         ltc_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB10',
                                                 unrel_ref_cell_num=None)]
@@ -296,12 +297,12 @@ class Options:
                                                     InputPort(page=3, cell_num=13, kks=None, part='XF07',
                                                               unrel_ref_cell_num=None)]
 
-        cbw_ts_output: list[OutputPort] = [OutputPort(name='Port2', kks=None, part='XB02',
-                                                      blink_port_name='Port3', flicker_port_name='Port4'),
-                                           OutputPort(name='Port5', kks=None, part='XB01',
-                                                      blink_port_name='Port6', flicker_port_name='Port7'),
-                                           OutputPort(name='Port8', kks=None, part='XF19',
-                                                      blink_port_name='Port9')]
+        cbw_ts_output: list[OutputPort] = [OutputPort(name='Port3', kks=None, part='XB02',
+                                                      blink_port_name='Port4', flicker_port_name='Port5'),
+                                           OutputPort(name='Port6', kks=None, part='XB01',
+                                                      blink_port_name='Port7', flicker_port_name='Port8'),
+                                           OutputPort(name='Port9', kks=None, part='XF19',
+                                                      blink_port_name='Port10')]
         cbw_ts_data: TSODUData = TSODUData(confirm_command_page='3', confirm_command_cell=15,
                                            input_ports=cb_ts_input,
                                            output_ports=cbw_ts_output)
@@ -310,13 +311,15 @@ class Options:
                                                input_ports={'XA00': scw_nku_04_3_sign_input},
                                                output_ports={'XA00': []},
                                                ts_odu_data=cbw_ts_data,
-                                               alarm_sound_signal_port='Port3')
+                                               alarm_sound_signal_port='Port1',
+                                               warn_sound_signal_port='Port2')
 
         scw_nku_04_0_sign: Template = Template(name='SCW_NKU_04_0_SIGN',
                                                input_ports={'XA00': []},
                                                output_ports={'XA00': []},
                                                ts_odu_data=cbw_ts_data,
-                                               alarm_sound_signal_port='Port3')
+                                               alarm_sound_signal_port='Port1',
+                                               warn_sound_signal_port='Port2')
 
         scw_nku_04_4_sign_input: list[InputPort] = [InputPort(page=3, cell_num=5, kks=None, part='XK52',
                                                               unrel_ref_cell_num=None),
@@ -331,7 +334,8 @@ class Options:
                                                input_ports={'XA00': scw_nku_04_4_sign_input},
                                                output_ports={'XA00': []},
                                                ts_odu_data=cbw_ts_data,
-                                               alarm_sound_signal_port='Port3')
+                                               alarm_sound_signal_port='Port1',
+                                               warn_sound_signal_port='Port2')
 
         atsw_ts_output: list[OutputPort] = [OutputPort(name='Port4', kks=None, part='XB22',
                                                        blink_port_name='Port5', flicker_port_name='Port6'),
@@ -453,27 +457,55 @@ class Options:
         ts_odu_panel1: TSODUPanel = TSODUPanel(name='10CWG09',
                                                confirm_part='XG01',
                                                confirm_kks='10CWG09CH200',
-                                               abonent=321)
+                                               abonent=321,
+                                               acknowledgment_kks='10CWG09CH100',
+                                               acknowledgment_part='XG01')
         ts_odu_panel2: TSODUPanel = TSODUPanel(name='10CWG10',
                                                confirm_part='XG01',
                                                confirm_kks='10CWG10CH200',
-                                               abonent=321)
+                                               abonent=321,
+                                               acknowledgment_kks='10CWG10CH100',
+                                               acknowledgment_part='XG01')
         ts_odu_panel3: TSODUPanel = TSODUPanel(name='10CWB40',
                                                confirm_part=None,
                                                confirm_kks=None,
-                                               abonent=321)
+                                               abonent=321,
+                                               acknowledgment_kks='10CWB40CH100',
+                                               acknowledgment_part='XG01')
+
+        display: TSODUTemplate = TSODUTemplate(name='BO_TS_ODU_DISPL%',
+                                               acknolegment_page='1',
+                                               acknolegment_cell='4',
+                                               display_test_page='1',
+                                               display_test_cell='3',
+                                               input_ports=[],
+                                               output_ports=[])
+
+        lamp: TSODUTemplate = TSODUTemplate(name='BO_TS_ODU_LAMP%',
+                                            acknolegment_page='1',
+                                            acknolegment_cell='4',
+                                            lamp_test_page='1',
+                                            lamp_test_cell='3',
+                                            input_ports=[],
+                                            output_ports=[])
 
         ts_odu_description: TSODUDescription = TSODUDescription(panels=[ts_odu_panel1, ts_odu_panel2, ts_odu_panel3],
 
                                                                 alarm_sound_kks='10CWG10GH001',
                                                                 alarm_sound_part='XN06',
+                                                                alarm_sound_check_kks='10CWG10CH020',
+                                                                alarm_sound_check_part='XG01',
+                                                                alarm_sound_check_port='Port1',
+                                                                alarm_sound_check_page='1',
+                                                                alarm_sound_check_cell='8',
                                                                 warning_sound_kks='10CWG10GH001',
                                                                 warning_sound_part='XN05',
-                                                                cabinet='10BYA02',
-                                                                alarm_sound_cell=8,
-                                                                alarm_sound_page='1',
-                                                                warning_sound_cell=8,
-                                                                warning_sound_page='1')
+                                                                warn_sound_check_kks='10CWG10CH020',
+                                                                warn_sound_check_part='XG02',
+                                                                warn_sound_check_port='Port1',
+                                                                warn_sound_check_page='1',
+                                                                warn_sound_check_cell='8',
+                                                                cabinet='10BYA02')
 
         fill_ref2_options: FillRef2Options = FillRef2Options(control_schemas_table='[VIRTUAL SCHEMAS]',
                                                              predifend_control_schemas_table='[PREDEFINED SCHEMAS]',
@@ -497,7 +529,8 @@ class Options:
                                                              ts_odu_table='[Сигналы и механизмы ТС ОДУ]',
                                                              ts_odu_info=ts_odu_description,
                                                              abonent_table='[TPTS]',
-                                                             wired_signal_default_input_port='Port1')
+                                                             wired_signal_default_input_port='Port1',
+                                                             ts_odu_templates=[display, lamp])
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
 
