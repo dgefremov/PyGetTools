@@ -45,14 +45,16 @@ class Options:
         sw_template1: SWTemplate = SWTemplate(name='XA00',
                                               connection='NTSW0113',
                                               signals={'XB01', 'XB02', 'XL01', 'XL02', 'XB07', 'XB08'},
-                                              variants=[SWTemplateVariant(schema='SW_1623_1',
-                                                                          parts=['XF27']),
-                                                        SWTemplateVariant(schema='SW_1623_2',
-                                                                          parts=['XK52'])])
+                                              variants=[SWTemplateVariant(schema='SCW_NKU_04_0_SIGN',
+                                                                          parts=[]),
+                                                        SWTemplateVariant(schema='SCW_NKU_04_3_SIGN',
+                                                                          parts=['XK17', 'XF06']),
+                                                        SWTemplateVariant(schema='SCW_NKU_04_4_SIGN',
+                                                                          parts=['XK52', 'XK00', 'XK39', 'XB07'])])
         sw_template2: SWTemplate = SWTemplate(name='XA10',
                                               connection='NTSW0114',
                                               signals={'XB21', 'XB22', 'XL21', 'XL22'},
-                                              variants=[SWTemplateVariant(schema='SW_1623_AVR',
+                                              variants=[SWTemplateVariant(schema='ATSW_1623',
                                                                           parts=[])])
         signal_modification1 = SignalModification(signal_kks='10BBG01GS001',
                                                   signal_part='XB17',
@@ -211,15 +213,6 @@ class Options:
                                               ts_odu_data=cb_ts_data,
                                               alarm_sound_signal_port='Port3',
                                               warn_sound_signal_port='Port4')
-        sc_kru_10_6_sign_wc: Template = Template(name='SC_KRU_10_6_SIGN_WC',
-                                                 input_ports={'XA00': sc_kru_10_6_sign_input},
-                                                 output_ports={'XA00': cb_output},
-                                                 ts_odu_data=TSODUData(confirm_command_page=None,
-                                                                       confirm_command_cell=None,
-                                                                       input_ports=[],
-                                                                       output_ports=cb_ts_output),
-                                                 alarm_sound_signal_port='Port1',
-                                                 warn_sound_signal_port='Port2')
         sc_kru_10_7_sign_input: list[InputPort] = sc_kru_10_6_sign_input + [
             InputPort(page=3, cell_num=11, kks='10_____GU012', part='XK00',
                       unrel_ref_cell_num=26)]
@@ -513,8 +506,7 @@ class Options:
                                                              sim_table='[Сигналы и механизмы]',
                                                              iec_table='[МЭК 61850]',
                                                              templates=[ats, ltc, sc_cb_24, sc_kru_10_3_sign,
-                                                                        sc_kru_10_6_sign, sc_kru_10_6_sign_wc,
-                                                                        sc_kru_10_7_sign,
+                                                                        sc_kru_10_6_sign, sc_kru_10_7_sign,
                                                                         sc_nku_04_1_sign, scw_nku_04_0_sign,
                                                                         scw_nku_04_3_sign, scw_nku_04_4_sign, atsw,
                                                                         diag1, diag1_first, diag2, diag2_first,

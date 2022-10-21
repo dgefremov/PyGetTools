@@ -52,10 +52,13 @@ class CopyCid:
                 file_name: str = self._target_path + value['ICD_PATH']
                 if file_name[-4:].upper() not in ('.CID', '.ICD', 'SCD'):
                     file_name = file_name + file_extension
-                parameters: list[tuple[ParameterData, str]] = [(Nodes.IP.value, value['IP']),
+                    ip: str = value['IP']
+                    ied_name: str = value['[IED].IED_NAME']
+                    sensr_type: str = value['[IED].SENSR_TYPE']
+                parameters: list[tuple[ParameterData, str]] = [(Nodes.IP.value, ip),
                                                                (Nodes.MASK.value, self._mask),
-                                                               (Nodes.IEDNAME.value, value['[IED].IED_NAME']),
-                                                               (Nodes.DESCR.value, value['[IED].SENSR_TYPE'])]
+                                                               (Nodes.IEDNAME.value, ied_name),
+                                                               (Nodes.DESCR.value, sensr_type)]
 
                 data_for_xml[file_name] = parameters
             return data_for_xml

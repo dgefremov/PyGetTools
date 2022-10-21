@@ -330,6 +330,7 @@ class MMSGenerator:
                                 raise Exception('DatasetError')
                             if not self.dataset_container.__contains__(dataset):
                                 self.dataset_container.append(dataset)
+                            self.dpc_index += 1
                             command_adress: str = self.ied_name + self.DPC_PREFIX + str(
                                 self.dpc_index) + self.DPS_COMMAND_POSTFIX
                             signal_address: str = self.ied_name + self.DPC_PREFIX + str(
@@ -376,9 +377,11 @@ class MMSGenerator:
             part_list: list[str] = self.dpc_container[kks]
             for part in part_list:
                 if any(dpc_signal.is_signal(part) for dpc_signal in self.dpc_signals):
+                    self.sps_index += 1
                     mms_addresses.append((kks, part, self.ied_name + self.SPS_PREFIX + str(self.sps_index) +
                                           self.SPS_POSTFIX))
                 else:
+                    self.spc_index += 1
                     mms_addresses.append((kks, part, self.ied_name + self.SPC_PREFIX + str(self.spc_index) +
                                           self.SPC_POSTFIX))
         return mms_addresses

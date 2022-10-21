@@ -62,7 +62,7 @@ def get_updated_content(source_file_name: str, parameters: list[tuple[ParameterD
                 continue
             element: et.Element = elements[0]
             if node.attribute is None:
-                element.text = value
+                element.text = value if value is not None else ''
             else:
                 if node.attribute not in element.keys():
                     is_correct = False
@@ -70,7 +70,7 @@ def get_updated_content(source_file_name: str, parameters: list[tuple[ParameterD
                         "Для файла {0} и параметра {1} не найден атрибут {2}".format(source_file_name, path,
                                                                                      node.attribute))
                     continue
-                element.attrib[node.attribute] = value
+                element.attrib[node.attribute] = value if value is not None else ''
 
     if is_correct:
         root: et.Element = tree.getroot()

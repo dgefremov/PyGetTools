@@ -5,12 +5,13 @@ from tools.find_schemas import FindSchemas
 from tools.fill_ref2 import FillRef2
 from tools.options import Options
 from tools.utils.log_utils import configure_logger
+from tools.copy_cid import CopyCid
 
 
 def run_scripts():
     configure_logger('log', 'log')
     options: Options = Options.load_ruppur()
-    base_path: str = 'C:\\Data\\Руппур база\\ПТК СКУ ЭЧ ЭБ_3.15.accdb'
+    base_path: str = 'C:\\Data\\Руппур база\\2.004_БД РАСУ.accdb'
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
@@ -34,10 +35,10 @@ def run_scripts():
 
     # Генерация CID файлов на основе шаблона
     # Закомментировать если не используется
-    # CopyCid.run(base_path='c:\\User data\\ПТК СКУ ЭЧ ЭБ_3.09.accdb',
-    #             source_cid_path='c:\\User data\\All_in_one_25MV.cid',
-    #             target_path='c:\\User data\\5\\',
-    #             mask='255.255.255.0')
+    # CopyCid.run(base_path=base_path,
+    #            source_cid_path='C:\\Data\\Руппур база\\All_in_one_25MV.cid',
+    #            target_path='C:\\Data\\Руппур база\\!CID\\',
+    #            mask='255.255.255.0')
 
 
 if __name__ == '__main__':

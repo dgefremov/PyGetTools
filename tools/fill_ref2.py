@@ -683,7 +683,7 @@ class FillRef2:
         for value in values:
             source_signal, source_error = self._get_signal_for_ts_odu_logic(kks=value['KKS'],
                                                                             part=value['PART'])
-            if source_error != ErrorType.NOERROR != ErrorType.NOERROR:
+            if source_error != ErrorType.NOERROR:
                 ok_flag = False
                 continue
             mozaic_element: MozaicElement = MozaicElement(place=value['INST_PLACE'],
@@ -718,13 +718,13 @@ class FillRef2:
     def _process_ts_odu_signals(self, updated_schemas: list[tuple[str, str, str]]) -> list[SignalRef] | None:
         ok_flag: bool = True
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
-                                                                  fields=['KKS_NEW', 'PART', 'KKSp', 'TEMPLATE'])
+                                                                  fields=['KKS', 'PART', 'KKSp', 'SCHEMA'])
         refs: list[SignalRef] = []
         for value in values:
-            kks: str = value['KKS_NEW']
+            kks: str = value['KKS']
             part: str = value['PART']
             template_name: str = updated_schemas[2] if updated_schemas[0] == kks and updated_schemas[1] == part \
-                else value['TEMPLATE']
+                else value['SCHEMA']
             ts_odu_panel_name: str = value['KKSp']
             template: TSODUTemplate | None = None
             if template_name is None:
@@ -841,7 +841,7 @@ class FillRef2:
                                   unrel_ref=None))
         signals_in_mozaic_element: list[Signal] = []
         values: list[dict[str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
-                                                             fields=['KKS_NEW', 'PART'],
+                                                             fields=['KKS', 'PART'],
                                                              key_names=['INST_PLACE', 'KKSp'],
                                                              key_values=[mozaic_element.place,
                                                                          mozaic_element.ts_odu_panel])
@@ -858,7 +858,7 @@ class FillRef2:
                           f'{mozaic_element.ts_odu_panel} не совпадает с числом сигналов в шаблоне')
             return None
         for value in values:
-            signals_in_mozaic_element.append(Signal(kks=value['KKS_NEW'],
+            signals_in_mozaic_element.append(Signal(kks=value['KKS'],
                                                     part=value['PART'],
                                                     cabinet=self._options.ts_odu_info.cabinet,
                                                     type=SignalType.TS_ODU))
@@ -894,7 +894,7 @@ class FillRef2:
 
     def _get_target_signal_for_ts_odu(self, dynamic_template: DynamicTemplate) -> Signal | None:
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
-                                                                  fields=['KKS', 'PART', 'NAME_RUS', 'KKS_NEW'],
+                                                                  fields=['PART', 'NAME_RUS', 'KKS'],
                                                                   key_names=['INST_PLACE', 'KKSp', 'TYPE'],
                                                                   key_values=[dynamic_template.target.place,
                                                                               dynamic_template.target.ts_odu_panel,
@@ -907,7 +907,7 @@ class FillRef2:
             logging.error(f'Повторы в таблице СиМ ТС ОДУ для панели {dynamic_template.target.ts_odu_panel} '
                           f'координаты {dynamic_template.target.place} элемента {dynamic_template.type}')
             return None
-        signal: Signal = Signal(kks=values[0]['KKS_NEW'],
+        signal: Signal = Signal(kks=values[0]['KKS'],
                                 part=values[0]['PART'],
                                 cabinet=self._options.ts_odu_info.cabinet,
                                 type=SignalType.TS_ODU,
@@ -967,7 +967,8 @@ class FillRef2:
                                                                index='001')
             return [virtual_schema], refs, None
         # Если стоек несколько - для каждой формируем схему OR и общую схему OR в панели ТС ОДУ
-        cabinet_index: int = 0
+        cabinet_index: int = 2
+        page_num: int = 2
         virtual_schemas: list[VirtualSchema] = []
         source_cabinet_or_signals: list[Signal] = []
         refs: list[SignalRef] = []
@@ -979,6 +980,10 @@ class FillRef2:
             descr=target_signal.descr)
         for cabinet in source_signals_by_cabinet.keys():
             cabinet_index += 1
+            if cabinet_index > 25:
+                cabinet_index = 3
+                page_num += 1
+
             if len(source_signals_by_cabinet[cabinet]) == 1:
                 # Если сигнал в стойке один - сразу создаем ссылку без создания OR схемы
                 source_signal: Signal = source_signals_by_cabinet[cabinet][0]
@@ -986,8 +991,8 @@ class FillRef2:
                                                      target_abonent=target_ts_odu_panel.abonent,
                                                      target_kks=target_or_schema_signal.kks,
                                                      target_part=target_or_schema_signal.part,
-                                                     target_page=self._options.wired_signal_output_default_page,
-                                                     target_cell=self._options.wired_signal_output_default_cell))
+                                                     target_page=page_num,
+                                                     target_cell=cabinet_index))
                 source_cabinet_or_signals.append(source_signal)
             else:
                 # Если сигналов несколько, предварительно создаем OR схему в шкафу
@@ -1003,16 +1008,16 @@ class FillRef2:
                 virtual_schemas.append(cabinet_schema)
                 refs += cabinet_refs
                 source_cabinet_or_signals.append(source_cabinet_or_signal)
-        # В шкафу ТС ОДУ OR схема не создается, т.к. будет использоваться непосредственно схемы для
-        # вывода дискретного сигнала. Ее префикс TS_ODU_
-        # Поэтому после вызова create_virtual_schema используются только ссылки
+                # В шкафу ТС ОДУ OR схема не создается, т.к. будет использоваться непосредственно схемы для
+                # вывода дискретного сигнала. Ее префикс TS_ODU_
+                # Поэтому после вызова create_virtual_schema используются только ссылки
 
         _, target_refs = self._create_virtual_schema(target_signal=target_signal,
                                                      target_abonent=target_ts_odu_panel.abonent,
                                                      source_signals=source_cabinet_or_signals,
                                                      index=None)
         refs += target_refs
-        updated_schema_name: str = f'BO_TS_ODU_DISPL_{len(source_cabinet_or_signals)}'
+        updated_schema_name = f'BO_TS_ODU_DISPL_{len(source_signals_by_cabinet)}'
 
         return virtual_schemas, refs, (target_signal.kks, target_signal.part, updated_schema_name)
 
@@ -1033,7 +1038,7 @@ class FillRef2:
                                                  target_part=target_signal.part,
                                                  target_abonent=target_ts_odu_panel.abonent,
                                                  target_page=self._options.wired_signal_output_default_page,
-                                                 target_cell=self._options.wired_signal_output_default_page)], None
+                                                 target_cell=self._options.wired_signal_output_default_cell)], None
         # Случай, когда несколько сигналов источников на один сигнал приемник
         # В этом случае формируются схемы управления OR
 
@@ -1148,7 +1153,9 @@ class FillRef2:
     def _write_control_schemas(self, dynamic_schemas: list[VirtualSchema]):
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.predifend_control_schemas_table,
-            fields=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR'])
+            fields=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR'],
+            key_names=['ONLY_FOR_REF'],
+            key_values=[False])
         for value in values:
             self._access.insert_row(table_name=self._options.control_schemas_table,
                                     column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR'],
@@ -1167,9 +1174,9 @@ class FillRef2:
             part: str = schema[1]
             name: str = schema[2]
             self._access.update_field(table_name=self._options.ts_odu_table,
-                                      fields=['TEMPLATE'],
+                                      fields=['SCHEMA'],
                                       values=[name],
-                                      key_names=['KKS_NEW', 'PART'],
+                                      key_names=['KKS', 'PART'],
                                       key_values=[kks, part])
         self._access.commit()
 
