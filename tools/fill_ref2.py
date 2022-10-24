@@ -439,7 +439,8 @@ class FillRef2:
         return None
 
     def _creare_ref_for_input_port(self, schema_kks: str, schema_part: str, cabinet: str,
-                                   input_port: InputPort, kksp: str, template_name: str) -> SignalRef | None:
+                                   input_port: InputPort, kksp: str, template_name: str,
+                                   add_kks_postfix: bool) -> SignalRef | None:
         """
         Создание ссылки для входного сигналы схемы управления
         :param schema_kks: KKS схемы управления
@@ -458,19 +459,20 @@ class FillRef2:
         if signal is None:
             return None
         cabinet_prefix: str = '' if signal.cabinet == cabinet else f'{self._abonent_map[signal.cabinet]}\\'
+        kks_postfix: str = self._options.control_schema_name_postfix if add_kks_postfix else ''
         ref: str
         unrel_ref: str | None
         if signal.type == SignalType.DIGITAL:
-            ref: str = f'{cabinet_prefix}{schema_kks}{self._options.control_schema_name_postfix}_' \
+            ref: str = f'{cabinet_prefix}{schema_kks}{kks_postfix}_' \
                        f'{schema_part}\\{input_port.page}\\{input_port.cell_num}'
             if input_port.unrel_ref_cell_num is not None:
-                unrel_ref = f'{cabinet_prefix}{schema_kks}{self._options.control_schema_name_postfix}_' \
+                unrel_ref = f'{cabinet_prefix}{schema_kks}{kks_postfix}_' \
                             f'{schema_part}\\{input_port.page}\\{input_port.unrel_ref_cell_num}'
             else:
                 unrel_ref = None
         else:
             ref: str = f'{self._options.wired_signal_default_input_port}:{cabinet_prefix}{schema_kks}' \
-                       f'{self._options.control_schema_name_postfix}_{schema_part}\\{input_port.page}\\' \
+                       f'{kks_postfix}_{schema_part}\\{input_port.page}\\' \
                        f'{input_port.cell_num}'
             unrel_ref = None
         signal_ref: SignalRef = SignalRef(kks=signal.kks,
@@ -480,8 +482,8 @@ class FillRef2:
         return signal_ref
 
     def _creare_ref_for_output_port(self, schema_kks: str, schema_part: str, cabinet: str, output_port: OutputPort,
-                                    kksp: str,
-                                    template_name: str, signal: Signal | None = None) -> list[SignalRef] | None:
+                                    kksp: str, template_name: str, add_kks_postfix: bool,
+                                    signal: Signal | None = None) -> list[SignalRef] | None:
         """
         Создание ссылки для выходного сигналы схемы управления
         :param schema_kks: KKS схемы управления
@@ -511,7 +513,8 @@ class FillRef2:
             else:
                 ref += f'\\{output_port.page}\\{output_port.cell_num}'
 
-            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix,
+            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix
+                                                if add_kks_postfix else schema_kks,
                                               part=schema_part,
                                               ref=ref,
                                               unrel_ref=None)
@@ -525,7 +528,8 @@ class FillRef2:
                                  f'{self._options.wired_signal_output_blink_default_cell}'
                 else:
                     ref_blink += f'\\{output_port.blink_page}\\{output_port.blink_cell_num}'
-                signal_blink_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix,
+                signal_blink_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix
+                                                            if add_kks_postfix else schema_kks,
                                                         part=schema_part,
                                                         ref=ref_blink,
                                                         unrel_ref=None)
@@ -539,13 +543,15 @@ class FillRef2:
                                    f'{self._options.wired_signal_output_flicker_default_cell}'
                 else:
                     ref_flicker += f'\\{output_port.flicker_page}\\{output_port.flicker_cell_num}'
-                signal_ref_flicker: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix,
+                signal_ref_flicker: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix
+                                                            if add_kks_postfix else schema_kks,
                                                           part=schema_part,
                                                           ref=ref_flicker,
                                                           unrel_ref=None)
                 signal_refs.append(signal_ref_flicker)
         else:
-            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix,
+            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix
+                                                if add_kks_postfix else schema_kks,
                                               part=schema_part,
                                               ref=ref,
                                               unrel_ref=None)
@@ -561,26 +567,27 @@ class FillRef2:
         ref_list: list[SignalRef] = []
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.predifend_control_schemas_table,
-            fields=['KKS', 'SCHEMA', 'PART', 'CABINET', 'TS_ODU_PANEL', 'INST_PLACE', 'KKSp'])
+            fields=['KKS', 'SCHEMA', 'PART', 'CABINET', 'TS_ODU_PANEL', 'INST_PLACE', 'KKSp', 'ONLY_FOR_REF'])
         for value in values:
-            schema_kks = value['KKS']
-            schema_part = value['PART']
-            cabinet = value['CABINET']
-            template_name = value['SCHEMA']
-            kksp = value['KKSp']
+            schema_kks: str = value['KKS']
+            schema_part: str = value['PART']
+            cabinet: str = value['CABINET']
+            template_name: str = value['SCHEMA']
+            kksp: str = value['KKSp']
             mozaic_element: MozaicElement | None = None
             if value['TS_ODU_PANEL'] is not None and value['TS_ODU_PANEL'] != '' and \
                     value['INST_PLACE'] is not None and value['INST_PLACE'] != '':
                 mozaic_element = MozaicElement(ts_odu_panel=value['TS_ODU_PANEL'],
                                                place=value['INST_PLACE'])
-
+            add_kks_postfix: bool = value['ONLY_FOR_REF'] == 'False'
             ref_list_for_schema: list[SignalRef] | None = \
                 self._get_ref_for_schema(schema_kks=schema_kks,
                                          schema_part=schema_part,
                                          schema_cabinet=cabinet,
                                          template_name=template_name,
                                          mozaic_element=mozaic_element,
-                                         kksp=kksp)
+                                         kksp=kksp,
+                                         add_kks_postfix=add_kks_postfix)
             if ref_list_for_schema is None:
                 error_flag = True
             else:
@@ -614,7 +621,7 @@ class FillRef2:
             refs.append(self._get_ref_for_signal(source_signal=signal,
                                                  target_kks=self._options.ts_odu_info.alarm_sound_kks,
                                                  target_abonent=self._abonent_map[self._options.ts_odu_info.cabinet],
-                                                 target_part=self._options.ts_odu_info.alarm_sound_part,
+                                                 target_part=self._options.ts_odu_info.warning_sound_part,
                                                  target_page=page_num,
                                                  target_cell=cell_num,
                                                  source_port=self._warn_sound_container[signal]))
@@ -643,8 +650,9 @@ class FillRef2:
             tuple[Signal | None, ErrorType]:
         values_from_sim: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table,
                                                                            fields=['CABINET'],
-                                                                           key_names=['KKS', 'PART'],
-                                                                           key_values=[kks, part])
+                                                                           key_names=['KKS', 'PART', 'MODULE'],
+                                                                           key_values=[kks, part, '1691'],
+                                                                           key_operator=['=', '=', '<>'])
         if len(values_from_sim) == 1:
             cabinet: str = values_from_sim[0]['CABINET']
             return Signal(kks=kks,
@@ -820,7 +828,8 @@ class FillRef2:
         return refs
 
     def _get_refs_for_ts_odu_in_define_schema(self, schema_kks: str, schema_part: str, schema_abonent: int,
-                                              schema_cabinet, ts_odu_data: TSODUData, mozaic_element: MozaicElement) \
+                                              schema_cabinet, ts_odu_data: TSODUData, mozaic_element: MozaicElement,
+                                              add_kks_postfix: bool) \
             -> list[SignalRef] | None:
         refs: list[SignalRef] = []
         if mozaic_element is None:
@@ -833,7 +842,8 @@ class FillRef2:
         if ts_odu_data.confirm_command_page is not None and ts_odu_data.confirm_command_cell is not None:
             if ts_odu_panel.confirm_part is None or ts_odu_panel.confirm_kks is None:
                 logging.error('Для панели не предусмотрена подтверждение')
-            confirm_ref: str = f'Port1:{schema_abonent}\\{schema_kks}V_{schema_part}\\' \
+            kks: str = schema_kks + self._options.control_schema_name_postfix if add_kks_postfix else schema_kks
+            confirm_ref: str = f'Port1:{schema_abonent}\\{kks}_{schema_part}\\' \
                                f'{ts_odu_data.confirm_command_page}\\{ts_odu_data.confirm_command_cell}'
             refs.append(SignalRef(kks=ts_odu_panel.confirm_kks,
                                   part=ts_odu_panel.confirm_part,
@@ -874,7 +884,8 @@ class FillRef2:
                                                                     output_port=ouput_port,
                                                                     kksp=ts_odu_panel.name,
                                                                     template_name='ТС ОДУ',
-                                                                    signal=output_signal)
+                                                                    signal=output_signal,
+                                                                    add_kks_postfix=add_kks_postfix)
             refs += refs_for_output_port
         for input_port in ts_odu_data.input_ports:
             input_signal: Signal | None = next((signal for signal in signals_in_mozaic_element
@@ -882,8 +893,9 @@ class FillRef2:
             if input_signal is None:
                 logging.error(f'Не найден сигнал {input_port.part}')
                 return None
+            kks: str = schema_kks + self._options.control_schema_name_postfix if add_kks_postfix else schema_kks
             ref = self._get_ref_for_signal(source_signal=input_signal,
-                                           target_kks=schema_kks + 'V',
+                                           target_kks=kks,
                                            target_part=schema_part,
                                            target_abonent=schema_abonent,
                                            target_page=input_port.page,
@@ -914,17 +926,18 @@ class FillRef2:
                                 descr=values[0]['NAME_RUS'])
         return signal
 
-    def _create_virtual_schema(self, target_signal: Signal, target_abonent: int, index: str | None,
-                               source_signals: list[Signal]) -> tuple[VirtualSchema, list[SignalRef]]:
+    def _create_virtual_schema(self, target_kks: str, target_part: str, descr: str,
+                               target_abonent: int, source_signals: list[Signal]) -> \
+            tuple[VirtualSchema, list[SignalRef]]:
         kks: str
-        if index is not None:
-            kks = f'{target_signal.kks[0:7]}{self._options.or_schema_code}{index}'
-        else:
-            kks = f'{target_signal.kks}'
+        # if index is not None:
+        #    kks = f'{target_signal.kks[0:7]}{self._options.or_schema_code}{index}'
+        # else:
+        #    kks = f'{target_signal.kks}'
         schema: str = f'{self._options.or_schema_name_prefix}{len(source_signals)}'
-        virtual_schema: VirtualSchema = VirtualSchema(kks=kks,
-                                                      part=target_signal.part,
-                                                      descr=target_signal.descr,
+        virtual_schema: VirtualSchema = VirtualSchema(kks=target_kks,
+                                                      part=target_part,
+                                                      descr=descr,
                                                       schema=schema,
                                                       cabinet=source_signals[0].cabinet)
         refs: list[SignalRef] = []
@@ -933,12 +946,12 @@ class FillRef2:
         index: int = 0
         for signal in source_signals:
             index += 1
-            cell_num: int = index % refs_on_page + self._options.or_schema_start_cell
+            cell_num: int = index % refs_on_page + self._options.or_schema_start_cell - 1
             page_num: int = index // refs_on_page + 1
             refs.append(self._get_ref_for_signal(source_signal=signal,
-                                                 target_kks=kks,
+                                                 target_kks=target_kks,
                                                  target_abonent=target_abonent,
-                                                 target_part=target_signal.part,
+                                                 target_part=target_part,
                                                  target_page=page_num,
                                                  target_cell=cell_num))
         return virtual_schema, refs
@@ -960,15 +973,19 @@ class FillRef2:
                 signals_in_cabinet.append(source_signal)
         # Если стойка одна, то только для нее формируем схему OR
         if len(source_signals_by_cabinet.keys()) == 1:
-            virtual_schema, refs = self._create_virtual_schema(target_signal=target_signal,
+            kks = f'{target_signal.kks[0:7]}{self._options.or_schema_code}000'
+            virtual_schema, refs = self._create_virtual_schema(target_kks=kks,
+                                                               target_part=target_signal.part,
+                                                               descr=target_signal.descr,
                                                                source_signals=list(list(source_signals_by_cabinet.
                                                                                         values())[0]),
-                                                               target_abonent=target_ts_odu_panel.abonent,
-                                                               index='001')
+                                                               target_abonent=self._abonent_map[
+                                                                   list(source_signals_by_cabinet.keys())[0]])
             return [virtual_schema], refs, None
         # Если стоек несколько - для каждой формируем схему OR и общую схему OR в панели ТС ОДУ
-        cabinet_index: int = 2
+        cell_index: int = 2
         page_num: int = 2
+        cabinet_index: int = 0
         virtual_schemas: list[VirtualSchema] = []
         source_cabinet_or_signals: list[Signal] = []
         refs: list[SignalRef] = []
@@ -980,8 +997,9 @@ class FillRef2:
             descr=target_signal.descr)
         for cabinet in source_signals_by_cabinet.keys():
             cabinet_index += 1
-            if cabinet_index > 25:
-                cabinet_index = 3
+            cell_index += 1
+            if cell_index > 25:
+                cell_index = 3
                 page_num += 1
 
             if len(source_signals_by_cabinet[cabinet]) == 1:
@@ -992,15 +1010,18 @@ class FillRef2:
                                                      target_kks=target_or_schema_signal.kks,
                                                      target_part=target_or_schema_signal.part,
                                                      target_page=page_num,
-                                                     target_cell=cabinet_index))
+                                                     target_cell=cell_index))
                 source_cabinet_or_signals.append(source_signal)
             else:
                 # Если сигналов несколько, предварительно создаем OR схему в шкафу
+                kks = f'{target_signal.kks[0:7]}{self._options.or_schema_code}{str.zfill(str(cabinet_index), 3)}'
+
                 cabinet_schema, cabinet_refs = self._create_virtual_schema(
-                    target_signal=target_or_schema_signal,
+                    target_kks=kks,
+                    target_part=target_signal.part,
+                    descr=target_signal.descr,
                     source_signals=source_signals_by_cabinet[cabinet],
-                    target_abonent=target_ts_odu_panel.abonent,
-                    index=str(cabinet_index).zfill(3))
+                    target_abonent=self._abonent_map[cabinet])
                 source_cabinet_or_signal: Signal = Signal(kks=cabinet_schema.kks,
                                                           part=cabinet_schema.part,
                                                           cabinet=cabinet,
@@ -1008,14 +1029,15 @@ class FillRef2:
                 virtual_schemas.append(cabinet_schema)
                 refs += cabinet_refs
                 source_cabinet_or_signals.append(source_cabinet_or_signal)
-                # В шкафу ТС ОДУ OR схема не создается, т.к. будет использоваться непосредственно схемы для
-                # вывода дискретного сигнала. Ее префикс TS_ODU_
-                # Поэтому после вызова create_virtual_schema используются только ссылки
+        # В шкафу ТС ОДУ OR схема не создается, т.к. будет использоваться непосредственно схемы для
+        # вывода дискретного сигнала. Ее префикс TS_ODU_
+        # Поэтому после вызова create_virtual_schema используются только ссылки
 
-        _, target_refs = self._create_virtual_schema(target_signal=target_signal,
+        _, target_refs = self._create_virtual_schema(target_kks=target_signal.kks,
+                                                     target_part=target_signal.part,
+                                                     descr=target_signal.descr,
                                                      target_abonent=target_ts_odu_panel.abonent,
-                                                     source_signals=source_cabinet_or_signals,
-                                                     index=None)
+                                                     source_signals=source_cabinet_or_signals)
         refs += target_refs
         updated_schema_name = f'BO_TS_ODU_DISPL_{len(source_signals_by_cabinet)}'
 
@@ -1050,11 +1072,12 @@ class FillRef2:
                             target_page: str | int, target_cell: str | int, source_port: str | None = None) -> \
             SignalRef:
         ref: str
+        abonent: str = f'{target_abonent}\\' if target_abonent != self._abonent_map[source_signal.cabinet] else ''
         if source_signal.type == SignalType.DIGITAL:
-            ref: str = f'{target_abonent}\\{target_kks}_{target_part}\\{target_page}\\{target_cell}'
+            ref: str = f'{abonent}{target_kks}_{target_part}\\{target_page}\\{target_cell}'
         else:
             port_prefix = self._options.wired_signal_default_input_port if source_port is None else source_port
-            ref: str = f'{port_prefix}:{target_abonent}\\{target_kks}_{target_part}\\{target_page}\\{target_cell}'
+            ref: str = f'{port_prefix}:{abonent}{target_kks}_{target_part}\\{target_page}\\{target_cell}'
         signal_ref: SignalRef = SignalRef(kks=source_signal.kks,
                                           part=source_signal.part,
                                           ref=ref,
@@ -1062,6 +1085,7 @@ class FillRef2:
         return signal_ref
 
     def _get_ref_for_schema(self, schema_kks: str, schema_part: str, schema_cabinet: str,
+                            add_kks_postfix: bool,
                             template_name: str, kksp: str | None = None,
                             mozaic_element: MozaicElement | None = None) -> list[SignalRef] | None:
         """
@@ -1090,13 +1114,15 @@ class FillRef2:
         if len(template.input_ports[schema_part]) == 0 and len(template.output_ports[schema_part]) == 0:
             return ref_list
         if template.alarm_sound_signal_port is not None:
-            self._alarm_sound_container[Signal(kks=schema_kks,
+            self._alarm_sound_container[Signal(kks=schema_kks + self._options.control_schema_name_postfix
+                                                    if add_kks_postfix else schema_kks,
                                                part=schema_part,
                                                cabinet=schema_cabinet,
                                                type=SignalType.WIRED,
                                                descr='АварЗвук')] = template.alarm_sound_signal_port
         if template.warn_sound_signal_port is not None:
-            self._warn_sound_container[Signal(kks=schema_kks,
+            self._warn_sound_container[Signal(kks=schema_kks + self._options.control_schema_name_postfix
+                                                    if add_kks_postfix else schema_kks,
                                               part=schema_part,
                                               cabinet=schema_cabinet,
                                               type=SignalType.WIRED,
@@ -1109,7 +1135,8 @@ class FillRef2:
                                                                                cabinet=schema_cabinet,
                                                                                input_port=port,
                                                                                kksp=kksp,
-                                                                               template_name=template_name)
+                                                                               template_name=template_name,
+                                                                               add_kks_postfix=add_kks_postfix)
                 if signal_ref is None:
                     return None
                 ref_list.append(signal_ref)
@@ -1122,7 +1149,8 @@ class FillRef2:
                                                                                       cabinet=schema_cabinet,
                                                                                       output_port=port,
                                                                                       kksp=kksp,
-                                                                                      template_name=template_name)
+                                                                                      template_name=template_name,
+                                                                                      add_kks_postfix=add_kks_postfix)
                 if signal_ref is None:
                     return None
                 ref_list += signal_ref
@@ -1132,7 +1160,8 @@ class FillRef2:
                                                                                       schema_abonent=schema_abonent,
                                                                                       schema_cabinet=schema_cabinet,
                                                                                       mozaic_element=mozaic_element,
-                                                                                      ts_odu_data=template.ts_odu_data)
+                                                                                      ts_odu_data=template.ts_odu_data,
+                                                                                      add_kks_postfix=add_kks_postfix)
             if refs is None:
                 return None
             ref_list += refs
@@ -1159,8 +1188,8 @@ class FillRef2:
         for value in values:
             self._access.insert_row(table_name=self._options.control_schemas_table,
                                     column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR'],
-                                    values=[value['KKS'], value['CABINET'], value['SCHEMA'], value['CHANNEL'],
-                                            value['PART'], value['DESCR']])
+                                    values=[value['KKS'] + self._options.control_schema_name_postfix, value['CABINET'],
+                                            value['SCHEMA'], value['CHANNEL'], value['PART'], value['DESCR']])
         for dynamic_schema in dynamic_schemas:
             self._access.insert_row(table_name=self._options.control_schemas_table,
                                     column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR'],

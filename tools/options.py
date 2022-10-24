@@ -265,10 +265,10 @@ class Options:
         ats_ouput: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XL21'),
                                        OutputPort(name='Port2', kks=None, part='XL22')]
 
-        ats_ts_output: list[OutputPort] = [OutputPort(name='Port4', kks=None, part='XB22',
-                                                      blink_port_name='Port5', flicker_port_name='Port6'),
-                                           OutputPort(name='Port7', kks=None, part='XB21',
-                                                      blink_port_name='Port8', flicker_port_name='Port9')]
+        ats_ts_output: list[OutputPort] = [OutputPort(name='Port3', kks=None, part='XB22',
+                                                      blink_port_name='Port4', flicker_port_name='Port5'),
+                                           OutputPort(name='Port6', kks=None, part='XB21',
+                                                      blink_port_name='Port7', flicker_port_name='Port8')]
         ats_ts_input: list[InputPort] = [InputPort(page=3, cell_num=14, kks=None, part='XL21',
                                                    unrel_ref_cell_num=None),
                                          InputPort(page=3, cell_num=15, kks=None, part='XL22',
@@ -449,21 +449,21 @@ class Options:
 
         ts_odu_panel1: TSODUPanel = TSODUPanel(name='10CWG09',
                                                confirm_part='XG01',
-                                               confirm_kks='10CWG09CH200',
+                                               confirm_kks='10CWG09CH200K',
                                                abonent=321,
-                                               acknowledgment_kks='10CWG09CH100',
+                                               acknowledgment_kks='10CWG09CH100K',
                                                acknowledgment_part='XG01')
         ts_odu_panel2: TSODUPanel = TSODUPanel(name='10CWG10',
                                                confirm_part='XG01',
                                                confirm_kks='10CWG10CH200',
                                                abonent=321,
-                                               acknowledgment_kks='10CWG10CH100',
+                                               acknowledgment_kks='10CWG10CH100K',
                                                acknowledgment_part='XG01')
         ts_odu_panel3: TSODUPanel = TSODUPanel(name='10CWB40',
                                                confirm_part=None,
                                                confirm_kks=None,
                                                abonent=321,
-                                               acknowledgment_kks='10CWB40CH100',
+                                               acknowledgment_kks='10CWB40CH100K',
                                                acknowledgment_part='XG01')
 
         display: TSODUTemplate = TSODUTemplate(name='BO_TS_ODU_DISPL%',
@@ -484,16 +484,16 @@ class Options:
 
         ts_odu_description: TSODUDescription = TSODUDescription(panels=[ts_odu_panel1, ts_odu_panel2, ts_odu_panel3],
 
-                                                                alarm_sound_kks='10CWG10GH001',
+                                                                alarm_sound_kks='10CWG10GH001S',
                                                                 alarm_sound_part='XN06',
-                                                                alarm_sound_check_kks='10CWG10CH020',
+                                                                alarm_sound_check_kks='10CWG10CH020K',
                                                                 alarm_sound_check_part='XG01',
                                                                 alarm_sound_check_port='Port1',
                                                                 alarm_sound_check_page='1',
                                                                 alarm_sound_check_cell='8',
-                                                                warning_sound_kks='10CWG10GH001',
+                                                                warning_sound_kks='10CWG10GH001S',
                                                                 warning_sound_part='XN05',
-                                                                warn_sound_check_kks='10CWG10CH020',
+                                                                warn_sound_check_kks='10CWG10CH020K',
                                                                 warn_sound_check_part='XG02',
                                                                 warn_sound_check_port='Port1',
                                                                 warn_sound_check_page='1',
@@ -515,8 +515,8 @@ class Options:
                                                              wired_signal_output_default_cell=7,
                                                              wired_signal_output_blink_default_page=1,
                                                              wired_signal_output_blink_default_cell=9,
-                                                             wired_signal_output_flicker_default_cell=1,
-                                                             wired_signal_output_flicker_default_page=11,
+                                                             wired_signal_output_flicker_default_page=1,
+                                                             wired_signal_output_flicker_default_cell=11,
                                                              ts_odu_algorithm='[Логика ТС ОДУ]',
                                                              ts_odu_table='[Сигналы и механизмы ТС ОДУ]',
                                                              ts_odu_info=ts_odu_description,
