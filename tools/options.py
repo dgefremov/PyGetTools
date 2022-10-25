@@ -175,7 +175,7 @@ class Options:
                                                      blink_port_name='Port9', flicker_port_name='Port10'),
                                           OutputPort(name='Port11', kks=None, part='XF19',
                                                      blink_port_name='Port12')]
-        cb_ts_data: TSODUData = TSODUData(confirm_command_page='3', confirm_command_cell=17,
+        cb_ts_data: TSODUData = TSODUData(confirm_command_page='3', confirm_command_cell=16,
                                           input_ports=cb_ts_input,
                                           output_ports=cb_ts_output)
         sc_kru_10_3_sign_output: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA01'),
@@ -296,7 +296,7 @@ class Options:
                                                       blink_port_name='Port7', flicker_port_name='Port8'),
                                            OutputPort(name='Port9', kks=None, part='XF19',
                                                       blink_port_name='Port10')]
-        cbw_ts_data: TSODUData = TSODUData(confirm_command_page='3', confirm_command_cell=15,
+        cbw_ts_data: TSODUData = TSODUData(confirm_command_page='3', confirm_command_cell=16,
                                            input_ports=cb_ts_input,
                                            output_ports=cbw_ts_output)
 
@@ -455,7 +455,7 @@ class Options:
                                                acknowledgment_part='XG01')
         ts_odu_panel2: TSODUPanel = TSODUPanel(name='10CWG10',
                                                confirm_part='XG01',
-                                               confirm_kks='10CWG10CH200',
+                                               confirm_kks='10CWG10CH200K',
                                                abonent=321,
                                                acknowledgment_kks='10CWG10CH100K',
                                                acknowledgment_part='XG01')
@@ -475,8 +475,6 @@ class Options:
                                                output_ports=[])
 
         lamp: TSODUTemplate = TSODUTemplate(name='BO_TS_ODU_LAMP%',
-                                            acknolegment_page='1',
-                                            acknolegment_cell='4',
                                             lamp_test_page='1',
                                             lamp_test_cell='3',
                                             input_ports=[],
@@ -498,7 +496,13 @@ class Options:
                                                                 warn_sound_check_port='Port1',
                                                                 warn_sound_check_page='1',
                                                                 warn_sound_check_cell='8',
-                                                                cabinet='10BYA02')
+                                                                cabinet='10BYA02',
+                                                                lamp_test_kks='10CWG10CH011',
+                                                                lamp_test_part='XG01',
+                                                                lamp_test_port='Port1',
+                                                                display_test_kks='10CWG10CH010K',
+                                                                display_test_part='XG01',
+                                                                display_test_port='Port1')
 
         fill_ref2_options: FillRef2Options = FillRef2Options(control_schemas_table='[VIRTUAL SCHEMAS]',
                                                              predifend_control_schemas_table='[PREDEFINED SCHEMAS]',

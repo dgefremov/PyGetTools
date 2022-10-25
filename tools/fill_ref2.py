@@ -32,7 +32,12 @@ class TSODUDescription:
     warn_sound_check_cell: str
     warn_sound_check_port: str
     cabinet: str
-    cabinet: str
+    lamp_test_kks: str | None = None
+    lamp_test_part: str | None = None
+    lamp_test_port: str | None = 'Port1'
+    display_test_kks: str | None = None
+    display_test_part: str | None = None
+    display_test_port: str | None = 'Port1'
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -73,12 +78,6 @@ class TSODUPanel:
     acknowledgment_kks: str | None
     acknowledgment_part: str | None
     abonent: int
-    lamp_test_kks: str | None = None
-    lamp_test_part: str | None = None
-    lamp_test_port: str | None = 'Port1'
-    display_test_kks: str | None = None
-    display_test_part: str | None = None
-    display_test_port: str | None = 'Port1'
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -119,8 +118,6 @@ class Template:
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class TSODUTemplate:
     name: str
-    acknolegment_page: str | None
-    acknolegment_cell: str | None
     input_ports: list[InputPort]
     output_ports: list[OutputPort]
     warning_port: str | None = None
@@ -129,6 +126,8 @@ class TSODUTemplate:
     lamp_test_cell: str | None = None
     display_test_page: str | None = None
     display_test_cell: str | None = None
+    acknolegment_page: str | None = None
+    acknolegment_cell: str | None = None
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -161,7 +160,7 @@ class FillRef2Options:
     wired_signal_default_input_port: str
     or_schema_name_prefix: str = 'OR_'
     or_schema_start_cell: int = 3
-    or_schema_end_cell: int = 25
+    or_schema_end_cell: int = 24
     control_schema_name_postfix: str = 'V'
     or_schema_code = 'XM'
 
@@ -513,11 +512,11 @@ class FillRef2:
             else:
                 ref += f'\\{output_port.page}\\{output_port.cell_num}'
 
-            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix
-                                                if add_kks_postfix else schema_kks,
-                                              part=schema_part,
-                                              ref=ref,
-                                              unrel_ref=None)
+            signal_ref: SignalRef = SignalRef(
+                kks=schema_kks + self._options.control_schema_name_postfix if add_kks_postfix else schema_kks,
+                part=schema_part,
+                ref=ref,
+                unrel_ref=None)
             signal_refs.append(signal_ref)
             if output_port.blink_port_name is not None:
                 ref_blink: str = f'{output_port.blink_port_name}:'
@@ -528,11 +527,11 @@ class FillRef2:
                                  f'{self._options.wired_signal_output_blink_default_cell}'
                 else:
                     ref_blink += f'\\{output_port.blink_page}\\{output_port.blink_cell_num}'
-                signal_blink_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix
-                                                            if add_kks_postfix else schema_kks,
-                                                        part=schema_part,
-                                                        ref=ref_blink,
-                                                        unrel_ref=None)
+                signal_blink_ref: SignalRef = SignalRef(
+                    kks=schema_kks + self._options.control_schema_name_postfix if add_kks_postfix else schema_kks,
+                    part=schema_part,
+                    ref=ref_blink,
+                    unrel_ref=None)
                 signal_refs.append(signal_blink_ref)
             if output_port.flicker_port_name is not None:
                 ref_flicker: str = f'{output_port.flicker_port_name}:'
@@ -543,18 +542,18 @@ class FillRef2:
                                    f'{self._options.wired_signal_output_flicker_default_cell}'
                 else:
                     ref_flicker += f'\\{output_port.flicker_page}\\{output_port.flicker_cell_num}'
-                signal_ref_flicker: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix
-                                                            if add_kks_postfix else schema_kks,
-                                                          part=schema_part,
-                                                          ref=ref_flicker,
-                                                          unrel_ref=None)
+                signal_ref_flicker: SignalRef = SignalRef(
+                    kks=schema_kks + self._options.control_schema_name_postfix if add_kks_postfix else schema_kks,
+                    part=schema_part,
+                    ref=ref_flicker,
+                    unrel_ref=None)
                 signal_refs.append(signal_ref_flicker)
         else:
-            signal_ref: SignalRef = SignalRef(kks=schema_kks + self._options.control_schema_name_postfix
-                                                if add_kks_postfix else schema_kks,
-                                              part=schema_part,
-                                              ref=ref,
-                                              unrel_ref=None)
+            signal_ref: SignalRef = SignalRef(
+                kks=schema_kks + self._options.control_schema_name_postfix if add_kks_postfix else schema_kks,
+                part=schema_part,
+                ref=ref,
+                unrel_ref=None)
             signal_refs.append(signal_ref)
         return signal_refs
 
@@ -596,7 +595,7 @@ class FillRef2:
             return None
         return ref_list
 
-    def _process_sound_signals(self) -> list[SignalRef]:
+    def _process_sound_signals(self) -> tuple[list[SignalRef], list[tuple[str, str, str]]]:
 
         refs: list[SignalRef] = []
         refs_on_page: int = self._options.or_schema_end_cell - self._options.or_schema_start_cell + 1
@@ -639,7 +638,14 @@ class FillRef2:
                                   f'{self._options.ts_odu_info.warn_sound_check_page}\\'
                                   f'{self._options.ts_odu_info.warn_sound_check_cell}',
                               unrel_ref=None))
-        return refs
+
+        update_schemas: list[tuple[str, str, str]] = [(self._options.ts_odu_info.alarm_sound_kks,
+                                                       self._options.ts_odu_info.alarm_sound_part,
+                                                       f'SOUND_ALARM_{len(self._alarm_sound_container)}'),
+                                                      (self._options.ts_odu_info.warning_sound_kks,
+                                                       self._options.ts_odu_info.warning_sound_part,
+                                                       f'SOUND_WARN_{len(self._warn_sound_container)}')]
+        return refs, update_schemas
 
     def _get_abonent_map(self) -> dict[str, int]:
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.abonent_table,
@@ -684,6 +690,7 @@ class FillRef2:
 
     def _process_or_schemas(self) -> tuple[list[VirtualSchema], list[SignalRef], list[tuple[str, str, str]]] | None:
         ok_flag: bool = True
+        used_names: list[str] = []
         dynamic_templates: list[DynamicTemplate] = []
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.ts_odu_algorithm,
@@ -714,7 +721,8 @@ class FillRef2:
         virtual_schemas: list[VirtualSchema] = []
         signal_refs: list[SignalRef] = []
         for dynamic_template in dynamic_templates:
-            result = self._get_refs_for_dynamic_template(dynamic_template=dynamic_template)
+            result = self._get_refs_for_dynamic_template(dynamic_template=dynamic_template,
+                                                         used_names=used_names)
             if result is None:
                 continue
             virtual_schemas += result[0]
@@ -766,21 +774,23 @@ class FillRef2:
                                                   type=SignalType.TS_ODU)] = template.warning_port
 
             if template.display_test_cell is not None and template.display_test_page is not None \
-                    and ts_odu_panel.display_test_kks is not None and ts_odu_panel.display_test_part is not None \
-                    and ts_odu_panel.display_test_port is not None:
-                display_test_ref: str = f'{ts_odu_panel.display_test_port}:{kks}_{part}\\' \
+                    and self._options.ts_odu_info.display_test_kks is not None and \
+                    self._options.ts_odu_info.display_test_part is not None \
+                    and self._options.ts_odu_info.display_test_port is not None:
+                display_test_ref: str = f'{self._options.ts_odu_info.display_test_port}:{kks}_{part}\\' \
                                         f'{template.display_test_page}\\{template.display_test_cell}'
-                refs.append(SignalRef(kks=ts_odu_panel.display_test_kks,
-                                      part=ts_odu_panel.display_test_part,
+                refs.append(SignalRef(kks=self._options.ts_odu_info.display_test_kks,
+                                      part=self._options.ts_odu_info.display_test_part,
                                       ref=display_test_ref,
                                       unrel_ref=None))
             if template.lamp_test_cell is not None and template.lamp_test_page is not None \
-                    and ts_odu_panel.lamp_test_kks is not None and ts_odu_panel.lamp_test_part is not None \
-                    and ts_odu_panel.lamp_test_port is not None:
-                lamp_test_ref: str = f'{ts_odu_panel.lamp_test_port}:{kks}_{part}\\' \
+                    and self._options.ts_odu_info.lamp_test_kks is not None and\
+                    self._options.ts_odu_info.lamp_test_part is not None \
+                    and self._options.ts_odu_info.lamp_test_port is not None:
+                lamp_test_ref: str = f'{self._options.ts_odu_info.lamp_test_port}:{kks}_{part}\\' \
                                      f'{template.lamp_test_page}\\{template.lamp_test_cell}'
-                refs.append(SignalRef(kks=ts_odu_panel.lamp_test_kks,
-                                      part=ts_odu_panel.lamp_test_part,
+                refs.append(SignalRef(kks=self._options.ts_odu_info.lamp_test_kks,
+                                      part=self._options.ts_odu_info.lamp_test_part,
                                       ref=lamp_test_ref,
                                       unrel_ref=None))
             input_port_list: list[InputPort] = template.input_ports
@@ -947,7 +957,7 @@ class FillRef2:
         for signal in source_signals:
             index += 1
             cell_num: int = index % refs_on_page + self._options.or_schema_start_cell - 1
-            page_num: int = index // refs_on_page + 1
+            page_num: int = index // refs_on_page + 2
             refs.append(self._get_ref_for_signal(source_signal=signal,
                                                  target_kks=target_kks,
                                                  target_abonent=target_abonent,
@@ -956,9 +966,21 @@ class FillRef2:
                                                  target_cell=cell_num))
         return virtual_schema, refs
 
+    @staticmethod
+    def _get_free_name(kks_prefix: str, index: int, part: str, used_names: list[str]) -> str:
+        while index < 999:
+            kks = f'{kks_prefix}{str.zfill(str(index), 3)}'
+            if f'{kks}_{part}' not in used_names:
+                used_names.append(f'{kks}_{part}')
+                return kks
+            used_names.append(f'{kks}_{part}')
+            index += 1
+        raise Exception('Не удалось подобрать индекс')
+
     def _create_schemas_for_or_logic(self, source_signals: list[Signal], target_signal: Signal,
-                                     target_ts_odu_panel: TSODUPanel) -> tuple[list[VirtualSchema], list[SignalRef],
-                                                                               tuple[str, str, str] | None]:
+                                     target_ts_odu_panel: TSODUPanel,
+                                     used_names: list[str]) -> tuple[list[VirtualSchema], list[SignalRef],
+                                                                     tuple[str, str, str] | None]:
 
         # Сначала формируется словарь, где ключ - это имя стойки, значение - список сигналов от этой стойки,
         # т.е. группировка сигналов по имени стойки
@@ -973,7 +995,10 @@ class FillRef2:
                 signals_in_cabinet.append(source_signal)
         # Если стойка одна, то только для нее формируем схему OR
         if len(source_signals_by_cabinet.keys()) == 1:
-            kks = f'{target_signal.kks[0:7]}{self._options.or_schema_code}000'
+            kks = self._get_free_name(kks_prefix=target_signal.kks[0:7] + self._options.or_schema_code,
+                                      index=0,
+                                      part=target_signal.part,
+                                      used_names=used_names)
             virtual_schema, refs = self._create_virtual_schema(target_kks=kks,
                                                                target_part=target_signal.part,
                                                                descr=target_signal.descr,
@@ -1011,11 +1036,13 @@ class FillRef2:
                                                      target_part=target_or_schema_signal.part,
                                                      target_page=page_num,
                                                      target_cell=cell_index))
-                source_cabinet_or_signals.append(source_signal)
+                # source_cabinet_or_signals.append(source_signal)
             else:
                 # Если сигналов несколько, предварительно создаем OR схему в шкафу
-                kks = f'{target_signal.kks[0:7]}{self._options.or_schema_code}{str.zfill(str(cabinet_index), 3)}'
-
+                kks = self._get_free_name(kks_prefix=target_signal.kks[0:7] + self._options.or_schema_code,
+                                          index=cabinet_index,
+                                          part=target_signal.part,
+                                          used_names=used_names)
                 cabinet_schema, cabinet_refs = self._create_virtual_schema(
                     target_kks=kks,
                     target_part=target_signal.part,
@@ -1031,19 +1058,25 @@ class FillRef2:
                 source_cabinet_or_signals.append(source_cabinet_or_signal)
         # В шкафу ТС ОДУ OR схема не создается, т.к. будет использоваться непосредственно схемы для
         # вывода дискретного сигнала. Ее префикс TS_ODU_
-        # Поэтому после вызова create_virtual_schema используются только ссылки
+        index: int = 0
+        for signal in source_cabinet_or_signals:
+            index += 1
+            refs_on_page: int = self._options.or_schema_end_cell - self._options.or_schema_start_cell + 1
+            cell_num: int = index % refs_on_page + self._options.or_schema_start_cell - 1
+            page_num: int = index // refs_on_page + 2
+            refs.append(self._get_ref_for_signal(source_signal=signal,
+                                                 target_kks=target_signal.kks,
+                                                 target_abonent=target_ts_odu_panel.abonent,
+                                                 target_part=target_signal.part,
+                                                 target_page=page_num,
+                                                 target_cell=cell_num))
 
-        _, target_refs = self._create_virtual_schema(target_kks=target_signal.kks,
-                                                     target_part=target_signal.part,
-                                                     descr=target_signal.descr,
-                                                     target_abonent=target_ts_odu_panel.abonent,
-                                                     source_signals=source_cabinet_or_signals)
-        refs += target_refs
         updated_schema_name = f'BO_TS_ODU_DISPL_{len(source_signals_by_cabinet)}'
 
         return virtual_schemas, refs, (target_signal.kks, target_signal.part, updated_schema_name)
 
-    def _get_refs_for_dynamic_template(self, dynamic_template: DynamicTemplate) -> \
+    def _get_refs_for_dynamic_template(self, dynamic_template: DynamicTemplate,
+                                       used_names: list[str]) -> \
             tuple[list[VirtualSchema], list[SignalRef], tuple[str, str, str] | None] | None:
         target_ts_odu_panel: TSODUPanel | None = next((panel for panel in self._options.ts_odu_info.panels
                                                        if panel.name == dynamic_template.target.ts_odu_panel), None)
@@ -1066,7 +1099,8 @@ class FillRef2:
 
         return self._create_schemas_for_or_logic(source_signals=dynamic_template.source,
                                                  target_signal=target_signal,
-                                                 target_ts_odu_panel=target_ts_odu_panel)
+                                                 target_ts_odu_panel=target_ts_odu_panel,
+                                                 used_names=used_names)
 
     def _get_ref_for_signal(self, source_signal: Signal, target_kks: str, target_part: str, target_abonent: int,
                             target_page: str | int, target_cell: str | int, source_port: str | None = None) -> \
@@ -1114,19 +1148,19 @@ class FillRef2:
         if len(template.input_ports[schema_part]) == 0 and len(template.output_ports[schema_part]) == 0:
             return ref_list
         if template.alarm_sound_signal_port is not None:
-            self._alarm_sound_container[Signal(kks=schema_kks + self._options.control_schema_name_postfix
-                                                    if add_kks_postfix else schema_kks,
-                                               part=schema_part,
-                                               cabinet=schema_cabinet,
-                                               type=SignalType.WIRED,
-                                               descr='АварЗвук')] = template.alarm_sound_signal_port
+            self._alarm_sound_container[Signal(
+                kks=schema_kks + self._options.control_schema_name_postfix if add_kks_postfix else schema_kks,
+                part=schema_part,
+                cabinet=schema_cabinet,
+                type=SignalType.WIRED,
+                descr='АварЗвук')] = template.alarm_sound_signal_port
         if template.warn_sound_signal_port is not None:
-            self._warn_sound_container[Signal(kks=schema_kks + self._options.control_schema_name_postfix
-                                                    if add_kks_postfix else schema_kks,
-                                              part=schema_part,
-                                              cabinet=schema_cabinet,
-                                              type=SignalType.WIRED,
-                                              descr='ПредЗвук')] = template.warn_sound_signal_port
+            self._warn_sound_container[Signal(
+                kks=schema_kks + self._options.control_schema_name_postfix if add_kks_postfix else schema_kks,
+                part=schema_part,
+                cabinet=schema_cabinet,
+                type=SignalType.WIRED,
+                descr='ПредЗвук')] = template.warn_sound_signal_port
         input_port_list: list[InputPort] | None = template.input_ports[schema_part]
         if input_port_list is not None:
             for port in input_port_list:
@@ -1220,13 +1254,13 @@ class FillRef2:
         refs_for_ts_odu_signals = self._process_ts_odu_signals(updated_schemas=updated_schemas)
         if refs_for_ts_odu_signals is None:
             return
-        sound_refs: list[SignalRef] = self._process_sound_signals()
+        sound_refs, updated_sound_schemas = self._process_sound_signals()
         refs: list[SignalRef] = ref_for_predefined_schemas + ts_odu_ref_list + refs_for_ts_odu_signals + sound_refs
         self._access.clear_table(table_name=self._options.ref_table)
         self._access.clear_table(table_name=self._options.control_schemas_table)
         self._write_ref(ref_list=refs)
         self._write_control_schemas(dynamic_schemas=virtual_schemas)
-        self._update_schemas(updated_schemas=updated_schemas)
+        self._update_schemas(updated_schemas=updated_schemas + updated_sound_schemas)
 
     @staticmethod
     def run(options: FillRef2Options, base_path: str) -> None:
