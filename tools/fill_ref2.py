@@ -838,7 +838,7 @@ class FillRef2:
         return refs
 
     def _get_refs_for_ts_odu_in_define_schema(self, schema_kks: str, schema_part: str, schema_abonent: int,
-                                              schema_cabinet, ts_odu_data: TSODUData, mozaic_element: MozaicElement,
+                                              schema_cabinet: str, ts_odu_data: TSODUData, mozaic_element: MozaicElement,
                                               add_kks_postfix: bool) \
             -> list[SignalRef] | None:
         refs: list[SignalRef] = []
@@ -1145,8 +1145,6 @@ class FillRef2:
         if schema_part not in template.input_ports or schema_part not in template.output_ports:
             logging.error(f'Не найдены сигналы для шаблона {template_name} для PART {schema_part}')
             return None
-        if len(template.input_ports[schema_part]) == 0 and len(template.output_ports[schema_part]) == 0:
-            return ref_list
         if template.alarm_sound_signal_port is not None:
             self._alarm_sound_container[Signal(
                 kks=schema_kks + self._options.control_schema_name_postfix if add_kks_postfix else schema_kks,

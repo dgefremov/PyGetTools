@@ -10,12 +10,14 @@ from tools.copy_cid import CopyCid
 
 def run_scripts():
     configure_logger('log', 'log')
-    options: Options = Options.load_ruppur()
-    base_path: str = 'C:\\Data\\Руппур база\\2.004_БД РАСУ.accdb'
+    # options: Options = Options.load_ruppur()
+    # base_path: str = 'C:\\Data\\Руппур база\\2.004_БД РАСУ.accdb'
+    options: Options = Options.load_kursk()
+    base_path: str = 'Y:\\Отдел ПА\\10_Текущие работы\\АЭС Курская-2\\СКУ ЭЧ ЭБ\\10_Разработка\\04_ЗЗИ\\ТПТС\\0.006 от 2022.05 (неофициально)\\Редактируемые версии\\ПТК СКУ ЭЧ ЭБ КуАЭС_0.006.accdb'
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
-    # GenerateTables.run(options=options.generate_table_options, base_path=base_path)
+    GenerateTables.run(options=options.generate_table_options, base_path=base_path)
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
@@ -27,7 +29,7 @@ def run_scripts():
 
     # Расстановка ссылок
     # Закомментировать если не используется
-    FillRef2.run(options=options.fill_ref2_options, base_path=base_path)
+    # FillRef2.run(options=options.fill_ref2_options, base_path=base_path)
 
     # Поиск вариантов схем
     # Закомментировать если не используется

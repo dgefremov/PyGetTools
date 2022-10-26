@@ -330,10 +330,10 @@ class Options:
                                                alarm_sound_signal_port='Port1',
                                                warn_sound_signal_port='Port2')
 
-        atsw_ts_output: list[OutputPort] = [OutputPort(name='Port4', kks=None, part='XB22',
-                                                       blink_port_name='Port5', flicker_port_name='Port6'),
-                                            OutputPort(name='Port7', kks=None, part='XB21',
-                                                       blink_port_name='Port8', flicker_port_name='Port9')]
+        atsw_ts_output: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XB22',
+                                                       blink_port_name='Port2', flicker_port_name='Port3'),
+                                            OutputPort(name='Port4', kks=None, part='XB21',
+                                                       blink_port_name='Port5', flicker_port_name='Port6')]
         atsw_ts_input: list[InputPort] = [InputPort(page=2, cell_num=14, kks=None, part='XL21',
                                                     unrel_ref_cell_num=None),
                                           InputPort(page=2, cell_num=15, kks=None, part='XL22',
@@ -497,7 +497,7 @@ class Options:
                                                                 warn_sound_check_page='1',
                                                                 warn_sound_check_cell='8',
                                                                 cabinet='10BYA02',
-                                                                lamp_test_kks='10CWG10CH011',
+                                                                lamp_test_kks='10CWG10CH011K',
                                                                 lamp_test_part='XG01',
                                                                 lamp_test_port='Port1',
                                                                 display_test_kks='10CWG10CH010K',
@@ -669,14 +669,14 @@ class Options:
                                                        off_part='XA02')
         sw_template1: SWTemplate = SWTemplate(name='XA00',
                                               connection='NTSW0113',
-                                              signals={'XB01', 'XB02', 'XL01', 'XL02', 'XB07', 'XB08'},
+                                              signals={'XB01', 'XB02', 'XA01', 'XA02', 'XB07', 'XB08'},
                                               variants=[SWTemplateVariant(schema='SW_1623_1',
                                                                           parts=['XF27']),
                                                         SWTemplateVariant(schema='SW_1623_2',
                                                                           parts=['XK52'])])
         sw_template2: SWTemplate = SWTemplate(name='XA10',
                                               connection='NTSW0114',
-                                              signals={'XB21', 'XB22', 'XL21', 'XL22'},
+                                              signals={'XB21', 'XB22', 'XA21', 'XA22'},
                                               variants=[SWTemplateVariant(schema='SW_1623_AVR',
                                                                           parts=[])])
 
@@ -696,20 +696,20 @@ class Options:
         # <-------------------------------generate_table_options------------------------------------------------------->
 
         # <-------------------------------fill_mms_address_options----------------------------------------------------->
-        dps_signal_cb = DPCSignal(signal_part_dupl=('XB01', 'XB02'),
-                                  command_part_dupl=('XL01', 'XL02'))
+        dps_signal_cb = DPCSignal(signal_part=('XB01', 'XB02'),
+                                  command_part=('XL01', 'XL02'))
 
-        dps_signal_alt = DPCSignal(signal_part_dupl=('XB21', 'XB22'),
-                                   command_part_dupl=('XL21', 'XL22'))
+        dps_signal_alt = DPCSignal(signal_part=('XB21', 'XB22'),
+                                   command_part=('XL21', 'XL22'))
 
-        dps_signal_gb = DPCSignal(signal_part_dupl=('XB31', 'XB32'),
-                                  command_part_dupl=None)
+        dps_signal_gb = DPCSignal(signal_part=('XB31', 'XB32'),
+                                  command_part=None)
 
-        dps_signal_cb2 = DPCSignal(signal_part_dupl=None,
-                                   command_part_dupl=('XA01', 'XA02'))
+        dps_signal_cb2 = DPCSignal(signal_part=None,
+                                   command_part=('XA01', 'XA02'))
 
         bsc_signal = BSCSignal(signal_part='XB10',
-                               command_part_dupl=('XL11', 'XL12'))
+                               command_part=('XL11', 'XL12'))
 
         dataset_1: DatasetDescription = DatasetDescription(name='Dataset01',
                                                            sps_range=SignalRange(1, 50),
@@ -983,6 +983,63 @@ class Options:
         wired_template_avr: Template = Template(name='SW_1623_AVR',
                                                 input_ports={'XA00': wired_template_avr_input_ports},
                                                 output_ports={'XA00': wired_template_avr_output_ports})
+        ts_odu_panel1: TSODUPanel = TSODUPanel(name='10CWG09',
+                                               confirm_part='XG01',
+                                               confirm_kks='10CWG09CH200K',
+                                               abonent=321,
+                                               acknowledgment_kks='10CWG09CH100K',
+                                               acknowledgment_part='XG01')
+        ts_odu_panel2: TSODUPanel = TSODUPanel(name='10CWG10',
+                                               confirm_part='XG01',
+                                               confirm_kks='10CWG10CH200K',
+                                               abonent=321,
+                                               acknowledgment_kks='10CWG10CH100K',
+                                               acknowledgment_part='XG01')
+        ts_odu_panel3: TSODUPanel = TSODUPanel(name='10CWB40',
+                                               confirm_part=None,
+                                               confirm_kks=None,
+                                               abonent=321,
+                                               acknowledgment_kks='10CWB40CH100K',
+                                               acknowledgment_part='XG01')
+
+        display: TSODUTemplate = TSODUTemplate(name='BO_TS_ODU_DISPL%',
+                                               acknolegment_page='1',
+                                               acknolegment_cell='4',
+                                               display_test_page='1',
+                                               display_test_cell='3',
+                                               input_ports=[],
+                                               output_ports=[])
+
+        lamp: TSODUTemplate = TSODUTemplate(name='BO_TS_ODU_LAMP%',
+                                            lamp_test_page='1',
+                                            lamp_test_cell='3',
+                                            input_ports=[],
+                                            output_ports=[])
+
+        ts_odu_description: TSODUDescription = TSODUDescription(panels=[ts_odu_panel1, ts_odu_panel2, ts_odu_panel3],
+
+                                                                alarm_sound_kks='10CWG10GH001S',
+                                                                alarm_sound_part='XN06',
+                                                                alarm_sound_check_kks='10CWG10CH020K',
+                                                                alarm_sound_check_part='XG01',
+                                                                alarm_sound_check_port='Port1',
+                                                                alarm_sound_check_page='1',
+                                                                alarm_sound_check_cell='8',
+                                                                warning_sound_kks='10CWG10GH001S',
+                                                                warning_sound_part='XN05',
+                                                                warn_sound_check_kks='10CWG10CH020K',
+                                                                warn_sound_check_part='XG02',
+                                                                warn_sound_check_port='Port1',
+                                                                warn_sound_check_page='1',
+                                                                warn_sound_check_cell='8',
+                                                                cabinet='10BYA02',
+                                                                lamp_test_kks='10CWG10CH011K',
+                                                                lamp_test_part='XG01',
+                                                                lamp_test_port='Port1',
+                                                                display_test_kks='10CWG10CH010K',
+                                                                display_test_part='XG01',
+                                                                display_test_port='Port1')
+
         fill_ref2_options: FillRef2Options = FillRef2Options(control_schemas_table='[VIRTUAL SCHEMAS]',
                                                              predifend_control_schemas_table='[PREDEFINED SCHEMAS]',
                                                              ref_table='[REF]',
@@ -993,9 +1050,18 @@ class Options:
                                                                         template_ddgs, template_dacnps, template_sign,
                                                                         template_dsync, wired_template_dsw1,
                                                                         wired_template_dsw2, wired_template_avr],
-                                                             wired_signal_input_page=2,
-                                                             wired_signal_input_cell=5,
-                                                             wired_signal_input_port='Port1')
+                                                             wired_signal_output_default_page=1,
+                                                             wired_signal_output_default_cell=7,
+                                                             wired_signal_output_blink_default_page=1,
+                                                             wired_signal_output_blink_default_cell=9,
+                                                             wired_signal_output_flicker_default_page=1,
+                                                             wired_signal_output_flicker_default_cell=11,
+                                                             ts_odu_algorithm='[Логика ТС ОДУ]',
+                                                             ts_odu_table='[Сигналы и механизмы ТС ОДУ]',
+                                                             ts_odu_info=ts_odu_description,
+                                                             abonent_table='[TPTS]',
+                                                             wired_signal_default_input_port='Port1',
+                                                             ts_odu_templates=[display, lamp])
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
 
