@@ -977,7 +977,7 @@ class FillRef2:
             index += 1
         raise Exception('Не удалось подобрать индекс')
 
-    def _create_schemas_for_or_logic(self, source_signals: list[Signal], target_signal: Signal,
+    def _create_schemas_for_or_logic(self, template: DynamicTemplate, target_signal: Signal,
                                      target_ts_odu_panel: TSODUPanel,
                                      used_names: list[str]) -> tuple[list[VirtualSchema], list[SignalRef],
                                                                      tuple[str, str, str] | None]:
@@ -985,7 +985,7 @@ class FillRef2:
         # Сначала формируется словарь, где ключ - это имя стойки, значение - список сигналов от этой стойки,
         # т.е. группировка сигналов по имени стойки
         source_signals_by_cabinet: dict[str, list[Signal]] = {}
-        for source_signal in source_signals:
+        for source_signal in template.source:
             signals_in_cabinet: list[Signal]
             if source_signal.cabinet not in source_signals_by_cabinet:
                 signals_in_cabinet = [source_signal]
@@ -1071,7 +1071,14 @@ class FillRef2:
                                                  target_page=page_num,
                                                  target_cell=cell_num))
 
-        updated_schema_name = f'BO_TS_ODU_DISPL_{len(source_signals_by_cabinet)}'
+        updated_schema_name: str
+        if template.type.startswith('LAMP'):
+            updated_schema_name = f'BO_TS_ODU_LAMP_{len(source_signals_by_cabinet)}'
+        elif template.type.startswith('DISPLAY'):
+            updated_schema_name = f'BO_TS_ODU_DISPL_{len(source_signals_by_cabinet)}'
+        else:
+            logging.error(f'Не удалось определить тип: {template.type}')
+            raise Exception('Ошибка')
 
         return virtual_schemas, refs, (target_signal.kks, target_signal.part, updated_schema_name)
 
@@ -1096,8 +1103,7 @@ class FillRef2:
                                                  target_cell=self._options.wired_signal_output_default_cell)], None
         # Случай, когда несколько сигналов источников на один сигнал приемник
         # В этом случае формируются схемы управления OR
-
-        return self._create_schemas_for_or_logic(source_signals=dynamic_template.source,
+        return self._create_schemas_for_or_logic(template=dynamic_template,
                                                  target_signal=target_signal,
                                                  target_ts_odu_panel=target_ts_odu_panel,
                                                  used_names=used_names)

@@ -476,7 +476,7 @@ class Options:
 
         lamp: TSODUTemplate = TSODUTemplate(name='BO_TS_ODU_LAMP%',
                                             lamp_test_page='1',
-                                            lamp_test_cell='3',
+                                            lamp_test_cell='4',
                                             input_ports=[],
                                             output_ports=[])
 
