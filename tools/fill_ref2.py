@@ -150,6 +150,7 @@ class FillRef2Options:
     iec_table: str
     abonent_table: str
     templates: list[Template]
+    custom_templates_ts_odu: list[Template]
     ts_odu_templates: list[TSODUTemplate]
     wired_signal_output_default_page: int
     wired_signal_output_default_cell: int
@@ -326,7 +327,7 @@ class FillRef2:
             return values[0]['KKS'], ErrorType.NOERROR
         return None, ErrorType.NOVALUES
 
-    def _get_signal_for_port(self, schema_kks: str, cabinet: str, kksp: str, port: InputPort | OutputPort,
+    def _get_signal_for_port(self, schema_kks: str, cabinet: str, kksp: str | None, port: InputPort | OutputPort,
                              template_name) -> Signal | None:
         """
         Функция поиска сигнала для порта шаблона
@@ -367,7 +368,7 @@ class FillRef2:
                           part=port.part,
                           cabinet=cabinet,
                           type=SignalType.DIGITAL)
-        if port.kks is not None:
+        if port.kks is not None and kksp is not None:
             if kksp.endswith('A01') or kksp.endswith('A11') or kksp.endswith('A1'):
                 return self._get_signal_for_port(schema_kks=schema_kks,
                                                  cabinet=cabinet,
@@ -406,7 +407,7 @@ class FillRef2:
         # Поиск межстоечных сигналов (только если указан KKS)
         if port.kks is not None:
             # Поиск сигнала в другой стойке в таблице СИМ по ККС
-            found_kks, cabinet, result = self._get_signal_from_iec_by_kks(kks=kks,
+            found_kks, cabinet, result = self._get_signal_from_sim_by_kks(kks=kks,
                                                                           kksp=None,
                                                                           port=port,
                                                                           cabinet=None)
@@ -439,7 +440,7 @@ class FillRef2:
         return None
 
     def _creare_ref_for_input_port(self, schema_kks: str, schema_part: str, cabinet: str,
-                                   input_port: InputPort, kksp: str, template_name: str,
+                                   input_port: InputPort, kksp: str | None, template_name: str,
                                    add_kks_postfix: bool) -> SignalRef | None:
         """
         Создание ссылки для входного сигналы схемы управления
@@ -458,7 +459,7 @@ class FillRef2:
                                                           template_name=template_name)
         if signal is None:
             return None
-        cabinet_prefix: str = '' if signal.cabinet == cabinet else f'{self._abonent_map[signal.cabinet]}\\'
+        cabinet_prefix: str = '' if signal.cabinet == cabinet else f'{self._abonent_map[cabinet]}\\'
         kks_postfix: str = self._options.control_schema_name_postfix if add_kks_postfix else ''
         ref: str
         unrel_ref: str | None
@@ -587,7 +588,8 @@ class FillRef2:
                                          template_name=template_name,
                                          mozaic_element=mozaic_element,
                                          kksp=kksp,
-                                         add_kks_postfix=add_kks_postfix)
+                                         add_kks_postfix=add_kks_postfix,
+                                         template_list=self._options.templates)
             if ref_list_for_schema is None:
                 error_flag = True
             else:
@@ -1141,8 +1143,10 @@ class FillRef2:
 
     def _get_ref_for_schema(self, schema_kks: str, schema_part: str, schema_cabinet: str,
                             add_kks_postfix: bool,
+                            template_list: list[Template],
                             template_name: str, kksp: str | None = None,
-                            mozaic_element: MozaicElement | None = None) -> list[SignalRef] | None:
+                            mozaic_element: MozaicElement | None = None,
+                            skip_schemas: bool = False) -> list[SignalRef] | None:
         """
         Генерация ссылок для схемы управления
         :param schema_kks: KKS схемы управления
@@ -1154,15 +1158,18 @@ class FillRef2:
         :return: Список ссылок либо None при ошибке
         """
         ref_list: list[SignalRef] = []
-        template: Template | None = next((templ for templ in self._options.templates
+        template: Template | None = next((templ for templ in template_list
                                           if templ.name == template_name), None)
         schema_abonent: int | None = self._get_abonent_map()[schema_cabinet]
         if schema_abonent is None:
             logging.error(f'Не найден абонент для стойки {schema_cabinet}')
             return None
         if template is None:
-            logging.error(f'Не найден шаблон с именем {template_name}')
-            return None
+            if skip_schemas:
+                return []
+            else:
+                logging.error(f'Не найден шаблон с именем {template_name}')
+                return None
         if schema_part not in template.input_ports or schema_part not in template.output_ports:
             logging.error(f'Не найдены сигналы для шаблона {template_name} для PART {schema_part}')
             return None
@@ -1262,6 +1269,36 @@ class FillRef2:
                                       key_values=[kks, part])
         self._access.commit()
 
+    def _process_custom_schemas_in_ts_odu(self) -> list[SignalRef] | None:
+        ref_list: list[SignalRef] = []
+        error_flag: bool = False
+        values: list[dict[str, str]] = self._access.retrieve_data(
+            table_name=self._options.ts_odu_table,
+            fields=['KKS', 'PART', 'SCHEMA', 'KKSp'])
+        cabinet: str = self._options.ts_odu_info.cabinet
+        for value in values:
+            schema_kks: str = value['KKS']
+            schema_part: str = value['PART']
+            template_name: str = value['SCHEMA']
+            kksp: str = value['KKSp']
+            mozaic_element: MozaicElement | None = None
+            add_kks_postfix: bool = False
+            ref_list_for_schema: list[SignalRef] | None = \
+                self._get_ref_for_schema(schema_kks=schema_kks, schema_part=schema_part, schema_cabinet=cabinet,
+                                         template_name=template_name,
+                                         mozaic_element=mozaic_element,
+
+                                         add_kks_postfix=add_kks_postfix,
+                                         template_list=self._options.custom_templates_ts_odu,
+                                         skip_schemas=True)
+            if ref_list_for_schema is None:
+                error_flag = True
+            else:
+                ref_list = ref_list + ref_list_for_schema
+        if error_flag:
+            return None
+        return ref_list
+
     def _process(self):
         ref_for_predefined_schemas: list[SignalRef] | None = self._process_defined_schemas()
         if ref_for_predefined_schemas is None:
@@ -1274,7 +1311,11 @@ class FillRef2:
         if refs_for_ts_odu_signals is None:
             return
         sound_refs, updated_sound_schemas = self._process_sound_signals()
-        refs: list[SignalRef] = ref_for_predefined_schemas + ts_odu_ref_list + refs_for_ts_odu_signals + sound_refs
+        custom_refs: list[SignalRef] | None = self._process_custom_schemas_in_ts_odu()
+        if custom_refs is None:
+            return
+        refs: list[SignalRef] = ref_for_predefined_schemas + ts_odu_ref_list + refs_for_ts_odu_signals + sound_refs + \
+                                    custom_refs
         self._access.clear_table(table_name=self._options.ref_table)
         self._access.clear_table(table_name=self._options.control_schemas_table)
         self._write_ref(ref_list=refs)

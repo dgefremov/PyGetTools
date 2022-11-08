@@ -447,6 +447,14 @@ class Options:
                                         output_ports={'XG00': diag_first_in_row_output_ports},
                                         alarm_sound_signal_port=None)
 
+        custom_template_f_meas = Template(name='AO_TS_ODU_F',
+                                          input_ports={'XQ22': [InputPort(page=2,
+                                                                          cell_num=10,
+                                                                          kks='10MKA01CE101',
+                                                                          part='XQ16',
+                                                                          unrel_ref_cell_num=None)]},
+                                          output_ports={'XQ22': []})
+
         ts_odu_panel1: TSODUPanel = TSODUPanel(name='10CWG09',
                                                confirm_part='XG01',
                                                confirm_kks='10CWG09CH200K',
@@ -526,7 +534,8 @@ class Options:
                                                              ts_odu_info=ts_odu_description,
                                                              abonent_table='[TPTS]',
                                                              wired_signal_default_input_port='Port1',
-                                                             ts_odu_templates=[display, lamp])
+                                                             ts_odu_templates=[display, lamp],
+                                                             custom_templates_ts_odu=[custom_template_f_meas])
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
 
