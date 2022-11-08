@@ -159,8 +159,9 @@ class FillRef2Options:
     wired_signal_output_flicker_default_cell: int
     wired_signal_default_input_port: str
     or_schema_name_prefix: str = 'OR_'
+    or_schema_meas_name_prefix: str = 'OR_XQ_'
     or_schema_start_cell: int = 3
-    or_schema_end_cell: int = 24
+    or_schema_end_cell: int = 25
     control_schema_name_postfix: str = 'V'
     or_schema_code = 'XM'
 
@@ -602,9 +603,8 @@ class FillRef2:
 
         index: int = 0
         for signal in self._alarm_sound_container:
-            index += 1
-            cell_num: int = index % refs_on_page + self._options.or_schema_start_cell
-            page_num: int = index // refs_on_page + 1
+            cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
+            page_num: int = index // (refs_on_page - 1) + 2
             refs.append(self._get_ref_for_signal(source_signal=signal,
                                                  target_kks=self._options.ts_odu_info.alarm_sound_kks,
                                                  target_abonent=self._abonent_map[self._options.ts_odu_info.cabinet],
@@ -612,11 +612,11 @@ class FillRef2:
                                                  target_page=page_num,
                                                  target_cell=cell_num,
                                                  source_port=self._alarm_sound_container[signal]))
+            index += 1
         index = 0
         for signal in self._warn_sound_container:
-            index += 1
-            cell_num: int = index % refs_on_page + self._options.or_schema_start_cell
-            page_num: int = index // refs_on_page + 1
+            cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
+            page_num: int = index // (refs_on_page - 1) + 2
             refs.append(self._get_ref_for_signal(source_signal=signal,
                                                  target_kks=self._options.ts_odu_info.alarm_sound_kks,
                                                  target_abonent=self._abonent_map[self._options.ts_odu_info.cabinet],
@@ -624,6 +624,7 @@ class FillRef2:
                                                  target_page=page_num,
                                                  target_cell=cell_num,
                                                  source_port=self._warn_sound_container[signal]))
+            index += 1
         refs.append(SignalRef(kks=self._options.ts_odu_info.alarm_sound_check_kks,
                               part=self._options.ts_odu_info.alarm_sound_check_part,
                               ref=f'{self._options.ts_odu_info.alarm_sound_kks}_'
@@ -784,7 +785,7 @@ class FillRef2:
                                       ref=display_test_ref,
                                       unrel_ref=None))
             if template.lamp_test_cell is not None and template.lamp_test_page is not None \
-                    and self._options.ts_odu_info.lamp_test_kks is not None and\
+                    and self._options.ts_odu_info.lamp_test_kks is not None and \
                     self._options.ts_odu_info.lamp_test_part is not None \
                     and self._options.ts_odu_info.lamp_test_port is not None:
                 lamp_test_ref: str = f'{self._options.ts_odu_info.lamp_test_port}:{kks}_{part}\\' \
@@ -838,7 +839,8 @@ class FillRef2:
         return refs
 
     def _get_refs_for_ts_odu_in_define_schema(self, schema_kks: str, schema_part: str, schema_abonent: int,
-                                              schema_cabinet: str, ts_odu_data: TSODUData, mozaic_element: MozaicElement,
+                                              schema_cabinet: str, ts_odu_data: TSODUData,
+                                              mozaic_element: MozaicElement,
                                               add_kks_postfix: bool) \
             -> list[SignalRef] | None:
         refs: list[SignalRef] = []
@@ -944,7 +946,11 @@ class FillRef2:
         #    kks = f'{target_signal.kks[0:7]}{self._options.or_schema_code}{index}'
         # else:
         #    kks = f'{target_signal.kks}'
-        schema: str = f'{self._options.or_schema_name_prefix}{len(source_signals)}'
+        schema: str
+        if all(signal.part.startswith('XQ') for signal in source_signals):
+            schema: str = f'{self._options.or_schema_meas_name_prefix}{len(source_signals)}'
+        else:
+            schema: str = f'{self._options.or_schema_name_prefix}{len(source_signals)}'
         virtual_schema: VirtualSchema = VirtualSchema(kks=target_kks,
                                                       part=target_part,
                                                       descr=descr,
@@ -955,15 +961,15 @@ class FillRef2:
 
         index: int = 0
         for signal in source_signals:
-            index += 1
-            cell_num: int = index % refs_on_page + self._options.or_schema_start_cell - 1
-            page_num: int = index // refs_on_page + 2
+            cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
+            page_num: int = index // (refs_on_page - 1) + 2
             refs.append(self._get_ref_for_signal(source_signal=signal,
                                                  target_kks=target_kks,
                                                  target_abonent=target_abonent,
                                                  target_part=target_part,
                                                  target_page=page_num,
                                                  target_cell=cell_num))
+            index += 1
         return virtual_schema, refs
 
     @staticmethod
@@ -1006,10 +1012,21 @@ class FillRef2:
                                                                                         values())[0]),
                                                                target_abonent=self._abonent_map[
                                                                    list(source_signals_by_cabinet.keys())[0]])
+            signal: Signal = Signal(kks=virtual_schema.kks,
+                                    part=virtual_schema.part,
+                                    cabinet=virtual_schema.cabinet,
+                                    type=SignalType.TS_ODU,
+                                    descr=virtual_schema.descr)
+            refs.append(self._get_ref_for_signal(source_signal=signal,
+                                                 target_kks=target_signal.kks,
+                                                 target_abonent=target_ts_odu_panel.abonent,
+                                                 target_part=target_signal.part,
+                                                 target_page=self._options.wired_signal_output_default_page,
+                                                 target_cell=self._options.wired_signal_output_default_cell))
             return [virtual_schema], refs, None
         # Если стоек несколько - для каждой формируем схему OR и общую схему OR в панели ТС ОДУ
-        cell_index: int = 2
-        page_num: int = 2
+        refs_on_page: int = self._options.or_schema_end_cell - self._options.or_schema_start_cell + 1
+        index: int = 0
         cabinet_index: int = 0
         virtual_schemas: list[VirtualSchema] = []
         source_cabinet_or_signals: list[Signal] = []
@@ -1022,11 +1039,8 @@ class FillRef2:
             descr=target_signal.descr)
         for cabinet in source_signals_by_cabinet.keys():
             cabinet_index += 1
-            cell_index += 1
-            if cell_index > 25:
-                cell_index = 3
-                page_num += 1
-
+            cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
+            page_num: int = index // (refs_on_page - 1) + 2
             if len(source_signals_by_cabinet[cabinet]) == 1:
                 # Если сигнал в стойке один - сразу создаем ссылку без создания OR схемы
                 source_signal: Signal = source_signals_by_cabinet[cabinet][0]
@@ -1035,7 +1049,7 @@ class FillRef2:
                                                      target_kks=target_or_schema_signal.kks,
                                                      target_part=target_or_schema_signal.part,
                                                      target_page=page_num,
-                                                     target_cell=cell_index))
+                                                     target_cell=cell_num))
                 # source_cabinet_or_signals.append(source_signal)
             else:
                 # Если сигналов несколько, предварительно создаем OR схему в шкафу
@@ -1056,6 +1070,7 @@ class FillRef2:
                 virtual_schemas.append(cabinet_schema)
                 refs += cabinet_refs
                 source_cabinet_or_signals.append(source_cabinet_or_signal)
+            index += 1
         # В шкафу ТС ОДУ OR схема не создается, т.к. будет использоваться непосредственно схемы для
         # вывода дискретного сигнала. Ее префикс TS_ODU_
         index: int = 0
