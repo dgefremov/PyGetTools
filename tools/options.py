@@ -283,11 +283,11 @@ class Options:
                                  output_ports={'XA10': ats_ouput},
                                  ts_odu_data=ats_ts_data,
                                  alarm_sound_signal_port='Port3')
-        scw_nku_04_3_sign_input: list[InputPort] = [InputPort(page=3, cell_num=11, kks=None, part='XK17',
+        scw_nku_04_3_sign_input: list[InputPort] = [InputPort(page=3, cell_num=5, kks=None, part='XK17',
                                                               unrel_ref_cell_num=None),
-                                                    InputPort(page=3, cell_num=12, kks=None, part='XF06',
+                                                    InputPort(page=3, cell_num=6, kks=None, part='XF06',
                                                               unrel_ref_cell_num=None),
-                                                    InputPort(page=3, cell_num=13, kks=None, part='XF07',
+                                                    InputPort(page=3, cell_num=7, kks=None, part='XF07',
                                                               unrel_ref_cell_num=None)]
 
         cbw_ts_output: list[OutputPort] = [OutputPort(name='Port3', kks=None, part='XB02',
@@ -422,7 +422,11 @@ class Options:
                                         output_ports={'XG00': diag_middle_output_ports},
                                         alarm_sound_signal_port=None)
 
-        diag_bya04_input_ports: list[InputPort] = diag_bya03_input_ports
+        diag_bya04_input_ports: list[InputPort] = \
+            diag1_first_input_ports + [InputPort(page=1, cell_num=9, kks='10BYA__EG311', part='XG01',
+                                                 unrel_ref_cell_num=None),
+                                       InputPort(page=1, cell_num=10, kks='10BYA__EG312', part='XG01',
+                                                 unrel_ref_cell_num=None)]
 
         diag_bya04: Template = Template(name='DIAG_BYA04',
                                         input_ports={'XG00': diag_bya04_input_ports},
@@ -437,10 +441,10 @@ class Options:
                                         alarm_sound_signal_port=None)
 
         diag_bya21_input_ports: list[InputPort] = \
-            diag_bya03_input_ports + [InputPort(page=1, cell_num=11, kks='10BYA__EG601', part='XG01',
-                                                unrel_ref_cell_num=None),
-                                      InputPort(page=1, cell_num=12, kks='10BYA__EG602', part='XG01',
-                                                unrel_ref_cell_num=None)]
+            diag1_first_input_ports + [InputPort(page=1, cell_num=11, kks='10BYA__EG601', part='XG01',
+                                                 unrel_ref_cell_num=None),
+                                       InputPort(page=1, cell_num=12, kks='10BYA__EG602', part='XG01',
+                                                 unrel_ref_cell_num=None)]
 
         diag_bya21: Template = Template(name='DIAG_BYA21',
                                         input_ports={'XG00': diag_bya21_input_ports},
