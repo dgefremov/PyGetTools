@@ -441,7 +441,7 @@ class Options:
                                         alarm_sound_signal_port=None)
 
         diag_bya21_input_ports: list[InputPort] = \
-            diag1_first_input_ports + [InputPort(page=1, cell_num=11, kks='10BYA__EG601', part='XG01',
+            diag2_first_input_ports + [InputPort(page=1, cell_num=11, kks='10BYA__EG601', part='XG01',
                                                  unrel_ref_cell_num=None),
                                        InputPort(page=1, cell_num=12, kks='10BYA__EG602', part='XG01',
                                                  unrel_ref_cell_num=None)]
