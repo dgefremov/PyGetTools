@@ -464,19 +464,37 @@ class Options:
                                                confirm_kks='10CWG09CH200K',
                                                abonent=321,
                                                acknowledgment_kks='10CWG09CH100K',
-                                               acknowledgment_part='XG01')
+                                               acknowledgment_part='XG01',
+                                               lamp_test_kks='10CWG09CH011K',
+                                               lamp_test_part='XG01',
+                                               lamp_test_port='Port1',
+                                               display_test_kks='10CWG09CH010K',
+                                               display_test_part='XG01',
+                                               display_test_port='Port1')
         ts_odu_panel2: TSODUPanel = TSODUPanel(name='10CWG10',
                                                confirm_part='XG01',
                                                confirm_kks='10CWG10CH200K',
                                                abonent=321,
                                                acknowledgment_kks='10CWG10CH100K',
-                                               acknowledgment_part='XG01')
+                                               acknowledgment_part='XG01',
+                                               lamp_test_kks='10CWG10CH011K',
+                                               lamp_test_part='XG01',
+                                               lamp_test_port='Port1',
+                                               display_test_kks='10CWG10CH010K',
+                                               display_test_part='XG01',
+                                               display_test_port='Port1')
         ts_odu_panel3: TSODUPanel = TSODUPanel(name='10CWB40',
                                                confirm_part=None,
                                                confirm_kks=None,
                                                abonent=321,
                                                acknowledgment_kks='10CWB40CH100K',
-                                               acknowledgment_part='XG01')
+                                               acknowledgment_part='XG01',
+                                               lamp_test_kks='10CWB40CH011K',
+                                               lamp_test_part='XG01',
+                                               lamp_test_port='Port1',
+                                               display_test_kks='10CWB40CH010K',
+                                               display_test_part='XG01',
+                                               display_test_port='Port1')
 
         display: TSODUTemplate = TSODUTemplate(name='BO_TS_ODU_DISPL%',
                                                acknolegment_page='1',
@@ -509,12 +527,7 @@ class Options:
                                                                 warn_sound_check_page='1',
                                                                 warn_sound_check_cell='8',
                                                                 cabinet='10BYA02',
-                                                                lamp_test_kks='10CWG10CH011K',
-                                                                lamp_test_part='XG01',
-                                                                lamp_test_port='Port1',
-                                                                display_test_kks='10CWG10CH010K',
-                                                                display_test_part='XG01',
-                                                                display_test_port='Port1')
+                                                                )
 
         fill_ref2_options: FillRef2Options = FillRef2Options(control_schemas_table='[VIRTUAL SCHEMAS]',
                                                              predifend_control_schemas_table='[PREDEFINED SCHEMAS]',

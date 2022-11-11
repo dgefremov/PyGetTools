@@ -32,12 +32,6 @@ class TSODUDescription:
     warn_sound_check_cell: str
     warn_sound_check_port: str
     cabinet: str
-    lamp_test_kks: str | None = None
-    lamp_test_part: str | None = None
-    lamp_test_port: str | None = 'Port1'
-    display_test_kks: str | None = None
-    display_test_part: str | None = None
-    display_test_port: str | None = 'Port1'
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -78,6 +72,12 @@ class TSODUPanel:
     acknowledgment_kks: str | None
     acknowledgment_part: str | None
     abonent: int
+    lamp_test_kks: str | None = None
+    lamp_test_part: str | None = None
+    lamp_test_port: str | None = 'Port1'
+    display_test_kks: str | None = None
+    display_test_part: str | None = None
+    display_test_port: str | None = 'Port1'
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -777,23 +777,23 @@ class FillRef2:
                                                   type=SignalType.TS_ODU)] = template.warning_port
 
             if template.display_test_cell is not None and template.display_test_page is not None \
-                    and self._options.ts_odu_info.display_test_kks is not None and \
-                    self._options.ts_odu_info.display_test_part is not None \
-                    and self._options.ts_odu_info.display_test_port is not None:
-                display_test_ref: str = f'{self._options.ts_odu_info.display_test_port}:{kks}_{part}\\' \
+                    and ts_odu_panel.display_test_kks is not None and \
+                    ts_odu_panel.display_test_part is not None \
+                    and ts_odu_panel.display_test_port is not None:
+                display_test_ref: str = f'{ts_odu_panel.display_test_port}:{kks}_{part}\\' \
                                         f'{template.display_test_page}\\{template.display_test_cell}'
-                refs.append(SignalRef(kks=self._options.ts_odu_info.display_test_kks,
-                                      part=self._options.ts_odu_info.display_test_part,
+                refs.append(SignalRef(kks=ts_odu_panel.display_test_kks,
+                                      part=ts_odu_panel.display_test_part,
                                       ref=display_test_ref,
                                       unrel_ref=None))
             if template.lamp_test_cell is not None and template.lamp_test_page is not None \
-                    and self._options.ts_odu_info.lamp_test_kks is not None and \
-                    self._options.ts_odu_info.lamp_test_part is not None \
-                    and self._options.ts_odu_info.lamp_test_port is not None:
-                lamp_test_ref: str = f'{self._options.ts_odu_info.lamp_test_port}:{kks}_{part}\\' \
+                    and ts_odu_panel.lamp_test_kks is not None and \
+                    ts_odu_panel.lamp_test_part is not None \
+                    and ts_odu_panel.lamp_test_port is not None:
+                lamp_test_ref: str = f'{ts_odu_panel.lamp_test_port}:{kks}_{part}\\' \
                                      f'{template.lamp_test_page}\\{template.lamp_test_cell}'
-                refs.append(SignalRef(kks=self._options.ts_odu_info.lamp_test_kks,
-                                      part=self._options.ts_odu_info.lamp_test_part,
+                refs.append(SignalRef(kks=ts_odu_panel.lamp_test_kks,
+                                      part=ts_odu_panel.lamp_test_part,
                                       ref=lamp_test_ref,
                                       unrel_ref=None))
             input_port_list: list[InputPort] = template.input_ports
@@ -1315,7 +1315,7 @@ class FillRef2:
         if custom_refs is None:
             return
         refs: list[SignalRef] = ref_for_predefined_schemas + ts_odu_ref_list + refs_for_ts_odu_signals + sound_refs + \
-                                    custom_refs
+                                custom_refs
         self._access.clear_table(table_name=self._options.ref_table)
         self._access.clear_table(table_name=self._options.control_schemas_table)
         self._write_ref(ref_list=refs)
