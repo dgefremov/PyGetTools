@@ -144,7 +144,7 @@ class FillRef2Options:
     predifend_control_schemas_table: str
     ts_odu_algorithm: str
     ts_odu_table: str
-    ts_odu_info: TSODUDescription
+    ts_odu_info: TSODUDescription | None
     ref_table: str
     sim_table: str
     iec_table: str
@@ -1303,17 +1303,25 @@ class FillRef2:
         ref_for_predefined_schemas: list[SignalRef] | None = self._process_defined_schemas()
         if ref_for_predefined_schemas is None:
             return
-        process_or_schemas_result = self._process_or_schemas()
-        if process_or_schemas_result is None:
-            return
-        virtual_schemas, ts_odu_ref_list, updated_schemas = process_or_schemas_result
-        refs_for_ts_odu_signals = self._process_ts_odu_signals(updated_schemas=updated_schemas)
-        if refs_for_ts_odu_signals is None:
-            return
-        sound_refs, updated_sound_schemas = self._process_sound_signals()
-        custom_refs: list[SignalRef] | None = self._process_custom_schemas_in_ts_odu()
-        if custom_refs is None:
-            return
+        ts_odu_ref_list: list[SignalRef] = []
+        refs_for_ts_odu_signals: list[SignalRef] | None = []
+        virtual_schemas: list[VirtualSchema] | None = []
+        updated_sound_schemas: list[tuple[str, str, str]] = []
+        updated_schemas: list[tuple[str, str, str]] = []
+        sound_refs: list[SignalRef] = []
+        custom_refs: list[SignalRef] | None = []
+        if self._options.ts_odu_info is not None:
+            process_or_schemas_result = self._process_or_schemas()
+            if process_or_schemas_result is None:
+                return
+            virtual_schemas, ts_odu_ref_list, updated_schemas = process_or_schemas_result
+            refs_for_ts_odu_signals = self._process_ts_odu_signals(updated_schemas=updated_schemas)
+            if refs_for_ts_odu_signals is None:
+                return
+            sound_refs, updated_sound_schemas = self._process_sound_signals()
+            custom_refs: list[SignalRef] | None = self._process_custom_schemas_in_ts_odu()
+            if custom_refs is None:
+                return
         refs: list[SignalRef] = ref_for_predefined_schemas + ts_odu_ref_list + refs_for_ts_odu_signals + sound_refs + \
                                 custom_refs
         self._access.clear_table(table_name=self._options.ref_table)

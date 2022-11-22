@@ -10,8 +10,8 @@ from tools.copy_cid import CopyCid
 
 def run_scripts():
     configure_logger('log', 'log')
-    options: Options = Options.load_ruppur()
-    base_path: str = 'C:\\Data\\Руппур база\\2.004_БД РАСУ.accdb'
+    options: Options = Options.load_kursk()
+    base_path: str = 'C:\\Data\\Курск база\\ПТК СКУ ЭЧ ЭБ КуАЭС_0.006.accdb'
     # options: Options = Options.load_kursk()
     # base_path: str = 'Y:\\Отдел ПА\\10_Текущие работы\\АЭС Курская-2\\СКУ ЭЧ ЭБ\\10_Разработка\\04_ЗЗИ\\ТПТС\\0.006 от 2022.05 (неофициально)\\Редактируемые версии\\ПТК СКУ ЭЧ ЭБ КуАЭС_0.006.accdb'
 
@@ -38,8 +38,8 @@ def run_scripts():
     # Генерация CID файлов на основе шаблона
     # Закомментировать если не используется
     # CopyCid.run(base_path=base_path,
-    #            source_cid_path='C:\\Data\\Руппур база\\All_in_one_25MV.cid',
-    #            target_path='C:\\Data\\Руппур база\\!CID\\',
+    #            source_cid_path='C:\\Data\\Курск база\\All_in_one_25MV.cid',
+    #            target_path='C:\\Data\\Курск база\\!CID\\',
     #            mask='255.255.255.0')
 
 
