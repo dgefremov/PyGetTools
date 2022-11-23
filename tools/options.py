@@ -690,14 +690,14 @@ class Options:
         signal6: DoublePointSignal = DoublePointSignal(single_part='XA10',
                                                        on_part='XA11',
                                                        off_part='XA12')
-        sw_template1: SWTemplate = SWTemplate(name='XA00',
+        sw_template1: SWTemplate = SWTemplate(name='XA99',
                                               connection='NTSW0113',
                                               signals={'XB01', 'XB02', 'XA01', 'XA02', 'XB07', 'XB08'},
                                               variants=[SWTemplateVariant(schema='SW_1623_1',
                                                                           parts=['XF27']),
                                                         SWTemplateVariant(schema='SW_1623_2',
                                                                           parts=['XK52'])])
-        sw_template2: SWTemplate = SWTemplate(name='XA10',
+        sw_template2: SWTemplate = SWTemplate(name='XA99',
                                               connection='NTSW0114',
                                               signals={'XB21', 'XB22', 'XA21', 'XA22'},
                                               variants=[SWTemplateVariant(schema='SW_1623_AVR',
@@ -734,8 +734,8 @@ class Options:
         dataset_1: DatasetDescription = DatasetDescription(name='Dataset01',
                                                            sps_range=SignalRange(1, 50),
                                                            path='Device/LLN0.DataSet01',
-                                                           rcb_main='Device/LLN0.RP.Report_A_DS1',
-                                                           rcb_res='Device/LLN0.RP.Report_B_DS1')
+                                                           rcb_main='Device/LLN0.RP.Report_A_DS101',
+                                                           rcb_res='Device/LLN0.RP.Report_B_DS101')
 
         dataset_2: DatasetDescription = DatasetDescription(name='Dataset0',
                                                            sps_range=SignalRange(51, 75),
@@ -743,14 +743,14 @@ class Options:
                                                            dpc_range=SignalRange(1, 10),
                                                            bsc_range=SignalRange(1, 2),
                                                            path='Device/LLN0.DataSet02',
-                                                           rcb_main='Device/LLN0.RP.Report_A_DS2',
-                                                           rcb_res='Device/LLN0.RP.Report_B_DS2')
+                                                           rcb_main='Device/LLN0.RP.Report_A_DS201',
+                                                           rcb_res='Device/LLN0.RP.Report_B_DS201')
 
         dataset_3: DatasetDescription = DatasetDescription(name='Dataset03',
                                                            mv_range=SignalRange(1, 25),
                                                            path='Device/LLN0.DataSet03',
-                                                           rcb_main='Device/LLN0.RP.Report_A_DS3',
-                                                           rcb_res='Device/LLN0.RP.Report_B_DS3')
+                                                           rcb_main='Device/LLN0.RP.Report_A_DS301',
+                                                           rcb_res='Device/LLN0.RP.Report_B_DS301')
 
         dpc_signals: list[DPCSignal] = [dps_signal_cb, dps_signal_alt, dps_signal_gb]
 
@@ -998,7 +998,7 @@ class Options:
                                                  unrel_ref_cell_num=None),
                                        InputPort(page=1, cell_num=10, kks='10BYA__EG312', part='XG01',
                                                  unrel_ref_cell_num=None)]
-        diag_bya03: Template = Template(name='DIAG_BYA03',
+        diag_bya03: Template = Template(name='DIAG_BYA03_KURSK',
                                         input_ports={'XG00': diag_bya03_input_ports},
                                         output_ports={'XG00': diag_first_output_ports},
                                         alarm_sound_signal_port=None)
@@ -1009,14 +1009,14 @@ class Options:
                                  InputPort(page=1, cell_num=10, kks='10BYA__EG312', part='XG01',
                                            unrel_ref_cell_num=None)]
 
-        diag_bya04: Template = Template(name='DIAG_BYA04',
+        diag_bya04: Template = Template(name='DIAG_BYA04_KURSK',
                                         input_ports={'XG00': diag_bya04_input_ports},
                                         output_ports={'XG00': diag_middle_output_ports},
                                         alarm_sound_signal_port=None)
 
         diag_bya10_input_ports: list[InputPort] = diag_bya03_input_ports
 
-        diag_bya10: Template = Template(name='DIAG_BYA10',
+        diag_bya10: Template = Template(name='DIAG_BYA10_KURSK',
                                         input_ports={'XG00': diag_bya10_input_ports},
                                         output_ports={'XG00': diag_first_output_ports},
                                         alarm_sound_signal_port=None)
@@ -1027,7 +1027,7 @@ class Options:
                                  InputPort(page=1, cell_num=12, kks='10BYA__EG602', part='XG01',
                                            unrel_ref_cell_num=None)]
 
-        diag_bya21: Template = Template(name='DIAG_BYA21',
+        diag_bya21: Template = Template(name='DIAG_BYA21_KURSK',
                                         input_ports={'XG00': diag_bya21_input_ports},
                                         output_ports={'XG00': diag_middle_output_ports},
                                         alarm_sound_signal_port=None)

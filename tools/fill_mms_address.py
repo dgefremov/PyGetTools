@@ -280,7 +280,7 @@ class MMSGenerator:
         if any(bsc_signal.is_signal(part) or bsc_signal.is_command(part) for bsc_signal in self.bsc_signals):
             return self.get_mms_for_bsc(kks=kks,
                                         part=part)
-        if part.upper().startswith('XL'):
+        if part.upper().startswith('XL') or part.upper().startswith('XA'):
             return self.get_mms_for_spc(kks=kks,
                                         part=part)
         if part.upper().startswith('XQ'):

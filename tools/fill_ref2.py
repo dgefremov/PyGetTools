@@ -877,7 +877,8 @@ class FillRef2:
             logging.error(f'Число сигналов для мозаичного элемента {mozaic_element.place} панели '
                           f'{mozaic_element.ts_odu_panel} не совпадает с числом сигналов в шаблоне')
             return None
-        if sum(value['PART'].startswith('XL') for value in values) != len(ts_odu_data.input_ports):
+        if sum(value['PART'].startswith('XL') or value['PART'].startswith('XA') for value in values) \
+                != len(ts_odu_data.input_ports):
             logging.error(f'Число команд для мозаичного элемента {mozaic_element.place} панели '
                           f'{mozaic_element.ts_odu_panel} не совпадает с числом сигналов в шаблоне')
             return None
