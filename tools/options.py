@@ -848,9 +848,9 @@ class Options:
                                                                 unrel_ref_cell_num=15),
                                                       InputPort(page=3, cell_num=4, kks=None, part='XB02',
                                                                 unrel_ref_cell_num=None)]
-        template_dsw_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
+        template_dsw_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks=None,
                                                                   part='XA01'),
-                                                       OutputPort(name='Port2', page=2, cell_num=8, kks=None,
+                                                       OutputPort(name='Port2', kks=None,
                                                                   part='XA02')]
         template_dsw1: Template = Template(name='DSW1',
                                            input_ports={'XA99': template_dsw1_input_ports},
@@ -886,22 +886,22 @@ class Options:
                                                                  unrel_ref_cell_num=12),
                                                        InputPort(page=3, cell_num=4, kks=None, part='XB22',
                                                                  unrel_ref_cell_num=None)]
-        template_davr2_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
+        template_davr2_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks=None,
                                                                     part='XA21'),
-                                                         OutputPort(name='Port2', page=2, cell_num=8, kks=None,
+                                                         OutputPort(name='Port2', kks=None,
                                                                     part='XA22')]
         template_davr2: Template = Template(name='DAVR2',
                                             input_ports={'XA99': template_davr2_input_ports},
                                             output_ports={'XA99': template_davr2_output_ports})
 
-        template_dltc3_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XQ28',
+        template_dltc3_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks='10BBT__CE001', part='XQ28',
                                                                  unrel_ref_cell_num=16)]
-        template_dltc3_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=2, cell_num=5, kks=None,
+        template_dltc3_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=1, cell_num=7, kks=None,
                                                                     part='XA11'),
-                                                         OutputPort(name='Port2', page=2, cell_num=8, kks=None,
+                                                         OutputPort(name='Port2', page=1, cell_num=7, kks=None,
                                                                     part='XA12')]
 
-        template_dltc3: Template = Template(name='DLTC2',
+        template_dltc3: Template = Template(name='DLTC3',
                                             input_ports={'XA99': template_dltc3_input_ports},
                                             output_ports={'XA99': template_dltc3_output_ports})
 
@@ -932,6 +932,15 @@ class Options:
 
         diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks='10BYA__EG801', part='XW01',
                                                                      blink_port_name='Port2')]
+
+        xq_s_input_ports: list[InputPort] = [InputPort(page=1, cell_num=7, kks=None, part='XQ23',
+                                                       unrel_ref_cell_num=None),
+                                             InputPort(page=1, cell_num=11, kks=None, part='XQ24',
+                                                       unrel_ref_cell_num=None)]
+        xq_s_output_ports: list[OutputPort] = []
+        template_xq_s: Template = Template(name='XQ_S',
+                                           input_ports={'XQ25': xq_s_input_ports},
+                                           output_ports={'XQ25': xq_s_output_ports})
 
         diag_middle_output_ports: list[OutputPort] = \
             diag_standalone_output_ports + [OutputPort(name='Port1', kks='10BYA__EG951', part='XW01'),
@@ -1042,7 +1051,8 @@ class Options:
                                                                         wired_template_dsw1,
                                                                         wired_template_dsw2, wired_template_avr,
                                                                         diag1, diag1_first, diag2, diag2_first,
-                                                                        diag_bya03, diag_bya04, diag_bya10, diag_bya21],
+                                                                        diag_bya03, diag_bya04, diag_bya10, diag_bya21,
+                                                                        template_xq_s],
                                                              wired_signal_output_default_page=1,
                                                              wired_signal_output_default_cell=7,
                                                              wired_signal_output_blink_default_page=1,

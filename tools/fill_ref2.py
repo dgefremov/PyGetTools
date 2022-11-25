@@ -194,22 +194,22 @@ class FillRef2:
         self._warn_sound_container = {}
 
     @staticmethod
-    def _choose_signal_by_kksp(values: list[dict, str], kksp: str) -> tuple[str | None, ErrorType]:
+    def _choose_signal_by_kksp(values: list[dict, str], kksp: str) -> tuple[str | None, str | None, ErrorType]:
         """
         Выбор среди результата запроса ККС, у которого KKSp совпадает с заданным
         :param values: Результат запроса к базе
         :param kksp: Сравниваемый KKSp
         :return: Код ошибки или KKS
         """
-        signals: list[str] = []
+        signals: list[tuple[str, str]] = []
         for value in values:
             if value['KKSp'] == kksp:
-                signals.append(value['KKS'])
+                signals.append((value['KKS'], value['CABINET']))
         if len(signals) == 0:
-            return None, ErrorType.NOVALUES
+            return None, None, ErrorType.NOVALUES
         if len(signals) > 1:
-            return None, ErrorType.TOOMANYVALUES
-        return signals[0], ErrorType.NOERROR
+            return None, None, ErrorType.TOOMANYVALUES
+        return signals[0][0], signals[0][1], ErrorType.NOERROR
 
     def _get_signal_from_sim_by_kks(self, cabinet: str | None, kks: str, kksp: str | None,
                                     port: InputPort | OutputPort) -> tuple[str | None, str | None, ErrorType]:
@@ -237,9 +237,9 @@ class FillRef2:
         if len(values) > 1:
             # Если не задана стойка и KKSp, то для нескольких сигналов будет попытка выбрать один, относящийся
             # к данному терминалу
-            if cabinet is not None and kksp is not None:
-                kks, error = self._choose_signal_by_kksp(values=values,
-                                                         kksp=kksp)
+            if kksp is not None:
+                kks, cabinet, error = self._choose_signal_by_kksp(values=values,
+                                                                  kksp=kksp)
                 return kks, cabinet, error
             else:
                 return None, None, ErrorType.TOOMANYVALUES
@@ -277,8 +277,8 @@ class FillRef2:
             # Если не задана стойка и KKSp, то для нескольких сигналов будет попытка выбрать один, относящийся
             # к данному терминалу
             if cabinet is not None and kksp is not None:
-                kks, error = self._choose_signal_by_kksp(values=values,
-                                                         kksp=kksp)
+                kks, cabinet, error = self._choose_signal_by_kksp(values=values,
+                                                                  kksp=kksp)
                 return kks, cabinet, error
             else:
                 return None, None, ErrorType.TOOMANYVALUES
@@ -375,9 +375,6 @@ class FillRef2:
                                                  port=port,
                                                  template_name=template_name,
                                                  kksp=kksp[:-1] + '2')
-            else:
-                logging.error(f'Не найден сигнал для шаблона {template_name} с KKS {schema_kks} для порта '
-                              f'с PART {port.part}')
         # Поиск сигнала в таблице СИМ по PART и KKSp
         found_kks, result = self._get_signal_from_sim_by_kksp(kksp=kksp,
                                                               port=port,
@@ -412,6 +409,16 @@ class FillRef2:
                                                                           port=port,
                                                                           cabinet=None)
             if result == ErrorType.TOOMANYVALUES:
+                found_kks, cabinet, result = self._get_signal_from_sim_by_kks(kks=kks,
+                                                                              kksp=kksp,
+                                                                              port=port,
+                                                                              cabinet=None)
+                if result == ErrorType.NOERROR:
+                    return Signal(kks=found_kks,
+                                  part=port.part,
+                                  cabinet=cabinet,
+                                  type=SignalType.WIRED)
+
                 logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                               f'с PART {port.part}')
                 return None
