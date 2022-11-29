@@ -262,7 +262,7 @@ class FillRef2:
         """
         key_names = ['KKS', 'PART']
         key_values = [kks, port.part]
-        key_operator = ['LIKE', '=', '=']
+        key_operator = ['LIKE', '=']
         if cabinet is not None:
             key_names.append('CABINET')
             key_values.append(cabinet)
@@ -401,6 +401,20 @@ class FillRef2:
                           part=port.part,
                           cabinet=cabinet,
                           type=SignalType.DIGITAL)
+        # Поиск сигнала в таблице СУ по PART и KKSp
+        found_kks, cabinet, result = self._get_signal_from_predefined_schemas(kks=kks,
+                                                                              port=port,
+                                                                              cabinet=cabinet,
+                                                                              kksp=kksp)
+        if result == ErrorType.TOOMANYVALUES:
+            logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
+                          f'с PART {port.part}')
+            return None
+        if result == ErrorType.NOERROR:
+            return Signal(kks=found_kks,
+                          part=port.part,
+                          cabinet=cabinet,
+                          type=SignalType.WIRED)
         # Поиск межстоечных сигналов (только если указан KKS)
         if port.kks is not None:
             # Поиск сигнала в другой стойке в таблице СИМ по ККС
@@ -441,10 +455,55 @@ class FillRef2:
                               part=port.part,
                               cabinet=cabinet,
                               type=SignalType.DIGITAL)
+            # Поиск сигнала в таблице СУ
+            found_kks, cabinet, result = self._get_signal_from_predefined_schemas(kks=kks,
+                                                                                  port=port,
+                                                                                  cabinet=None,
+                                                                                  kksp=None)
+            if result == ErrorType.NOERROR:
+                return Signal(kks=found_kks,
+                              part=port.part,
+                              cabinet=cabinet,
+                              type=SignalType.WIRED)
 
-        logging.error(f'Не найден сигнал для шаблона {template_name} с KKS {schema_kks} для порта '
-                      f'с PART {port.part}')
+            if result == ErrorType.TOOMANYVALUES:
+                logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
+                              f'с PART {port.part}')
+                return None
+
+            logging.error(f'Не найден сигнал для шаблона {template_name} с KKS {schema_kks} для порта '
+                          f'с PART {port.part}')
         return None
+
+    def _get_signal_from_predefined_schemas(self, kks: str, port: InputPort | OutputPort, cabinet: str | None,
+                                            kksp: str | None):
+        key_names = ['KKS', 'PART']
+        key_values = [kks, port.part]
+        key_operator = ['LIKE', '=']
+        if cabinet is not None:
+            key_names.append('CABINET')
+            key_values.append(cabinet)
+            key_operator.append('=')
+
+        values: list[dict[str, str]] = self._access.retrieve_data(
+            table_name=self._options.predifend_control_schemas_table,
+            fields=['KKS', 'CABINET'],
+            key_names=key_names,
+            key_values=key_values,
+            key_operator=key_operator)
+        if len(values) > 1:
+            # Если не задана стойка и KKSp, то для нескольких сигналов будет попытка выбрать один, относящийся
+            # к данному терминалу
+            if cabinet is not None and kksp is not None:
+                kks, cabinet, error = self._choose_signal_by_kksp(values=values,
+                                                                  kksp=kksp)
+                return kks + 'V', cabinet, error
+            else:
+                return None, None, ErrorType.TOOMANYVALUES
+        if len(values) == 1:
+            return values[0]['KKS'] + 'V', values[0]['CABINET'], ErrorType.NOERROR
+        return None, None, ErrorType.NOVALUES
+        pass
 
     def _creare_ref_for_input_port(self, schema_kks: str, schema_part: str, cabinet: str,
                                    input_port: InputPort, kksp: str | None, template_name: str,

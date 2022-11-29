@@ -110,8 +110,8 @@ class Options:
         dataset_1: DatasetDescription = DatasetDescription(name='Dataset01',
                                                            sps_range=SignalRange(1, 50),
                                                            path='Device/LLN0.DataSet01',
-                                                           rcb_main='Device/LLN0.RP.Report_A_DS1',
-                                                           rcb_res='Device/LLN0.RP.Report_B_DS1')
+                                                           rcb_main='Device/LLN0.RP.Report_A_DS101',
+                                                           rcb_res='Device/LLN0.RP.Report_B_DS101')
 
         dataset_2: DatasetDescription = DatasetDescription(name='Dataset0',
                                                            sps_range=SignalRange(51, 75),
@@ -119,14 +119,14 @@ class Options:
                                                            dpc_range=SignalRange(1, 10),
                                                            bsc_range=SignalRange(1, 2),
                                                            path='Device/LLN0.DataSet02',
-                                                           rcb_main='Device/LLN0.RP.Report_A_DS2',
-                                                           rcb_res='Device/LLN0.RP.Report_B_DS2')
+                                                           rcb_main='Device/LLN0.RP.Report_A_DS201',
+                                                           rcb_res='Device/LLN0.RP.Report_B_DS201')
 
         dataset_3: DatasetDescription = DatasetDescription(name='Dataset03',
                                                            mv_range=SignalRange(1, 25),
                                                            path='Device/LLN0.DataSet03',
-                                                           rcb_main='Device/LLN0.RP.Report_A_DS3',
-                                                           rcb_res='Device/LLN0.RP.Report_B_DS3')
+                                                           rcb_main='Device/LLN0.RP.Report_A_DS301',
+                                                           rcb_res='Device/LLN0.RP.Report_B_DS301')
 
         dpc_signals: list[DPCSignal] = [dps_signal_cb, dps_signal_cb2, dps_signal_alt, dps_signal_gb, dps_signal_cb3]
 
@@ -263,12 +263,17 @@ class Options:
                                                 unrel_ref_cell_num=None)]
 
         ats_ouput: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XL21'),
-                                       OutputPort(name='Port2', kks=None, part='XL22')]
+                                       OutputPort(name='Port2', kks=None, part='XL22'),
+                                       OutputPort(name='Port3', kks=None, part='XA20', page=3, cell_num=5),
+                                       OutputPort(name='Port4', kks=None, part='XA20', page=3, cell_num=6),
+                                       OutputPort(name='Port5', kks=None, part='XA20', page=3, cell_num=7),
+                                       OutputPort(name='Port6', kks=None, part='XA20', page=3, cell_num=8)]
 
         ats_ts_output: list[OutputPort] = [OutputPort(name='Port3', kks=None, part='XB22',
                                                       blink_port_name='Port4', flicker_port_name='Port5'),
                                            OutputPort(name='Port6', kks=None, part='XB21',
                                                       blink_port_name='Port7', flicker_port_name='Port8')]
+
         ats_ts_input: list[InputPort] = [InputPort(page=3, cell_num=14, kks=None, part='XL21',
                                                    unrel_ref_cell_num=None),
                                          InputPort(page=3, cell_num=15, kks=None, part='XL22',
@@ -283,6 +288,15 @@ class Options:
                                  output_ports={'XA10': ats_ouput},
                                  ts_odu_data=ats_ts_data,
                                  alarm_sound_signal_port='Port3')
+
+        ats_vk_ouput: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA20', page=3, cell_num=23),
+                                          OutputPort(name='Port2', kks=None, part='XA20', page=3, cell_num=21),
+                                          OutputPort(name='Port3', kks=None, part='XA20', page=3, cell_num=22)]
+        ats_vk: Template = Template(name='ATS_VK',
+                                    input_ports={'XA20': []},
+                                    output_ports={'XA20': ats_vk_ouput},
+                                    ts_odu_data=None)
+
         scw_nku_04_3_sign_input: list[InputPort] = [InputPort(page=3, cell_num=5, kks=None, part='XK17',
                                                               unrel_ref_cell_num=None),
                                                     InputPort(page=3, cell_num=6, kks=None, part='XF06',
@@ -456,6 +470,11 @@ class Options:
                                                                           cell_num=10,
                                                                           kks='10MKA01CE101',
                                                                           part='XQ16',
+                                                                          unrel_ref_cell_num=None),
+                                                                InputPort(page=2,
+                                                                          cell_num=8,
+                                                                          kks='10MKA01CE001',
+                                                                          part='XQ22',
                                                                           unrel_ref_cell_num=None)]},
                                           output_ports={'XQ22': []})
 
@@ -534,7 +553,7 @@ class Options:
                                                              ref_table='[REF]',
                                                              sim_table='[Сигналы и механизмы]',
                                                              iec_table='[МЭК 61850]',
-                                                             templates=[ats, ltc, sc_cb_24, sc_kru_10_3_sign,
+                                                             templates=[ats, ats_vk, ltc, sc_cb_24, sc_kru_10_3_sign,
                                                                         sc_kru_10_6_sign, sc_kru_10_7_sign,
                                                                         sc_nku_04_1_sign, scw_nku_04_0_sign,
                                                                         scw_nku_04_3_sign, scw_nku_04_4_sign, atsw,
