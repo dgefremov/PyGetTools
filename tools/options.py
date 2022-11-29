@@ -286,12 +286,11 @@ class Options:
         ats: Template = Template(name='ATS',
                                  input_ports={'XA10': ats_input},
                                  output_ports={'XA10': ats_ouput},
-                                 ts_odu_data=ats_ts_data,
-                                 alarm_sound_signal_port='Port3')
+                                 ts_odu_data=ats_ts_data)
 
-        ats_vk_ouput: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA20', page=3, cell_num=23),
-                                          OutputPort(name='Port2', kks=None, part='XA20', page=3, cell_num=21),
-                                          OutputPort(name='Port3', kks=None, part='XA20', page=3, cell_num=22)]
+        ats_vk_ouput: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA10', page=3, cell_num=23),
+                                          OutputPort(name='Port2', kks=None, part='XA10', page=3, cell_num=21),
+                                          OutputPort(name='Port3', kks=None, part='XA10', page=3, cell_num=22)]
         ats_vk: Template = Template(name='ATS_VK',
                                     input_ports={'XA20': []},
                                     output_ports={'XA20': ats_vk_ouput},
@@ -360,8 +359,7 @@ class Options:
         atsw: Template = Template(name='ATSW_1623',
                                   input_ports={'XA10': []},
                                   output_ports={'XA10': []},
-                                  ts_odu_data=atsw_ts_data,
-                                  alarm_sound_signal_port='Port3')
+                                  ts_odu_data=atsw_ts_data)
 
         diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks='10BYA__EG801', part='XW01',
                                                                      blink_port_name='Port2')]
