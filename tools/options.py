@@ -291,9 +291,12 @@ class Options:
         ats_vk_ouput: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA10', page=3, cell_num=23),
                                           OutputPort(name='Port2', kks=None, part='XA10', page=3, cell_num=21),
                                           OutputPort(name='Port3', kks=None, part='XA10', page=3, cell_num=22)]
+        ats_vk_ouput_2: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA10', page=2, cell_num=23),
+                                            OutputPort(name='Port2', kks=None, part='XA10', page=2, cell_num=21),
+                                            OutputPort(name='Port3', kks=None, part='XA10', page=2, cell_num=22)]
         ats_vk: Template = Template(name='ATS_VK',
-                                    input_ports={'XA20': []},
-                                    output_ports={'XA20': ats_vk_ouput},
+                                    input_ports={'XA20': [], 'XA30': []},
+                                    output_ports={'XA20': ats_vk_ouput, 'XA30': ats_vk_ouput_2},
                                     ts_odu_data=None)
 
         scw_nku_04_3_sign_input: list[InputPort] = [InputPort(page=3, cell_num=5, kks=None, part='XK17',
@@ -342,6 +345,10 @@ class Options:
                                                ts_odu_data=cbw_ts_data,
                                                alarm_sound_signal_port='Port1',
                                                warn_sound_signal_port='Port2')
+        atsw_output: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA30', page=3, cell_num=5),
+                                         OutputPort(name='Port2', kks=None, part='XA30', page=3, cell_num=6),
+                                         OutputPort(name='Port4', kks=None, part='XA30', page=3, cell_num=7),
+                                         OutputPort(name='Port5', kks=None, part='XA30', page=3, cell_num=8)]
 
         atsw_ts_output: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XB22',
                                                        blink_port_name='Port2', flicker_port_name='Port3'),
@@ -358,7 +365,7 @@ class Options:
                                             output_ports=atsw_ts_output)
         atsw: Template = Template(name='ATSW_1623',
                                   input_ports={'XA10': []},
-                                  output_ports={'XA10': []},
+                                  output_ports={'XA10': atsw_output},
                                   ts_odu_data=atsw_ts_data)
 
         diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks='10BYA__EG801', part='XW01',

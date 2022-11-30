@@ -471,8 +471,8 @@ class FillRef2:
                               f'с PART {port.part}')
                 return None
 
-            logging.error(f'Не найден сигнал для шаблона {template_name} с KKS {schema_kks} для порта '
-                          f'с PART {port.part}')
+        logging.error(f'Не найден сигнал для шаблона {template_name} с KKS {schema_kks} для порта '
+                      f'с PART {port.part}')
         return None
 
     def _get_signal_from_predefined_schemas(self, kks: str, port: InputPort | OutputPort, cabinet: str | None,
