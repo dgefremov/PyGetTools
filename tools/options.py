@@ -132,6 +132,7 @@ class Options:
 
         fill_mms_options: FillMMSAddressOptions = FillMMSAddressOptions(iec_table_name='[МЭК 61850]',
                                                                         ied_table_name='[IED]',
+                                                                        mms_table_name='[MMS]',
                                                                         dpc_signals=dpc_signals,
                                                                         bsc_signals=[bsc_signal],
                                                                         datasets=DatasetDescriptionList(

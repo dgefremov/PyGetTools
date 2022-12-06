@@ -119,6 +119,7 @@ class DatasetDescriptionList:
 class FillMMSAddressOptions:
     iec_table_name: str
     ied_table_name: str
+    mms_table_name: str
     dpc_signals: list[DPCSignal]
     bsc_signals: list[BSCSignal]
     datasets: None | DatasetDescriptionList = None
@@ -395,22 +396,38 @@ class FillMMSAdress:
         self._options = options
         self._access_base = access_base
 
-    def _get_kksp_list(self) -> list[str]:
+    def _get_kksp_list(self) -> list[tuple[str, str]]:
         """
         Функция загрузки списка KKSp из БД
         :return: Список KKSp
         """
         values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.iec_table_name,
-                                                                       fields=['KKSp'],
+                                                                       fields=['KKSp', 'IED_NAME'],
                                                                        key_names=None,
                                                                        key_values=None,
                                                                        uniq_values=True,
                                                                        sort_by=None,
                                                                        key_operator=None)
-        kksp_list: list[str] = []
+        kksp_list: list[tuple[str, str]] = []
         for value in values:
-            kksp_list.append(value['KKSp'])
+            kksp_list.append((value['KKSp'], value['IED_NAME']))
         return kksp_list
+
+    def _write_mms(self, kks: str, part: str, mms_address: str):
+        mms: str = ''
+        mms_pos: str = ''
+        mms_com: str = ''
+        if part.startswith('XL') or part.startswith('XA'):
+            mms_com = mms_address
+        elif part.upper().startswith('XB'):
+            mms_pos = mms_address
+        else:
+            mms = mms_address
+        self._access_base.update_field(table_name=self._options.iec_table_name,
+                                       fields=['MMS', 'MMS_POS', 'MMS_COM'],
+                                       values=[mms, mms_pos, mms_com],
+                                       key_names=['KKS', 'PART'],
+                                       key_values=[kks, part])
 
     def _generate_mms_for_kksp(self, kksp: str):
         mms_generator: MMSGenerator = MMSGenerator(kksp=kksp,
@@ -432,20 +449,9 @@ class FillMMSAdress:
                 mms_addresses += result
         mms_addresses += mms_generator.add_undubled_signals()
         for kks, part, mms_address in mms_addresses:
-            mms: str = ''
-            mms_pos: str = ''
-            mms_com: str = ''
-            if part.startswith('XL') or part.startswith('XA'):
-                mms_com = mms_address
-            elif part.upper().startswith('XB'):
-                mms_pos = mms_address
-            else:
-                mms = mms_address
-            self._access_base.update_field(table_name=self._options.iec_table_name,
-                                           fields=['MMS', 'MMS_POS', 'MMS_COM'],
-                                           values=[mms, mms_pos, mms_com],
-                                           key_names=['KKS', 'PART'],
-                                           key_values=[kks, part])
+            self._write_mms(kks=kks,
+                            part=part,
+                            mms_address=mms_address)
             ProgressBar.update_progress()
         if self._options.datasets is not None and len(mms_generator.dataset_container) > 0:
             self._add_ied_record(mms_generator=mms_generator)
@@ -476,6 +482,42 @@ class FillMMSAdress:
                                          values=[mms_generator.ied_name, dataset_list, rb_master_list, rb_slave_list,
                                                  mms_generator.kksp])
 
+    def _is_emulator(self, ied_name: str) -> bool:
+        values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.ied_table_name,
+                                                                       fields=['EMULATOR'],
+                                                                       key_names=['IED_NAME'],
+                                                                       key_values=[ied_name])
+        if len(values) == 0:
+            return True
+        if len(values) == 1:
+            return values[0]['EMULATOR'] == 'True'
+        raise Exception(f'Множественные значения в таблице {self._options.ied_table_name} для IED {ied_name}')
+
+    def _copy_mms_for_kksp(self, kksp: str):
+        mms_values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.mms_table_name,
+                                                                           fields=['KKS', 'PART', 'MMS'],
+                                                                           key_names=['KKSp'],
+                                                                           key_values=[kksp])
+        mms_storage: dict[tuple[str, str], str] = dict([((value['KKS'], value['PART']), value['MMS'])
+                                                        for value in mms_values])
+        signal_values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.iec_table_name,
+                                                                              fields=['KKS', 'PART'],
+                                                                              key_names=['KKSp'],
+                                                                              key_values=[kksp])
+        for signal in signal_values:
+            kks: str = signal['KKS']
+            part: str = signal['PART']
+            mms: str = mms_storage.get((kks, part))
+            if mms is not None:
+                self._write_mms(kks=kks,
+                                part=part,
+                                mms_address=mms)
+            else:
+                logging.info(f'Для KKSp {kksp} для сигнала {kks}_{part} не найден адрес в таблице '
+                             f'{self._options.mms_table_name}')
+            ProgressBar.update_progress()
+        self._access_base.commit()
+
     def _fill_mms(self) -> None:
         """
         Основная функция генерации таблиц
@@ -484,9 +526,12 @@ class FillMMSAdress:
         max_value: int = self._access_base.get_row_count(self._options.iec_table_name)
         logging.info('Заполнение адресов MMS...')
         ProgressBar.config(max_value=max_value, step=1, prefix='Обработка MMS адресов', suffix='Завершено', length=50)
-        kksp_list: list[str] = self._get_kksp_list()
+        kksp_list: list[tuple[str, str]] = self._get_kksp_list()
         for kksp in kksp_list:
-            self._generate_mms_for_kksp(kksp=kksp)
+            if self._is_emulator(ied_name=kksp[1]):
+                self._generate_mms_for_kksp(kksp=kksp[0])
+            else:
+                self._copy_mms_for_kksp(kksp=kksp[0])
 
         logging.info('Завершено')
 
