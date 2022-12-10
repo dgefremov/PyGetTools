@@ -3,7 +3,7 @@ import sys
 
 
 def configure_logger(path: str, file: str):
-    log_formatter = logging.Formatter('%(asctime)s: %(levelname)s %(message)s')
+    log_formatter = logging.Formatter('\r%(asctime)s: %(levelname)s %(message)s')
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
 

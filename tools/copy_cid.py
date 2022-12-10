@@ -55,10 +55,10 @@ class CopyCid:
                     ip: str = value['IP']
                     ied_name: str = value['[IED].IED_NAME']
                     sensr_type: str = value['[IED].SENSR_TYPE']
-                parameters: list[tuple[ParameterData, str]] = [(Nodes.IP.value, ip),
-                                                               (Nodes.MASK.value, self._mask),
-                                                               (Nodes.IEDNAME.value, ied_name),
-                                                               (Nodes.DESCR.value, sensr_type)]
+                parameters: list[tuple[any, str]] = [(Nodes.IP.value, ip),
+                                                     (Nodes.MASK.value, self._mask),
+                                                     (Nodes.IEDNAME.value, ied_name),
+                                                     (Nodes.DESCR.value, sensr_type)]
 
                 data_for_xml[file_name] = parameters
             return data_for_xml

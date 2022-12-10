@@ -635,7 +635,10 @@ class FillRef2:
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.predifend_control_schemas_table,
             fields=['KKS', 'SCHEMA', 'PART', 'CABINET', 'TS_ODU_PANEL', 'INST_PLACE', 'KKSp', 'ONLY_FOR_REF'])
+        logging.info('Запуск обработки таблицы со схемами управления...')
+        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка схем управления', suffix='Завершено')
         for value in values:
+            ProgressBar.update_progress()
             schema_kks: str = value['KKS']
             schema_part: str = value['PART']
             cabinet: str = value['CABINET']
@@ -661,16 +664,21 @@ class FillRef2:
             else:
                 ref_list = ref_list + ref_list_for_schema
         if error_flag:
+            logging.info('Завершено с ошибками.')
             return None
+        logging.info('Завершено')
         return ref_list
 
     def _process_sound_signals(self) -> tuple[list[SignalRef], list[tuple[str, str, str]]]:
 
         refs: list[SignalRef] = []
         refs_on_page: int = self._options.or_schema_end_cell - self._options.or_schema_start_cell + 1
-
+        logging.info('Запуск обработки звуковых сигналов')
+        ProgressBar.config(max_value=len(self._alarm_sound_container) + len(self._warn_sound_container),
+                           step=1, prefix='Обработка звуковых сигналов', suffix='Завершено')
         index: int = 0
         for signal in self._alarm_sound_container:
+            ProgressBar.update_progress()
             cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
             page_num: int = index // (refs_on_page - 1) + 2
             refs.append(self._get_ref_for_signal(source_signal=signal,
@@ -683,6 +691,7 @@ class FillRef2:
             index += 1
         index = 0
         for signal in self._warn_sound_container:
+            ProgressBar.update_progress()
             cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
             page_num: int = index // (refs_on_page - 1) + 2
             refs.append(self._get_ref_for_signal(source_signal=signal,
@@ -714,6 +723,7 @@ class FillRef2:
                                                       (self._options.ts_odu_info.warning_sound_kks,
                                                        self._options.ts_odu_info.warning_sound_part,
                                                        f'SOUND_WARN_{len(self._warn_sound_container)}')]
+        logging.info('Завершено.')
         return refs, update_schemas
 
     def _get_abonent_map(self) -> dict[str, int]:
@@ -764,7 +774,10 @@ class FillRef2:
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.ts_odu_algorithm,
             fields=['KKS', 'PART', 'CABINET', 'INST_PLACE', 'TS_ODU_PANEL', 'TYPE'])
+        logging.info('Запуск обработки логики ТС ОДУ...')
+        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка логики ТС ОДУ', suffix='Завершено')
         for value in values:
+            ProgressBar.update_progress()
             source_signal, source_error = self._get_signal_for_ts_odu_logic(kks=value['KKS'],
                                                                             part=value['PART'])
             if source_error != ErrorType.NOERROR:
@@ -784,8 +797,6 @@ class FillRef2:
                 dynamic_templates.append(dynamic_template)
             else:
                 dynamic_template.source.append(source_signal)
-        if not ok_flag:
-            return None
         updated_schemas: list[tuple[str, str, str]] = []
         virtual_schemas: list[VirtualSchema] = []
         signal_refs: list[SignalRef] = []
@@ -793,19 +804,27 @@ class FillRef2:
             result = self._get_refs_for_dynamic_template(dynamic_template=dynamic_template,
                                                          used_names=used_names)
             if result is None:
+                ok_flag = False
                 continue
             virtual_schemas += result[0]
             signal_refs += result[1]
             if result[2] is not None:
                 updated_schemas.append(result[2])
+        if not ok_flag:
+            logging.info('Завершено с ошибками.')
+            return None
+        logging.info('Завершено.')
         return virtual_schemas, signal_refs, updated_schemas
 
     def _process_ts_odu_signals(self, updated_schemas: list[tuple[str, str, str]]) -> list[SignalRef] | None:
         ok_flag: bool = True
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
                                                                   fields=['KKS', 'PART', 'KKSp', 'SCHEMA'])
+        logging.info('Запуск обработки сигналов ТС ОДУ...')
+        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка сигналов ТС ОДУ', suffix='Завершено')
         refs: list[SignalRef] = []
         for value in values:
+            ProgressBar.update_progress()
             kks: str = value['KKS']
             part: str = value['PART']
             template_name: str = updated_schemas[2] if updated_schemas[0] == kks and updated_schemas[1] == part \
@@ -903,7 +922,9 @@ class FillRef2:
                                           ref=ref,
                                           unrel_ref=None))
         if not ok_flag:
+            logging.info('Завершено с ошибками.')
             return None
+        logging.info('Завершено.')
         return refs
 
     def _get_refs_for_ts_odu_in_define_schema(self, schema_kks: str, schema_part: str, schema_abonent: int,
@@ -1342,12 +1363,15 @@ class FillRef2:
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.ts_odu_table,
             fields=['KKS', 'PART', 'SCHEMA', 'KKSp'])
+        logging.info('Запуск обработка нетиповых сигналов ТС ОДУ...')
+        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка нетиповых сигналов ТС ОДУ',
+                           suffix='Завершено')
         cabinet: str = self._options.ts_odu_info.cabinet
         for value in values:
+            ProgressBar.update_progress()
             schema_kks: str = value['KKS']
             schema_part: str = value['PART']
             template_name: str = value['SCHEMA']
-            kksp: str = value['KKSp']
             mozaic_element: MozaicElement | None = None
             add_kks_postfix: bool = False
             ref_list_for_schema: list[SignalRef] | None = \
@@ -1363,7 +1387,9 @@ class FillRef2:
             else:
                 ref_list = ref_list + ref_list_for_schema
         if error_flag:
+            logging.info('Завершено с ошибками.')
             return None
+        logging.info('Завершено.')
         return ref_list
 
     def _process(self):
@@ -1389,13 +1415,15 @@ class FillRef2:
             custom_refs: list[SignalRef] | None = self._process_custom_schemas_in_ts_odu()
             if custom_refs is None:
                 return
-        refs: list[SignalRef] = ref_for_predefined_schemas + ts_odu_ref_list + refs_for_ts_odu_signals + sound_refs + \
-                                custom_refs
+        refs: list[SignalRef] = \
+            ref_for_predefined_schemas + ts_odu_ref_list + refs_for_ts_odu_signals + sound_refs + custom_refs
+        logging.info('Запись результатов...')
         self._access.clear_table(table_name=self._options.ref_table)
         self._access.clear_table(table_name=self._options.control_schemas_table)
         self._write_ref(ref_list=refs)
         self._write_control_schemas(dynamic_schemas=virtual_schemas)
         self._update_schemas(updated_schemas=updated_schemas + updated_sound_schemas)
+        logging.info('Завершено.')
 
     @staticmethod
     def run(options: FillRef2Options, base_path: str) -> None:

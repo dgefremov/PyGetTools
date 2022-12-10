@@ -2,7 +2,6 @@ from tools.generate_tables import GenerateTableOptions, DoublePointSignal, SWTem
     SWTemplateVariant
 from tools.fill_mms_address import FillMMSAddressOptions, DPCSignal, DatasetDescription, DatasetDescriptionList, \
     BSCSignal, SignalRange
-from tools.fill_ref import FillRefOptions, VirtualTemplate, TemplateVariant, DefinedVariant
 from tools.fill_ref2 import FillRef2Options, InputPort, OutputPort, Template, TSODUPanel, TSODUData, TSODUDescription, \
     TSODUTemplate
 from tools.find_schemas import FindSchemasOptions, Schema
@@ -14,7 +13,6 @@ from dataclasses import dataclass
 class Options:
     generate_table_options: GenerateTableOptions
     fill_mms_address_options: FillMMSAddressOptions
-    fill_ref_options: FillRefOptions
     fill_ref2_options: FillRef2Options
     find_schemas_options: FindSchemasOptions
 
@@ -581,105 +579,6 @@ class Options:
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
 
-        # <-------------------------------fill_ref_options------------------------------------------------------------->
-        template1: VirtualTemplate = VirtualTemplate(name='Управление выключателем',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA00': {'XL01': 'Port1', 'XL02': 'Port2'}},
-                                                     variants=[TemplateVariant(name='DSW1',
-                                                                               signal_parts={'XB01': ('3', '3', '15'),
-                                                                                             'XB02': ('3', '4', None)}),
-                                                               TemplateVariant(name='DSW2',
-                                                                               signal_parts={'XB01': ('3', '3', '15'),
-                                                                                             'XB02': ('3', '4', None),
-                                                                                             'XB07': ('3', '5', '16'),
-                                                                                             'XB08': ('3', '6', '17')}),
-                                                               TemplateVariant(name='DSW3',
-                                                                               signal_parts={'XB01': ('3', '3', '15'),
-                                                                                             'XB02': ('3', '4', None),
-                                                                                             'XB07': ('3', '5', '16'),
-                                                                                             'XB08': ('3', '6', '17'),
-                                                                                             'XF19': ('3', '7', '18')}),
-                                                               TemplateVariant(name='DSW4',
-                                                                               signal_parts={'XB01': ('3', '3', '15'),
-                                                                                             'XB02': ('3', '4', None),
-                                                                                             'XB07': ('3', '5', '16'),
-                                                                                             'XB08': ('3', '6', '17'),
-                                                                                             'XF27': ('3', '8', '19')})
-                                                               ])
-        template2: VirtualTemplate = VirtualTemplate(name='Управление АВР',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA10': {'XL21': 'Port1', 'XL22': 'Port2'}},
-                                                     variants=[TemplateVariant(name='DAVR2',
-                                                                               signal_parts={'XB21': ('3', '3', '13'),
-                                                                                             'XB22': ('3', '4', None)})
-                                                               ])
-        dltc_var: DefinedVariant = DefinedVariant(name='DLTС2',
-                                                  signal_list=[('10BBT0#EK001', 'XB10', '3', '3', '16'),
-                                                               ('10BBT0#EK001', 'XN10', '3', '4', '17'),
-                                                               ('10BBT0#EK001', 'XF34', '3', '5', '18'),
-                                                               ('10BBT0#EK001', 'XB14', '3', '6', '19'),
-                                                               ('10BBT0#EK002', 'XM30', '3', '7', '20'),
-                                                               ('10BBT0#EK002', 'XM29', '3', '8', '21'),
-                                                               ('10BBT0#GH103', 'XF24', '3', '9', '22'),
-                                                               ('10BBT0#GH103', 'XF35', '3', '10', '23'),
-                                                               ('10BBT0#GH103', 'XF15', '3', '11', '24')])
-
-        template3: VirtualTemplate = VirtualTemplate(name='Управление РПН',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA20': {'XL11': 'Port1', 'XL12': 'Port2'}},
-                                                     variants=[dltc_var
-                                                               ])
-
-        template4: VirtualTemplate = VirtualTemplate(name='Пуск ДГ',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA30': {'XL04': 'Port1'}},
-                                                     variants=[TemplateVariant(name='DDGS',
-                                                                               signal_parts={})
-                                                               ])
-        template5: VirtualTemplate = VirtualTemplate(name='Пуск АСП',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA40': {'XL08': 'Port1'}},
-                                                     variants=[TemplateVariant(name='DACNPS',
-                                                                               signal_parts={})
-                                                               ])
-        template6: VirtualTemplate = VirtualTemplate(name='Квитирование сигнализации',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA50': {'XL50': 'Port1'},
-                                                                          'XA51': {'XL51': 'Port1'}},
-                                                     variants=[TemplateVariant(name='DSIGN',
-                                                                               signal_parts={})
-                                                               ])
-        template7: VirtualTemplate = VirtualTemplate(name='Вкл при ручной синхронизации',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA60': {'XL03': 'Port1'}},
-                                                     variants=[TemplateVariant(name='DSYNC',
-                                                                               signal_parts={})
-                                                               ])
-        template8: VirtualTemplate = VirtualTemplate(name='Управление выключателем 2',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA70': {'XA01': 'Port1', 'XA02': 'Port2'}},
-                                                     variants=[TemplateVariant(name='DSW1',
-                                                                               signal_parts={'XB01': ('3', '3', '15'),
-                                                                                             'XB02': ('3', '4', None)})
-                                                               ])
-        wired_template_1: TemplateVariant = TemplateVariant(name='SW_1623_1',
-                                                            signal_parts={'XF27': ('3', '11', None)})
-        wired_template_2: TemplateVariant = TemplateVariant(name='SW_1623_2',
-                                                            signal_parts={'XK52': ('3', '9', None)})
-        wired_template_3: TemplateVariant = TemplateVariant(name='SW_1623_AVR',
-                                                            signal_parts={})
-        fill_ref_options: FillRefOptions = FillRefOptions(sim_table_name='[Сигналы и механизмы]',
-                                                          ref_table_name='[REF]',
-                                                          sign_table_name='[DIAG]',
-                                                          vs_sign_table_name='[DIAG_VS]',
-                                                          virtual_templates=[template1, template2, template3, template4,
-                                                                             template5, template6, template7,
-                                                                             template8],
-                                                          virtual_schemas_table_name='[VIRTUAL SCHEMAS]',
-                                                          wired_template_variants=[wired_template_1, wired_template_2,
-                                                                                   wired_template_3])
-        # <-------------------------------fill_ref_options------------------------------------------------------------->
-
         # <-------------------------------find_schemas_options--------------------------------------------------------->
 
         schema1: Schema = Schema(name="Управление выключателем",
@@ -690,7 +589,7 @@ class Options:
                                                   schemas=[schema1])
         # <-------------------------------find_schemas_options--------------------------------------------------------->
 
-        return Options(generate_table_options=generate_option, fill_ref_options=fill_ref_options,
+        return Options(generate_table_options=generate_option,
                        fill_mms_address_options=fill_mms_options, find_schemas_options=find_schemas_options,
                        fill_ref2_options=fill_ref2_options)
 
@@ -784,89 +683,9 @@ class Options:
                                                                         dpc_signals=dpc_signals,
                                                                         bsc_signals=[bsc_signal],
                                                                         datasets=DatasetDescriptionList(
-                                                                            [dataset_1, dataset_2, dataset_3]))
+                                                                            [dataset_1, dataset_2, dataset_3]),
+                                                                        mms_table_name='[MMS]')
         # <-------------------------------fill_mms_address_options----------------------------------------------------->
-
-        # <-------------------------------fill_ref_options------------------------------------------------------------->
-        template1: VirtualTemplate = VirtualTemplate(name='Управление выключателем',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA00': {'XL01': 'Port1', 'XL02': 'Port2'}},
-                                                     variants=[TemplateVariant(name='DSW1',
-                                                                               signal_parts={'XB01': ('3', '3', '15'),
-                                                                                             'XB02': ('3', '4', None)}),
-                                                               TemplateVariant(name='DSW2',
-                                                                               signal_parts={'XB01': ('3', '3', '15'),
-                                                                                             'XB02': ('3', '4', None),
-                                                                                             'XB07': ('3', '5', '16'),
-                                                                                             'XB08': ('3', '6', '17')}),
-                                                               TemplateVariant(name='DSW3',
-                                                                               signal_parts={'XB01': ('3', '3', '15'),
-                                                                                             'XB02': ('3', '4', None),
-                                                                                             'XB07': ('3', '5', '16'),
-                                                                                             'XB08': ('3', '6', '17'),
-                                                                                             'XF19': ('3', '7', '18')}),
-                                                               TemplateVariant(name='DSW4',
-                                                                               signal_parts={'XB01': ('3', '3', '15'),
-                                                                                             'XB02': ('3', '4', None),
-                                                                                             'XB07': ('3', '5', '16'),
-                                                                                             'XB08': ('3', '6', '17'),
-                                                                                             'XF27': ('3', '8', '19')})
-                                                               ])
-        template2: VirtualTemplate = VirtualTemplate(name='Управление АВР',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA10': {'XL21': 'Port1', 'XL22': 'Port2'}},
-                                                     variants=[TemplateVariant(name='DAVR',
-                                                                               signal_parts={'XB21': ('3', '3', '15'),
-                                                                                             'XB22': ('3', '4', None)})
-                                                               ])
-        template3: VirtualTemplate = VirtualTemplate(name='Управление РПН',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA20': {'XL11': 'Port1', 'XL12': 'Port2'}},
-                                                     variants=[TemplateVariant(name='DLTC',
-                                                                               signal_parts={'XB10': ('3', '3', '7')})
-                                                               ])
-        template4: VirtualTemplate = VirtualTemplate(name='Пуск ДГ',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA30': {'XL04': 'Port1'}},
-                                                     variants=[TemplateVariant(name='DDGS',
-                                                                               signal_parts={})
-                                                               ])
-        template5: VirtualTemplate = VirtualTemplate(name='Пуск АСП',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA40': {'XL08': 'Port1'}},
-                                                     variants=[TemplateVariant(name='DACNPS',
-                                                                               signal_parts={})
-                                                               ])
-        template6: VirtualTemplate = VirtualTemplate(name='Квитирование сигнализации',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA50': {'XL50': 'Port1'},
-                                                                          'XA51': {'XL51': 'Port1'}},
-                                                     variants=[TemplateVariant(name='DSIGN',
-                                                                               signal_parts={})
-                                                               ])
-        template7: VirtualTemplate = VirtualTemplate(name='Вкл при ручной синхронизации',
-                                                     has_channel=True,
-                                                     commands_parts_list={'XA60': {'XL03': 'Port1'}},
-                                                     variants=[TemplateVariant(name='DSYNC',
-                                                                               signal_parts={})
-                                                               ])
-        wired_template_1: TemplateVariant = TemplateVariant(name='SW_1623_1',
-                                                            signal_parts={'XF27': ('3', '11', None)})
-        wired_template_2: TemplateVariant = TemplateVariant(name='SW_1623_2',
-                                                            signal_parts={'XK52': ('3', '9', None)})
-        wired_template_3: TemplateVariant = TemplateVariant(name='SW_1623_AVR',
-                                                            signal_parts={})
-        fill_ref_options: FillRefOptions = FillRefOptions(sim_table_name='[Сигналы и механизмы]',
-                                                          ref_table_name='[REF]',
-                                                          sign_table_name='[DIAG]',
-                                                          vs_sign_table_name='[DIAG_VS]',
-                                                          virtual_templates=[template1, template2, template3, template4,
-                                                                             template5, template6,
-                                                                             template7],
-                                                          virtual_schemas_table_name='[VIRTUAL SCHEMAS]',
-                                                          wired_template_variants=[wired_template_1, wired_template_2,
-                                                                                   wired_template_3])
-        # <-------------------------------fill_ref_options------------------------------------------------------------->
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
         template_dsw1_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB01',
@@ -1103,6 +922,5 @@ class Options:
                                                   schemas=[schema1])
         # <-------------------------------find_schemas_options--------------------------------------------------------->
 
-        return Options(generate_table_options=generate_option, fill_ref_options=fill_ref_options,
-                       fill_mms_address_options=fill_mms_options, find_schemas_options=find_schemas_options,
-                       fill_ref2_options=fill_ref2_options)
+        return Options(generate_table_options=generate_option, fill_mms_address_options=fill_mms_options,
+                       find_schemas_options=find_schemas_options, fill_ref2_options=fill_ref2_options)

@@ -9,6 +9,7 @@ import logging
 class NodeDescription:
     xpath: str
     attribute: str | None
+    allow_multiply: bool = False
 
 
 @dataclass(init=True, unsafe_hash=False, repr=False, eq=True, order=False, frozen=True)
@@ -16,14 +17,18 @@ class ParameterData:
     data: list[NodeDescription]
 
 
-class Nodes(Enum):
+class Nodes(ParameterData, Enum):
     IP = ParameterData([NodeDescription('/SCL/Communication/SubNetwork/ConnectedAP/Address/P[@type="IP"]', None)])
     MASK = ParameterData([NodeDescription('/SCL/Communication/SubNetwork/ConnectedAP/Address/P[@type="IP-SUBNET"]',
                                           None)])
     IEDNAME = ParameterData([NodeDescription('/SCL/Header', 'id'),
                              NodeDescription('/SCL/Communication/SubNetwork/ConnectedAP', 'iedName'),
                              NodeDescription('/SCL/IED', 'name')])
-    DESCR = ParameterData([NodeDescription('/SCL/IED', 'desc')])
+    DESCR = ParameterData([NodeDescription('/SCL/IED', 'desc')]) \
+
+    WRONGINTPERIODINREPORT = ParameterData([NodeDescription(
+        '/SCL/IED/AccessPoint/Server/LDevice/LN0/ReportControl[@intgPd="0"]/TrgOps[@period="true"]',
+        'period', True)])
 
 
 def save_xml(xml_content: bytes, target_file_name: str):
@@ -56,21 +61,21 @@ def get_updated_content(source_file_name: str, parameters: list[tuple[ParameterD
                 is_correct = False
                 logging.error("Для файла {0} не найден параметр {1}".format(source_file_name, path))
                 continue
-            elif len(elements) > 1:
+            elif len(elements) > 1 and not node.allow_multiply:
                 is_correct = False
                 logging.error("Для файла {0} найдено несколько параметров параметр {1}".format(source_file_name, path))
                 continue
-            element: et.Element = elements[0]
-            if node.attribute is None:
-                element.text = value if value is not None else ''
-            else:
-                if node.attribute not in element.keys():
-                    is_correct = False
-                    logging.error(
-                        "Для файла {0} и параметра {1} не найден атрибут {2}".format(source_file_name, path,
-                                                                                     node.attribute))
-                    continue
-                element.attrib[node.attribute] = value if value is not None else ''
+            for element in elements:
+                if node.attribute is None:
+                    element.text = value if value is not None else ''
+                else:
+                    if node.attribute not in element.keys():
+                        is_correct = False
+                        logging.error(
+                            "Для файла {0} и параметра {1} не найден атрибут {2}".format(source_file_name, path,
+                                                                                         node.attribute))
+                        break
+                    element.attrib[node.attribute] = value if value is not None else ''
 
     if is_correct:
         root: et.Element = tree.getroot()

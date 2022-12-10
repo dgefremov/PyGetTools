@@ -1,6 +1,3 @@
-import logging
-
-
 class ProgressBar:
     max_value: float
     suffix: str
