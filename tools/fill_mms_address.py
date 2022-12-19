@@ -136,6 +136,7 @@ class MMSGenerator:
     bsc_index: int
     ied_name: str
     kksp: str
+    filename: str
 
     dpc_signals: list[DPCSignal]
     bsc_signals: list[BSCSignal]
@@ -177,6 +178,7 @@ class MMSGenerator:
         self.bsc_container = {}
         self.dataset_container = []
         self.dataset_descriptions = dataset_descriptions
+        self.filename = kksp
 
     def get_mms_for_dpc(self, kks: str, part: str) -> list[tuple[str, str, str]] | None:
         # Здесь обрабатываются только полные DPC сигналы
@@ -396,21 +398,21 @@ class FillMMSAdress:
         self._options = options
         self._access_base = access_base
 
-    def _get_kksp_list(self) -> list[tuple[str, str]]:
+    def _get_kksp_list(self) -> list[str]:
         """
         Функция загрузки списка KKSp из БД
         :return: Список KKSp
         """
         values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.iec_table_name,
-                                                                       fields=['KKSp', 'IED_NAME'],
+                                                                       fields=['KKSp'],
                                                                        key_names=None,
                                                                        key_values=None,
                                                                        uniq_values=True,
                                                                        sort_by=None,
                                                                        key_operator=None)
-        kksp_list: list[tuple[str, str]] = []
+        kksp_list: list[str] = []
         for value in values:
-            kksp_list.append((value['KKSp'], value['IED_NAME']))
+            kksp_list.append(value['KKSp'])
         return kksp_list
 
     def _write_mms(self, kks: str, part: str, mms_address: str):
@@ -454,67 +456,94 @@ class FillMMSAdress:
                             mms_address=mms_address)
             ProgressBar.update_progress()
         if self._options.datasets is not None and len(mms_generator.dataset_container) > 0:
-            self._add_ied_record(mms_generator=mms_generator)
+            self._add_emulator_ied_record(mms_generator=mms_generator)
         self._access_base.commit()
 
-    def _add_ied_record(self, mms_generator: MMSGenerator):
+    def _add_emulator_ied_record(self, mms_generator: MMSGenerator) -> None:
         """
         Функция добавления (редактирования) записи в таблице IED
         :param mms_generator: Экземпляр класса генератора MMS сигналов (в нем хранятся Dataset)
-        :return:
+        :return: None
         """
-        ied_record_exists: bool = len(self._access_base.retrieve_data(table_name=self._options.ied_table_name,
-                                                                      fields=['IED_NAME'],
-                                                                      key_names=['IED_NAME'],
-                                                                      key_values=[mms_generator.ied_name])) == 1
         dataset_list: str = ';'.join([dataset.path for dataset in mms_generator.dataset_container])
         rb_master_list: str = ';'.join([dataset.rcb_main for dataset in mms_generator.dataset_container])
         rb_slave_list: str = ';'.join([dataset.rcb_res for dataset in mms_generator.dataset_container])
-        if ied_record_exists:
-            self._access_base.update_field(table_name=self._options.ied_table_name,
-                                           fields=['DATASET', 'RB_MASTER', 'RB_SLAVE', 'ICD_PATH'],
-                                           values=[dataset_list, rb_master_list, rb_slave_list, mms_generator.kksp],
-                                           key_names=['IED_NAME'],
-                                           key_values=[mms_generator.ied_name])
-        else:
-            self._access_base.insert_row(table_name=self._options.ied_table_name,
-                                         column_names=['IED_NAME', 'DATASET', 'RB_MASTER', 'RB_SLAVE', 'ICD_PATH'],
-                                         values=[mms_generator.ied_name, dataset_list, rb_master_list, rb_slave_list,
-                                                 mms_generator.kksp])
+        self._access_base.insert_row(table_name=self._options.ied_table_name,
+                                     column_names=['IED_NAME', 'DATASET', 'RB_MASTER', 'RB_SLAVE', 'KKSp', 'ICD_PATH',
+                                                   'EMULATOR'],
+                                     values=[mms_generator.ied_name, dataset_list, rb_master_list, rb_slave_list,
+                                             mms_generator.kksp, mms_generator.filename, True])
 
-    def _is_emulator(self, ied_name: str) -> bool:
-        values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.ied_table_name,
-                                                                       fields=['EMULATOR'],
-                                                                       key_names=['IED_NAME'],
-                                                                       key_values=[ied_name])
+    def _add_real_ied_record(self, kksp: str, ied_name: str, file_name: str, dataset_list: list[str],
+                             rb_master_list: list[str], rb_slave_list: list[str]) -> None:
+        dataset_list: str = ';'.join(dataset_list)
+        rb_master_list: str = ';'.join(rb_master_list)
+        rb_slave_list: str = ';'.join(rb_slave_list)
+        self._access_base.insert_row(table_name=self._options.ied_table_name,
+                                     column_names=['IED_NAME', 'DATASET', 'RB_MASTER', 'RB_SLAVE', 'KKSp', 'ICD_PATH',
+                                                   'EMULATOR'],
+                                     values=[ied_name, dataset_list, rb_master_list, rb_slave_list,
+                                             kksp, file_name, False])
+
+    def _is_emulator(self, kksp: str) -> bool:
+        values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.mms_table_name,
+                                                                       fields=['IED_NAME'],
+                                                                       key_names=['KKSp'],
+                                                                       key_values=[kksp],
+                                                                       uniq_values=True)
         if len(values) == 0:
             return True
         if len(values) == 1:
-            return values[0]['EMULATOR'] == 'True'
-        raise Exception(f'Множественные значения в таблице {self._options.ied_table_name} для IED {ied_name}')
+            return False
+        raise Exception(f'Множественные значения в таблице {self._options.ied_table_name} для kksp {kksp}')
 
     def _copy_mms_for_kksp(self, kksp: str):
         mms_values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.mms_table_name,
-                                                                           fields=['KKS', 'PART', 'MMS'],
+                                                                           fields=['KKS', 'PART', 'MMS_address',
+                                                                                   'Dataset', 'Report_Master',
+                                                                                   'Report_Slave', 'IED_NAME',
+                                                                                   'Filename'],
                                                                            key_names=['KKSp'],
                                                                            key_values=[kksp])
-        mms_storage: dict[tuple[str, str], str] = dict([((value['KKS'], value['PART']), value['MMS'])
+        mms_storage: dict[tuple[str, str], str] = dict([((value['KKS'], value['PART']), value['MMS_address'])
                                                         for value in mms_values])
         signal_values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.iec_table_name,
                                                                               fields=['KKS', 'PART'],
                                                                               key_names=['KKSp'],
                                                                               key_values=[kksp])
+        dataset_list: list[str] = list({value['Dataset'] for value in mms_values if value['Dataset'] is not None
+                                        and value['Dataset'] != ''})
+        report_master_list: list[str] = list({value['Report_Master'] for value in mms_values if value['Report_Master']
+                                              is not None and value['Report_Master'] != ''})
+        report_slave_list: list[str] = list({value['Report_Slave'] for value in mms_values if value['Report_Slave']
+                                             is not None and value['Report_Slave'] != ''})
+        ied_name_list: list[str] = list({value['IED_NAME'] for value in mms_values})
+        if len(ied_name_list) > 1:
+            logging.error(f'Для одного kksp {kksp} найдено несколько имен IED')
+            raise Exception('IedNameError')
+        filename_list: list[str] = list({value['Filename'] for value in mms_values})
+        if len(filename_list) > 1:
+            logging.error(f'Для одного IED {ied_name_list[0]} найдено несколько имен файлов')
+            raise Exception('CidFileNameError')
+        self._add_real_ied_record(ied_name=ied_name_list[0],
+                                  kksp=kksp,
+                                  file_name=filename_list[0],
+                                  dataset_list=dataset_list,
+                                  rb_master_list=report_master_list,
+                                  rb_slave_list=report_slave_list)
+
         for signal in signal_values:
             kks: str = signal['KKS']
             part: str = signal['PART']
-            mms: str = mms_storage.get((kks, part))
-            if mms is not None:
-                self._write_mms(kks=kks,
-                                part=part,
-                                mms_address=mms)
-            else:
+            mms: str | None = mms_storage.get((kks, part), None)
+            if mms == '' or mms is None:
                 logging.info(f'Для KKSp {kksp} для сигнала {kks}_{part} не найден адрес в таблице '
                              f'{self._options.mms_table_name}')
+                if mms is None:
+                    mms = ''
+            self._write_mms(kks=kks,
+                            part=part,
+                            mms_address=mms)
             ProgressBar.update_progress()
         self._access_base.commit()
 
@@ -524,14 +553,17 @@ class FillMMSAdress:
         :return: None
         """
         max_value: int = self._access_base.get_row_count(self._options.iec_table_name)
+        logging.info('Очистка таблицы IED...')
+        self._access_base.clear_table(table_name=self._options.ied_table_name)
+        logging.info('Завершено.')
         logging.info('Заполнение адресов MMS...')
         ProgressBar.config(max_value=max_value, step=1, prefix='Обработка MMS адресов', suffix='Завершено', length=50)
-        kksp_list: list[tuple[str, str]] = self._get_kksp_list()
+        kksp_list: list[str] = self._get_kksp_list()
         for kksp in kksp_list:
-            if self._is_emulator(ied_name=kksp[1]):
-                self._generate_mms_for_kksp(kksp=kksp[0])
+            if self._is_emulator(kksp=kksp):
+                self._generate_mms_for_kksp(kksp=kksp)
             else:
-                self._copy_mms_for_kksp(kksp=kksp[0])
+                self._copy_mms_for_kksp(kksp=kksp)
 
         logging.info('Завершено')
 

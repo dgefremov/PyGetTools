@@ -23,15 +23,15 @@ def run_scripts():
     # options: Options = Options.load_kursk()
     # base_path: str = 'C:\\Data\\Курск база\\ПТК СКУ ЭЧ ЭБ КуАЭС_0.006.accdb'
     options: Options = Options.load_ruppur()
-    base_path: str = 'D:\\Work\\Руппур\\2.004_БД РАСУ_temp.accdb'
+    base_path: str = 'C:\\Data\\Руппур база\\2.005_БД РАСУ.accdb'
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
-    # GenerateTables.run(options=options.generate_table_options, base_path=base_path)
+    GenerateTables.run(options=options.generate_table_options, base_path=base_path)
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
-    # FillMMSAdress.run(options=options.fill_mms_address_options, base_path=base_path)
+    FillMMSAdress.run(options=options.fill_mms_address_options, base_path=base_path)
 
     # Расстановка ссылок
     # Закомментировать если не используется

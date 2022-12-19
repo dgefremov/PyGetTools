@@ -74,7 +74,7 @@ class Options:
                                                                      aep_table_name='[Сигналы и механизмы АЭП]',
                                                                      sim_table_name='[Сигналы и механизмы]',
                                                                      iec_table_name='[МЭК 61850]',
-                                                                     ied_table_name='[IED]',
+                                                                     mms_table_name='[MMS]',
                                                                      ref_table_name='[REF]',
                                                                      sign_table_name='[DIAG]',
                                                                      skip_signals=[('00BCE', 'XB20')],
