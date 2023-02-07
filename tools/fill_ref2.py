@@ -194,7 +194,7 @@ class FillRef2:
         self._warn_sound_container = {}
 
     @staticmethod
-    def _choose_signal_by_kksp(values: list[dict, str], kksp: str) -> tuple[str | None, str | None, ErrorType]:
+    def _choose_signal_by_kksp(values: list[dict, str], kksp: list[str]) -> tuple[str | None, str | None, ErrorType]:
         """
         Выбор среди результата запроса ККС, у которого KKSp совпадает с заданным
         :param values: Результат запроса к базе
@@ -203,7 +203,7 @@ class FillRef2:
         """
         signals: list[tuple[str, str]] = []
         for value in values:
-            if value['KKSp'] == kksp:
+            if value['KKSp'] in kksp:
                 signals.append((value['KKS'], value['CABINET']))
         if len(signals) == 0:
             return None, None, ErrorType.NOVALUES
@@ -211,7 +211,7 @@ class FillRef2:
             return None, None, ErrorType.TOOMANYVALUES
         return signals[0][0], signals[0][1], ErrorType.NOERROR
 
-    def _get_signal_from_sim_by_kks(self, cabinet: str | None, kks: str, kksp: str | None,
+    def _get_signal_from_sim_by_kks(self, cabinet: str | None, kks: str, kksp: list[str] | None,
                                     port: InputPort | OutputPort) -> tuple[str | None, str | None, ErrorType]:
         """
         Поиск сигнала по ККС в таблице  СиМ
@@ -249,7 +249,7 @@ class FillRef2:
         if len(values) == 1:
             return values[0]['KKS'], values[0]['CABINET'], ErrorType.NOERROR
 
-    def _get_signal_from_iec_by_kks(self, kks: str, kksp: str | None,
+    def _get_signal_from_iec_by_kks(self, kks: str, kksp: list[str] | None,
                                     port: InputPort | OutputPort, cabinet: str | None) -> tuple[str | None,
                                                                                                 str | None, ErrorType]:
         """
@@ -286,7 +286,7 @@ class FillRef2:
             return values[0]['KKS'], values[0]['CABINET'], ErrorType.NOERROR
         return None, None, ErrorType.NOVALUES
 
-    def _get_signal_from_sim_by_kksp(self, kksp: str, port: InputPort | OutputPort, cabinet: str) -> \
+    def _get_signal_from_sim_by_cabinet(self, kksp: list[str], port: InputPort | OutputPort, cabinet: str) -> \
             tuple[str | None, ErrorType]:
         """
         Поиск сигнала в таблице СиМ по KKSp
@@ -297,17 +297,19 @@ class FillRef2:
         """
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.sim_table,
-            fields=['KKS'],
-            key_names=['MODULE', 'KKSp', 'PART', 'CABINET'],
-            key_values=['1691', kksp, port.part, cabinet],
-            key_operator=['<>', '=', '=', '='])
+            fields=['KKS', 'CABINET', 'KKSp'],
+            key_names=['MODULE', 'PART', 'CABINET'],
+            key_values=['1691', port.part, cabinet],
+            key_operator=['<>', '=', '='])
         if len(values) > 1:
-            return None, ErrorType.TOOMANYVALUES
+            kks, cabinet, error = self._choose_signal_by_kksp(values=values,
+                                                              kksp=kksp)
+            return kks, error
         if len(values) == 1:
             return values[0]['KKS'], ErrorType.NOERROR
         return None, ErrorType.NOVALUES
 
-    def _get_signal_from_iec_by_kksp(self, kksp: str, port: InputPort | OutputPort, cabinet: str) -> \
+    def _get_signal_from_iec_by_cabinet(self, kksp: list[str], port: InputPort | OutputPort, cabinet: str) -> \
             tuple[str | None, ErrorType]:
         """
         Поиск сигнала в таблице МЭК по KKSp
@@ -318,16 +320,18 @@ class FillRef2:
         """
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.iec_table,
-            fields=['KKS'],
-            key_names=['KKSp', 'PART', 'CABINET'],
-            key_values=[kksp, port.part, cabinet])
+            fields=['KKS', 'KKSp', 'CABINET'],
+            key_names=['PART', 'CABINET'],
+            key_values=[port.part, cabinet])
         if len(values) > 1:
-            return None, ErrorType.TOOMANYVALUES
+            kks, cabinet, error = self._choose_signal_by_kksp(values=values,
+                                                              kksp=kksp)
+            return kks, error
         if len(values) == 1:
             return values[0]['KKS'], ErrorType.NOERROR
         return None, ErrorType.NOVALUES
 
-    def _get_signal_for_port(self, schema_kks: str, cabinet: str, kksp: str | None, port: InputPort | OutputPort,
+    def _get_signal_for_port(self, schema_kks: str, cabinet: str, kksp: list[str] | None, port: InputPort | OutputPort,
                              template_name) -> Signal | None:
         """
         Функция поиска сигнала для порта шаблона
@@ -368,17 +372,10 @@ class FillRef2:
                           part=port.part,
                           cabinet=cabinet,
                           type=SignalType.DIGITAL)
-        if port.kks is not None and kksp is not None:
-            if kksp.endswith('A01') or kksp.endswith('A11') or kksp.endswith('A1'):
-                return self._get_signal_for_port(schema_kks=schema_kks,
-                                                 cabinet=cabinet,
-                                                 port=port,
-                                                 template_name=template_name,
-                                                 kksp=kksp[:-1] + '2')
         # Поиск сигнала в таблице СИМ по PART и KKSp
-        found_kks, result = self._get_signal_from_sim_by_kksp(kksp=kksp,
-                                                              port=port,
-                                                              cabinet=cabinet)
+        found_kks, result = self._get_signal_from_sim_by_cabinet(kksp=kksp,
+                                                                 port=port,
+                                                                 cabinet=cabinet)
         if result == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
@@ -388,10 +385,10 @@ class FillRef2:
                           part=port.part,
                           cabinet=cabinet,
                           type=SignalType.WIRED)
-        # Поиск сигнала в таблице МЭК по PART и KKSp
-        found_kks, result = self._get_signal_from_iec_by_kksp(kksp=kksp,
-                                                              port=port,
-                                                              cabinet=cabinet)
+        # Поиск сигнала в таблице МЭК по PART и Cabinet
+        found_kks, result = self._get_signal_from_iec_by_cabinet(kksp=kksp,
+                                                                 port=port,
+                                                                 cabinet=cabinet)
         if result == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
@@ -401,7 +398,7 @@ class FillRef2:
                           part=port.part,
                           cabinet=cabinet,
                           type=SignalType.DIGITAL)
-        # Поиск сигнала в таблице СУ по PART и KKSp
+        # Поиск сигнала в таблице СУ по PART и Cabinet
         found_kks, cabinet, result = self._get_signal_from_predefined_schemas(kks=kks,
                                                                               port=port,
                                                                               cabinet=cabinet,
@@ -476,7 +473,7 @@ class FillRef2:
         return None
 
     def _get_signal_from_predefined_schemas(self, kks: str, port: InputPort | OutputPort, cabinet: str | None,
-                                            kksp: str | None):
+                                            kksp: list[str] | None):
         key_names = ['KKS', 'PART']
         key_values = [kks, port.part]
         key_operator = ['LIKE', '=']
@@ -506,7 +503,7 @@ class FillRef2:
         pass
 
     def _creare_ref_for_input_port(self, schema_kks: str, schema_part: str, cabinet: str,
-                                   input_port: InputPort, kksp: str | None, template_name: str,
+                                   input_port: InputPort, kksp: list[str] | None, template_name: str,
                                    add_kks_postfix: bool) -> SignalRef | None:
         """
         Создание ссылки для входного сигналы схемы управления
@@ -549,7 +546,7 @@ class FillRef2:
         return signal_ref
 
     def _creare_ref_for_output_port(self, schema_kks: str, schema_part: str, cabinet: str, output_port: OutputPort,
-                                    kksp: str, template_name: str, add_kks_postfix: bool,
+                                    kksp: list[str] | None, template_name: str, add_kks_postfix: bool,
                                     signal: Signal | None = None) -> list[SignalRef] | None:
         """
         Создание ссылки для выходного сигналы схемы управления
@@ -636,15 +633,18 @@ class FillRef2:
             table_name=self._options.predifend_control_schemas_table,
             fields=['KKS', 'SCHEMA', 'PART', 'CABINET', 'TS_ODU_PANEL', 'INST_PLACE', 'KKSp', 'ONLY_FOR_REF'])
         logging.info('Запуск обработки таблицы со схемами управления...')
-        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка схем управления', suffix='Завершено',
-                           length=50)
+        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка схем управления', suffix='Завершено')
         for value in values:
             ProgressBar.update_progress()
             schema_kks: str = value['KKS']
             schema_part: str = value['PART']
             cabinet: str = value['CABINET']
             template_name: str = value['SCHEMA']
-            kksp: str = value['KKSp']
+            kksp: list[str] = []
+            if ';' in value['KKSp']:
+                kksp = value['KKSp'].split(';')
+            else:
+                kksp = [value['KKSp']]
             mozaic_element: MozaicElement | None = None
             if value['TS_ODU_PANEL'] is not None and value['TS_ODU_PANEL'] != '' and \
                     value['INST_PLACE'] is not None and value['INST_PLACE'] != '':
@@ -676,7 +676,7 @@ class FillRef2:
         refs_on_page: int = self._options.or_schema_end_cell - self._options.or_schema_start_cell + 1
         logging.info('Запуск обработки звуковых сигналов')
         ProgressBar.config(max_value=len(self._alarm_sound_container) + len(self._warn_sound_container),
-                           step=1, prefix='Обработка звуковых сигналов', suffix='Завершено', length=50)
+                           step=1, prefix='Обработка звуковых сигналов', suffix='Завершено')
         index: int = 0
         for signal in self._alarm_sound_container:
             ProgressBar.update_progress()
@@ -776,8 +776,7 @@ class FillRef2:
             table_name=self._options.ts_odu_algorithm,
             fields=['KKS', 'PART', 'CABINET', 'INST_PLACE', 'TS_ODU_PANEL', 'TYPE'])
         logging.info('Запуск обработки логики ТС ОДУ...')
-        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка логики ТС ОДУ', suffix='Завершено',
-                           length=50)
+        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка логики ТС ОДУ', suffix='Завершено')
         for value in values:
             ProgressBar.update_progress()
             source_signal, source_error = self._get_signal_for_ts_odu_logic(kks=value['KKS'],
@@ -823,8 +822,7 @@ class FillRef2:
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
                                                                   fields=['KKS', 'PART', 'KKSp', 'SCHEMA'])
         logging.info('Запуск обработки сигналов ТС ОДУ...')
-        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка сигналов ТС ОДУ', suffix='Завершено',
-                           length=50)
+        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка сигналов ТС ОДУ', suffix='Завершено')
         refs: list[SignalRef] = []
         for value in values:
             ProgressBar.update_progress()
@@ -987,7 +985,7 @@ class FillRef2:
                                                                     schema_part=schema_part,
                                                                     cabinet=schema_cabinet,
                                                                     output_port=ouput_port,
-                                                                    kksp=ts_odu_panel.name,
+                                                                    kksp=[ts_odu_panel.name],
                                                                     template_name='ТС ОДУ',
                                                                     signal=output_signal,
                                                                     add_kks_postfix=add_kks_postfix)
@@ -1235,7 +1233,7 @@ class FillRef2:
     def _get_ref_for_schema(self, schema_kks: str, schema_part: str, schema_cabinet: str,
                             add_kks_postfix: bool,
                             template_list: list[Template],
-                            template_name: str, kksp: str | None = None,
+                            template_name: str, kksp: list[str] | None = None,
                             mozaic_element: MozaicElement | None = None,
                             skip_schemas: bool = False) -> list[SignalRef] | None:
         """
@@ -1368,7 +1366,7 @@ class FillRef2:
             fields=['KKS', 'PART', 'SCHEMA', 'KKSp'])
         logging.info('Запуск обработка нетиповых сигналов ТС ОДУ...')
         ProgressBar.config(max_value=len(values), step=1, prefix='Обработка нетиповых сигналов ТС ОДУ',
-                           suffix='Завершено', length=50)
+                           suffix='Завершено')
         cabinet: str = self._options.ts_odu_info.cabinet
         for value in values:
             ProgressBar.update_progress()

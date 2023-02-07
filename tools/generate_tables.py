@@ -190,7 +190,7 @@ class GenerateTableOptions:
     aep_table_name: str
     sim_table_name: str
     iec_table_name: str
-    mms_table_name: str
+    ied_table_name: str
     ref_table_name: str
     sign_table_name: str
     skip_signals: list[tuple[str, str]]
@@ -249,18 +249,6 @@ class GenerateTables:
             kksp_list.append(value['KKSp'])
         return kksp_list
 
-    def _get_ied_name(self, kksp: str) -> str | None:
-        values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.mms_table_name,
-                                                                       fields=['IED_NAME'],
-                                                                       key_names=['KKSp'],
-                                                                       key_values=[kksp],
-                                                                       uniq_values=True)
-        if len(values) == 0:
-            return None
-        if len(values) == 1:
-            return values[0]['IED_NAME']
-        raise Exception(f'Множественные значения в таблице {self._options.mms_table_name} для KKSp {kksp}')
-
     def _generate_table_for_kksp(self, kksp: str) -> None:
         """
         Функция запуска генерации таблиц для одного KKSp
@@ -272,7 +260,6 @@ class GenerateTables:
                                             fields=self._columns_list[self._options.aep_table_name],
                                             key_names=['KKSp'],
                                             key_values=[kksp])
-        ied_name: str | None = self._get_ied_name(kksp=kksp)
         sw_containers: dict[SWTemplate, dict[str, list[Signal]]] = {}
         for sw_template in self._options.sw_templates:
             sw_containers[sw_template] = {}
@@ -282,7 +269,7 @@ class GenerateTables:
             if signal.module in ['1623', '1631', '1661', '1662', '1671', '1673']:
                 self._process_wired_signal(signal=signal, sw_containers=sw_containers)
             elif signal.module == '1691':
-                self._process_digital_signal(signal=signal, ied_name=ied_name)
+                self._process_digital_signal(signal=signal)
         self._flush_sw_container(sw_containers=sw_containers)
         self._access_base.commit()
 
@@ -313,7 +300,7 @@ class GenerateTables:
             return next(dps_signal.on_part for dps_signal in self._options.dps_signals
                         if dps_signal.off_part.casefold() == part.casefold())
 
-    def _process_digital_signal(self, signal: Signal, ied_name: str | None) -> None:
+    def _process_digital_signal(self, signal: Signal) -> None:
         """
         Обработка цифрового сигнала
         :param signal: Сигнал (строка из базы)
@@ -323,13 +310,13 @@ class GenerateTables:
                            if dps_signal.single_part is not None] and \
                 not any(signal.kks.upper().startswith(item_kks.upper()) and signal.part.upper() == item_part.upper()
                         for (item_kks, item_part) in self._options.skip_signals):
-            self._duplicate_signal(signal=signal, ied_name=ied_name)
+            self._duplicate_signal(signal=signal)
         else:
-            self._add_signal_to_iec_table(signal=signal, ied_name=ied_name)
+            self._add_signal_to_iec_table(signal=signal)
             if self._options.copy_ds_to_sim_table:
                 self._add_signal_to_sim_table(signal=signal)
 
-    def _duplicate_signal(self, signal: Signal, ied_name: str | None) -> None:
+    def _duplicate_signal(self, signal: Signal) -> None:
         """
         Раздвоение сигнала
         :param signal: Исходный сигнал
@@ -341,8 +328,8 @@ class GenerateTables:
         new_signal_1.part = signal.part[:2] + str(part_num + 1).rjust(2, '0')
         new_signal_2: Signal = signal.clone()
         new_signal_2.part = signal.part[:2] + str(part_num + 2).rjust(2, '0')
-        self._add_signal_to_iec_table(signal=new_signal_1, ied_name=ied_name)
-        self._add_signal_to_iec_table(signal=new_signal_2, ied_name=ied_name)
+        self._add_signal_to_iec_table(signal=new_signal_1)
+        self._add_signal_to_iec_table(signal=new_signal_2)
         if self._options.copy_ds_to_sim_table:
             self._add_signal_to_sim_table(signal=new_signal_1)
             self._add_signal_to_sim_table(signal=new_signal_2)
@@ -484,14 +471,14 @@ class GenerateTables:
                                      column_names=columns,
                                      values=values)
 
-    def _add_signal_to_iec_table(self, signal: Signal, ied_name: str | None) -> None:
+    def _add_signal_to_iec_table(self, signal: Signal) -> None:
         """
         Добавление сигнала в таблицу МЭК
         :param signal: Сигнал (запись в базе)
         :return: None
         """
         digital_signal: DigitalSignal = DigitalSignal.create_from_signal(signal=signal)
-        digital_signal.ied_name = 'IED_' + signal.kksp.replace('-', '_') if ied_name is None else ied_name
+        digital_signal.ied_name = 'IED_' + signal.kksp.replace('-', '_')
         digital_signal.area = self._access_base.retrieve_data('TPTS', ['AREA'], ['CABINET'], [signal.cabinet])[0][
             'AREA']
         digital_signal.ip = self._access_base.retrieve_data('[Network data]', ['IP'], ['KKSp'], [signal.kksp])[0]['IP']

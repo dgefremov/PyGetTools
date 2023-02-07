@@ -60,21 +60,23 @@ class Options:
                                                   new_name_rus='Нерабочее положение',
                                                   new_full_name_rus='Нерабочее положение тележки выкатного элемента',
                                                   new_name_eng='Truck non-work pos',
-                                                  new_full_name_eng='Non-working position of roll-out element truck')
+                                                  new_full_name_eng='Non-working position of roll-out element truck',
+                                                  new_part='XB08')
         signal_modification2 = SignalModification(signal_kks='10BBG03GS001',
                                                   signal_part='XB17',
                                                   new_template='BI_1623_INV',
                                                   new_name_rus='Нерабочее положение',
                                                   new_full_name_rus='Нерабочее положение тележки выкатного элемента',
                                                   new_name_eng='Truck non-work pos',
-                                                  new_full_name_eng='Non-working position of roll-out element truck')
+                                                  new_full_name_eng='Non-working position of roll-out element truck',
+                                                  new_part='XB08')
 
         generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='[Network Data]',
                                                                      controller_data_table_name='TPTS',
                                                                      aep_table_name='[Сигналы и механизмы АЭП]',
                                                                      sim_table_name='[Сигналы и механизмы]',
                                                                      iec_table_name='[МЭК 61850]',
-                                                                     mms_table_name='[MMS]',
+                                                                     ied_table_name='[IED]',
                                                                      ref_table_name='[REF]',
                                                                      sign_table_name='[DIAG]',
                                                                      skip_signals=[('00BCE', 'XB20')],
@@ -256,6 +258,39 @@ class Options:
                                  output_ports={'XA20': ltc_output},
                                  ts_odu_data=ltc_ts_data,
                                  alarm_sound_signal_port=None)
+
+        ltc_failure_input: list[InputPort] = [InputPort(page=1, cell_num=5, kks=None, part='XB11',
+                                                        unrel_ref_cell_num=None),
+                                              InputPort(page=1, cell_num=6, kks=None, part='XB12',
+                                                        unrel_ref_cell_num=None),
+                                              InputPort(page=1, cell_num=7, kks='10BBT__GH103', part='XF24',
+                                                        unrel_ref_cell_num=None),
+                                              InputPort(page=1, cell_num=8, kks=None, part='XF34',
+                                                        unrel_ref_cell_num=None),
+                                              InputPort(page=1, cell_num=9, kks='10BBT__EK011', part='XK26',
+                                                        unrel_ref_cell_num=None),
+                                              InputPort(page=1, cell_num=10, kks='10BBT__EK021', part='XK26',
+                                                        unrel_ref_cell_num=None),
+                                              InputPort(page=1, cell_num=11, kks='10BBT__EK001', part='XM29',
+                                                        unrel_ref_cell_num=None),
+                                              InputPort(page=1, cell_num=12, kks='10BBT__EK002', part='XM29',
+                                                        unrel_ref_cell_num=None),
+                                              InputPort(page=1, cell_num=13, kks='10BBT__EK001', part='XM30',
+                                                        unrel_ref_cell_num=None),
+                                              InputPort(page=1, cell_num=14, kks='10BBT__EK002', part='XM30',
+                                                        unrel_ref_cell_num=None),
+                                              ]
+
+        ltc_failure_ts_output: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XF33')]
+
+        ltc_failure_ts_data: TSODUData = TSODUData(input_ports=[],
+                                                   output_ports=ltc_failure_ts_output)
+
+        ltc_failure: Template = Template(name='LTC_FAILURE',
+                                         input_ports={'XA30': ltc_failure_input},
+                                         output_ports={'XA30': []},
+                                         ts_odu_data=ltc_failure_ts_data,
+                                         alarm_sound_signal_port=None)
 
         ats_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB22', unrel_ref_cell_num=18),
                                       InputPort(page=3, cell_num=4, kks=None, part='XB21',
@@ -557,7 +592,8 @@ class Options:
                                                              ref_table='[REF]',
                                                              sim_table='[Сигналы и механизмы]',
                                                              iec_table='[МЭК 61850]',
-                                                             templates=[ats, ats_vk, ltc, sc_cb_24, sc_kru_10_3_sign,
+                                                             templates=[ats, ats_vk, ltc, ltc_failure,
+                                                                        sc_cb_24, sc_kru_10_3_sign,
                                                                         sc_kru_10_6_sign, sc_kru_10_7_sign,
                                                                         sc_nku_04_1_sign, scw_nku_04_0_sign,
                                                                         scw_nku_04_3_sign, scw_nku_04_4_sign, atsw,
