@@ -20,10 +20,10 @@ from tools.copy_cid import CopyCid
 
 def run_scripts():
     configure_logger('log', 'log')
-    # options: Options = Options.load_kursk()
-    # base_path: str = 'C:\\Data\\Курск база\\ПТК СКУ ЭЧ ЭБ КуАЭС_0.006.accdb'
-    options: Options = Options.load_ruppur()
-    base_path: str = 'C:\\Data\\Руппур база\\2.004_БД РАСУ.accdb'
+    options: Options = Options.load_kursk()
+    base_path: str = 'D:\\Work\\Курск база\\0.006_БД РАСУ.accdb'
+    # options: Options = Options.load_ruppur()
+    # base_path: str = 'D:\\Work\\Руппур база\\2.004_БД РАСУ.accdb'
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется

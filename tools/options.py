@@ -259,11 +259,7 @@ class Options:
                                  ts_odu_data=ltc_ts_data,
                                  alarm_sound_signal_port=None)
 
-        ltc_failure_input: list[InputPort] = [InputPort(page=1, cell_num=5, kks=None, part='XB11',
-                                                        unrel_ref_cell_num=None),
-                                              InputPort(page=1, cell_num=6, kks=None, part='XB12',
-                                                        unrel_ref_cell_num=None),
-                                              InputPort(page=1, cell_num=7, kks='10BBT__GH103', part='XF24',
+        ltc_failure_input: list[InputPort] = [InputPort(page=1, cell_num=7, kks='10BBT__GH103', part='XF24',
                                                         unrel_ref_cell_num=None),
                                               InputPort(page=1, cell_num=8, kks=None, part='XF34',
                                                         unrel_ref_cell_num=None),
@@ -756,7 +752,7 @@ class Options:
                                                                 unrel_ref_cell_num=16),
                                                       InputPort(page=3, cell_num=6, kks=None, part='XB08',
                                                                 unrel_ref_cell_num=17),
-                                                      InputPort(page=3, cell_num=7, kks=None, part='XF19',
+                                                      InputPort(page=3, cell_num=7, kks=None, part='XF26',
                                                                 unrel_ref_cell_num=18)]
         template_dsw3: Template = Template(name='DSW3',
                                            input_ports={'XA99': template_dsw3_input_ports},
