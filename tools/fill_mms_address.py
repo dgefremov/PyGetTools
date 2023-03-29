@@ -415,7 +415,7 @@ class FillMMSAdress:
             kksp_list.append(value['KKSp'])
         return kksp_list
 
-    def _write_mms(self, kks: str, part: str, mms_address: str):
+    def _write_mms(self, kks: str, part: str, mms_address: str, ied_name: str):
         mms: str = ''
         mms_pos: str = ''
         mms_com: str = ''
@@ -426,8 +426,8 @@ class FillMMSAdress:
         else:
             mms = mms_address
         self._access_base.update_field(table_name=self._options.iec_table_name,
-                                       fields=['MMS', 'MMS_POS', 'MMS_COM'],
-                                       values=[mms, mms_pos, mms_com],
+                                       fields=['MMS', 'MMS_POS', 'MMS_COM', 'IED_NAME'],
+                                       values=[mms, mms_pos, mms_com, ied_name],
                                        key_names=['KKS', 'PART'],
                                        key_values=[kks, part])
 
@@ -450,10 +450,12 @@ class FillMMSAdress:
             if result is not None:
                 mms_addresses += result
         mms_addresses += mms_generator.add_undubled_signals()
+        ied_name: str = 'IED_' + kksp.replace('-', '_')
         for kks, part, mms_address in mms_addresses:
             self._write_mms(kks=kks,
                             part=part,
-                            mms_address=mms_address)
+                            mms_address=mms_address,
+                            ied_name=ied_name)
             ProgressBar.update_progress()
         if self._options.datasets is not None and len(mms_generator.dataset_container) > 0:
             self._add_emulator_ied_record(mms_generator=mms_generator)
@@ -536,6 +538,7 @@ class FillMMSAdress:
             kks: str = signal['KKS']
             part: str = signal['PART']
             mms: str | None = mms_storage.get((kks, part), None)
+            ied_name: str = ied_name_list[0]
             if mms == '' or mms is None:
                 logging.info(f'Для KKSp {kksp} для сигнала {kks}_{part} не найден адрес в таблице '
                              f'{self._options.mms_table_name}')
@@ -543,7 +546,8 @@ class FillMMSAdress:
                     mms = ''
             self._write_mms(kks=kks,
                             part=part,
-                            mms_address=mms)
+                            mms_address=mms,
+                            ied_name=ied_name)
             ProgressBar.update_progress()
         self._access_base.commit()
 

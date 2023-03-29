@@ -150,6 +150,7 @@ class FillRef2Options:
     ref_table: str
     sim_table: str
     iec_table: str
+    fake_signals_table: str
     abonent_table: str
     templates: list[Template]
     custom_templates_ts_odu: list[Template]
@@ -166,7 +167,7 @@ class FillRef2Options:
     or_schema_meas_name_prefix: str = 'OR_XQ_'
     or_schema_start_cell: int = 3
     or_schema_end_cell: int = 25
-    control_schema_name_postfix: str = 'V'
+    control_schema_name_postfix: str = ''
     or_schema_code = 'XM'
 
 
@@ -636,7 +637,8 @@ class FillRef2:
             table_name=self._options.predifend_control_schemas_table,
             fields=['KKS', 'SCHEMA', 'PART', 'CABINET', 'TS_ODU_PANEL', 'INST_PLACE', 'KKSp', 'ONLY_FOR_REF'])
         logging.info('Запуск обработки таблицы со схемами управления...')
-        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка схем управления', suffix='Завершено')
+        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка схем управления', suffix='Завершено',
+                           length=50)
         for value in values:
             ProgressBar.update_progress()
             schema_kks: str = value['KKS']
@@ -678,7 +680,7 @@ class FillRef2:
         refs_on_page: int = self._options.or_schema_end_cell - self._options.or_schema_start_cell + 1
         logging.info('Запуск обработки звуковых сигналов')
         ProgressBar.config(max_value=len(self._alarm_sound_container) + len(self._warn_sound_container),
-                           step=1, prefix='Обработка звуковых сигналов', suffix='Завершено')
+                           step=1, prefix='Обработка звуковых сигналов', suffix='Завершено', length=50)
         index: int = 0
         for signal in self._alarm_sound_container:
             ProgressBar.update_progress()
@@ -778,7 +780,8 @@ class FillRef2:
             table_name=self._options.ts_odu_algorithm,
             fields=['KKS', 'PART', 'CABINET', 'INST_PLACE', 'TS_ODU_PANEL', 'TYPE'])
         logging.info('Запуск обработки логики ТС ОДУ...')
-        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка логики ТС ОДУ', suffix='Завершено')
+        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка логики ТС ОДУ', suffix='Завершено',
+                           length=50)
         for value in values:
             ProgressBar.update_progress()
             source_signal, source_error = self._get_signal_for_ts_odu_logic(kks=value['KKS'],
@@ -824,7 +827,8 @@ class FillRef2:
         values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
                                                                   fields=['KKS', 'PART', 'KKSp', 'SCHEMA'])
         logging.info('Запуск обработки сигналов ТС ОДУ...')
-        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка сигналов ТС ОДУ', suffix='Завершено')
+        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка сигналов ТС ОДУ', suffix='Завершено',
+                           length=50)
         refs: list[SignalRef] = []
         for value in values:
             ProgressBar.update_progress()
@@ -1365,6 +1369,16 @@ class FillRef2:
                                                   'DESCR_ENG'],
                                     values=[value['KKS'] + self._options.control_schema_name_postfix, value['CABINET'],
                                             value['SCHEMA'], value['CHANNEL'], value['PART'], value['DESCR_RUS'],
+                                            value['DESCR_ENG']])
+        values: list[dict[str, str]] = self._access.retrieve_data(
+            table_name=self._options.fake_signals_table,
+            fields=['KKS', 'CABINET', 'SCHEMA', 'PART', 'DESCR_RUS', 'DESCR_ENG'])
+        for value in values:
+            self._access.insert_row(table_name=self._options.control_schemas_table,
+                                    column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR_RUS',
+                                                  'DESCR_ENG'],
+                                    values=[value['KKS'], value['CABINET'],
+                                            value['SCHEMA'], '0', value['PART'], value['DESCR_RUS'],
                                             value['DESCR_ENG']])
         for dynamic_schema in dynamic_schemas:
             self._access.insert_row(table_name=self._options.control_schemas_table,

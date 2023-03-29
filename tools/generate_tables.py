@@ -144,7 +144,6 @@ class DigitalSignal:
     sensr_typ: str = field(default=None, metadata={'column_name': 'SENSR_TYPE'})
     dname: str | None = field(default=None, metadata={'column_name': 'DNAME'})
     ip: str | None = field(default=None, metadata={'column_name': 'IP'})
-    ied_name: str | None = field(default=None, metadata={'column_name': 'IED_NAME'})
     area: str | None = field(default=None, metadata={'column_name': 'AREA'})
     cat_nam: str = field(default=None, metadata={'column_name': 'CatNam'})
 
@@ -193,6 +192,7 @@ class GenerateTableOptions:
     ied_table_name: str
     ref_table_name: str
     sign_table_name: str
+    fake_signals_table_name: str
     skip_signals: list[tuple[str, str]]
     copy_ds_to_sim_table: bool
     dps_signals: list[DoublePointSignal]
@@ -471,23 +471,36 @@ class GenerateTables:
                                      column_names=columns,
                                      values=values)
 
+    def _add_signal_to_fake_table(self, signal: Signal):
+        self._access_base.update_field(table_name=self._options.fake_signals_table_name,
+                                       fields=['DESCR_RUS', 'DESCR_ENG', 'CABINET', 'KKSP'],
+                                       values=[signal.name_rus, signal.name_eng,
+                                               signal.cabinet, signal.kksp],
+                                       key_names=['KKS', 'PART'],
+                                       key_values=[signal.kks, signal.part])
+
     def _add_signal_to_iec_table(self, signal: Signal) -> None:
         """
         Добавление сигнала в таблицу МЭК
         :param signal: Сигнал (запись в базе)
         :return: None
         """
-        digital_signal: DigitalSignal = DigitalSignal.create_from_signal(signal=signal)
-        digital_signal.ied_name = 'IED_' + signal.kksp.replace('-', '_')
-        digital_signal.area = self._access_base.retrieve_data('TPTS', ['AREA'], ['CABINET'], [signal.cabinet])[0][
-            'AREA']
-        digital_signal.ip = self._access_base.retrieve_data('[Network data]', ['IP'], ['KKSp'], [signal.kksp])[0]['IP']
-        columns, values = self._get_columns_and_values(signal=digital_signal,
-                                                       columns_from_table=self._columns_list[
-                                                           self._options.iec_table_name])
-        self._access_base.insert_row(table_name=self._options.iec_table_name,
-                                     column_names=columns,
-                                     values=values)
+        if (self._access_base.contains_value(table_name=self._options.fake_signals_table_name,
+                                             key_names=['KKS', 'PART'],
+                                             key_values=[signal.kks, signal.part])):
+            self._add_signal_to_fake_table(signal=signal)
+        else:
+            digital_signal: DigitalSignal = DigitalSignal.create_from_signal(signal=signal)
+            digital_signal.area = self._access_base.retrieve_data('TPTS', ['AREA'], ['CABINET'], [signal.cabinet])[0][
+                'AREA']
+            digital_signal.ip = self._access_base.retrieve_data('[Network data]', ['IP'], ['KKSp'], [signal.kksp])[0][
+                'IP']
+            columns, values = self._get_columns_and_values(signal=digital_signal,
+                                                           columns_from_table=self._columns_list[
+                                                               self._options.iec_table_name])
+            self._access_base.insert_row(table_name=self._options.iec_table_name,
+                                         column_names=columns,
+                                         values=values)
 
     @staticmethod
     def _sanitizate_signal_name(signal_name: str) -> str:

@@ -76,6 +76,40 @@ class Connection:
         # noinspection PyArgumentList
         return set([row.column_name for row in self._cursor.columns(table=table_name.strip('[]'))])
 
+    def contains_value(self, table_name: str,
+                       key_names: list[str] | None,
+                       key_values: list[str],
+                       key_operator: list[str] | None = None) -> bool:
+        return self.count_values(table_name=table_name,
+                                 key_names=key_names,
+                                 key_values=key_values,
+                                 key_operator=key_operator) > 0
+
+    def count_values(self, table_name: str,
+                     key_names: list[str] | None,
+                     key_values: list[str],
+                     key_operator: list[str] | None = None) -> int:
+        if len(key_values) != len(key_names):
+            print("Несоответствие названий ключевых полей и их значений")
+            raise Exception("AccessError")
+
+        key_column_placeholder: str = ''
+        key_values_for_query: list[str | int | bool] = []
+        for index in range(len(key_values)):
+            if key_values[index] is None:
+                part_string = '{0} {1} NULL'.format(key_names[index],
+                                                    'IS' if key_operator is None else key_operator[index])
+            else:
+                part_string = '{0} {1} ?'.format(key_names[index],
+                                                 '=' if key_operator is None else key_operator[index])
+                key_values_for_query.append(key_values[index])
+            key_column_placeholder = part_string if key_column_placeholder == '' else \
+                key_column_placeholder + ' AND ' + part_string
+
+        query = 'SELECT COUNT(*) FROM {0} WHERE {1}'.format(table_name, key_column_placeholder)
+        self._cursor.execute(query, key_values_for_query)
+        return int(self._cursor.fetchall()[0][0])
+
     def retrieve_data_from_joined_table(self, table_name1: str, table_name2,
                                         joined_fields: list[str],
                                         fields: list[str],

@@ -1,8 +1,6 @@
 # noinspection PyUnresolvedReferences
 from tools.fill_mms_address import FillMMSAdress
 # noinspection PyUnresolvedReferences
-from tools.fill_ref import FillRef
-# noinspection PyUnresolvedReferences
 from tools.generate_tables import GenerateTables
 # noinspection PyUnresolvedReferences
 from tools.find_schemas import FindSchemas
@@ -20,22 +18,18 @@ from tools.copy_cid import CopyCid
 
 def run_scripts():
     configure_logger('log', 'log')
-    # options: Options = Options.load_kursk()
-    # base_path: str = 'D:\\Work\\Курск база\\0.006_БД РАСУ.accdb'
-    options: Options = Options.load_ruppur()
-    base_path: str = 'D:\\Work\\Руппур база\\2.004_БД РАСУ.accdb'
+    options: Options = Options.load_kursk()
+    base_path: str = 'D:\\Work\\Курск база\\0.006_БД РАСУ.accdb'
+    # options: Options = Options.load_ruppur()
+    # base_path: str = 'D:\\Work\\Руппур база\\2.004_БД РАСУ.accdb'
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
-    # GenerateTables.run(options=options.generate_table_options, base_path=base_path)
+    GenerateTables.run(options=options.generate_table_options, base_path=base_path)
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
-    # FillMMSAdress.run(options=options.fill_mms_address_options, base_path=base_path)
-
-    # Расстановка ссылок
-    # Закомментировать если не используется
-    # FillRef.run(options=options.fill_ref_options, base_path=base_path)
+    FillMMSAdress.run(options=options.fill_mms_address_options, base_path=base_path)
 
     # Расстановка ссылок
     # Закомментировать если не используется
