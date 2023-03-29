@@ -20,18 +20,18 @@ from tools.copy_cid import CopyCid
 
 def run_scripts():
     configure_logger('log', 'log')
-    options: Options = Options.load_kursk()
-    base_path: str = 'D:\\Work\\Курск база\\0.006_БД РАСУ.accdb'
-    # options: Options = Options.load_ruppur()
-    # base_path: str = 'D:\\Work\\Руппур база\\2.004_БД РАСУ.accdb'
+    # options: Options = Options.load_kursk()
+    # base_path: str = 'D:\\Work\\Курск база\\0.006_БД РАСУ.accdb'
+    options: Options = Options.load_ruppur()
+    base_path: str = 'D:\\Work\\Руппур база\\2.004_БД РАСУ.accdb'
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
-    GenerateTables.run(options=options.generate_table_options, base_path=base_path)
+    # GenerateTables.run(options=options.generate_table_options, base_path=base_path)
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
-    FillMMSAdress.run(options=options.fill_mms_address_options, base_path=base_path)
+    # FillMMSAdress.run(options=options.fill_mms_address_options, base_path=base_path)
 
     # Расстановка ссылок
     # Закомментировать если не используется
@@ -47,9 +47,9 @@ def run_scripts():
 
     # Генерация CID файлов на основе шаблона
     # Закомментировать если не используется
-    # CopyCid.run(base_path=base_path,
-    #            source_cid_path='C:\\Data\\Курск база\\All_in_one_25MV.cid',
-    #            target_path='C:\\Data\\Курск база\\!CID\\',
+    #CopyCid.run(base_path=base_path,
+    #            source_cid_path='D:\\Work\\Курск база\\!CID\\!All_in_one_25MV.cid',
+    #            target_path='D:\\Work\\Курск база\\!CID\\',
     #            mask='255.255.255.0')
 
     # RepairCid.run(cid_path='D:\\Work\\Руппур\\!CID\\',

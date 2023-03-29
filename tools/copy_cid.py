@@ -42,7 +42,7 @@ class CopyCid:
                 table_name1='[МЭК 61850]',
                 table_name2='[IED]',
                 joined_fields=['IED_NAME'],
-                fields=['ICD_PATH', 'IP', '[IED].SENSR_TYPE', '[IED].IED_NAME'],
+                fields=['ICD_PATH', 'IP', 'SENSR_TYPE', '[IED].IED_NAME'],
                 key_names=None,
                 key_values=None,
                 uniq_values=True)
@@ -54,7 +54,7 @@ class CopyCid:
                     file_name = file_name + file_extension
                     ip: str = value['IP']
                     ied_name: str = value['[IED].IED_NAME']
-                    sensr_type: str = value['[IED].SENSR_TYPE']
+                    sensr_type: str = value['SENSR_TYPE']
                 parameters: list[tuple[any, str]] = [(Nodes.IP.value, ip),
                                                      (Nodes.MASK.value, self._mask),
                                                      (Nodes.IEDNAME.value, ied_name),

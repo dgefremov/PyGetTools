@@ -607,7 +607,8 @@ class Options:
                                                              abonent_table='[TPTS]',
                                                              wired_signal_default_input_port='Port1',
                                                              ts_odu_templates=[display, lamp],
-                                                             custom_templates_ts_odu=[custom_template_f_meas])
+                                                             custom_templates_ts_odu=[custom_template_f_meas],
+                                                             read_english_description=True)
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
 
@@ -941,7 +942,8 @@ class Options:
                                                              abonent_table='[TPTS]',
                                                              wired_signal_default_input_port='Port1',
                                                              ts_odu_templates=[],
-                                                             custom_templates_ts_odu=[])
+                                                             custom_templates_ts_odu=[],
+                                                             read_english_description=False)
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
 

@@ -153,14 +153,14 @@ class MMSGenerator:
     SPS_POSTFIX = '.stVal'
 
     SPC_PREFIX = 'Device/GGIO1.SPCSO'
-    SPC_POSTFIX = '.Oper'
+    SPC_POSTFIX = '.Oper.ctlVal'
 
     BSC_PREFIX = 'Device/ATCC'
-    BSC_COMMAND_POSTFIX = '.TapChg.Oper'
+    BSC_COMMAND_POSTFIX = '.TapChg.Oper.ctlVal'
     BSC_POS_POSTFIX = '.TapChg.valWTr.posVal'
 
     DPC_PREFIX = 'Device/GGIO1.DPCSO'
-    DPS_COMMAND_POSTFIX = '.Oper'
+    DPS_COMMAND_POSTFIX = '.Oper.ctlVal'
     DPC_POS_POSTFIX = '.stVal'
 
     def __init__(self, kksp: str, dpc_signals: list[DPCSignal],

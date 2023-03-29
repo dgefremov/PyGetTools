@@ -55,7 +55,8 @@ class Signal:
     part: str
     cabinet: str
     type: 'SignalType'
-    descr: str | None = None
+    descr_eng: str | None = None
+    descr_rus: str | None = None
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -92,7 +93,8 @@ class VirtualSchema:
     kks: str
     part: str
     schema: str
-    descr: str
+    descr_rus: str
+    descr_eng: str
     cabinet: str
     channel: int = 0
 
@@ -159,6 +161,7 @@ class FillRef2Options:
     wired_signal_output_flicker_default_page: int
     wired_signal_output_flicker_default_cell: int
     wired_signal_default_input_port: str
+    read_english_description: bool
     or_schema_name_prefix: str = 'OR_'
     or_schema_meas_name_prefix: str = 'OR_XQ_'
     or_schema_start_cell: int = 3
@@ -640,7 +643,6 @@ class FillRef2:
             schema_part: str = value['PART']
             cabinet: str = value['CABINET']
             template_name: str = value['SCHEMA']
-            kksp: list[str] = []
             if ';' in value['KKSp']:
                 kksp = value['KKSp'].split(';')
             else:
@@ -1008,12 +1010,22 @@ class FillRef2:
         return refs
 
     def _get_target_signal_for_ts_odu(self, dynamic_template: DynamicTemplate) -> Signal | None:
-        values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
-                                                                  fields=['PART', 'NAME_RUS', 'KKS'],
-                                                                  key_names=['INST_PLACE', 'KKSp', 'TYPE'],
-                                                                  key_values=[dynamic_template.target.place,
-                                                                              dynamic_template.target.ts_odu_panel,
-                                                                              dynamic_template.type])
+        values: list[dict[str, str]]
+        if self._options.read_english_description:
+            values = self._access.retrieve_data(table_name=self._options.ts_odu_table,
+                                                fields=['PART', 'NAME_RUS', 'NAME_ENG', 'KKS'],
+                                                key_names=['INST_PLACE', 'KKSp', 'TYPE'],
+                                                key_values=[dynamic_template.target.place,
+                                                            dynamic_template.target.ts_odu_panel,
+                                                            dynamic_template.type])
+        else:
+            values = self._access.retrieve_data(table_name=self._options.ts_odu_table,
+                                                fields=['PART', 'NAME_RUS', 'KKS'],
+                                                key_names=['INST_PLACE', 'KKSp', 'TYPE'],
+                                                key_values=[dynamic_template.target.place,
+                                                            dynamic_template.target.ts_odu_panel,
+                                                            dynamic_template.type])
+
         if len(values) == 0:
             logging.error(f'Не найден МЭ в панели {dynamic_template.target.ts_odu_panel} по координатам '
                           f'{dynamic_template.target.place}')
@@ -1022,14 +1034,20 @@ class FillRef2:
             logging.error(f'Повторы в таблице СиМ ТС ОДУ для панели {dynamic_template.target.ts_odu_panel} '
                           f'координаты {dynamic_template.target.place} элемента {dynamic_template.type}')
             return None
+        descr_eng: str
+        if self._options.read_english_description:
+            descr_eng = values[0]['NAME_ENG']
+        else:
+            descr_eng = ""
         signal: Signal = Signal(kks=values[0]['KKS'],
                                 part=values[0]['PART'],
                                 cabinet=self._options.ts_odu_info.cabinet,
                                 type=SignalType.TS_ODU,
-                                descr=values[0]['NAME_RUS'])
+                                descr_rus=values[0]['NAME_RUS'],
+                                descr_eng=descr_eng)
         return signal
 
-    def _create_virtual_schema(self, target_kks: str, target_part: str, descr: str,
+    def _create_virtual_schema(self, target_kks: str, target_part: str, descr_rus: str, descr_eng: str,
                                target_abonent: int, source_signals: list[Signal]) -> \
             tuple[VirtualSchema, list[SignalRef]]:
         kks: str
@@ -1044,7 +1062,8 @@ class FillRef2:
             schema: str = f'{self._options.or_schema_name_prefix}{len(source_signals)}'
         virtual_schema: VirtualSchema = VirtualSchema(kks=target_kks,
                                                       part=target_part,
-                                                      descr=descr,
+                                                      descr_rus=descr_rus,
+                                                      descr_eng=descr_eng,
                                                       schema=schema,
                                                       cabinet=source_signals[0].cabinet)
         refs: list[SignalRef] = []
@@ -1098,7 +1117,8 @@ class FillRef2:
                                       used_names=used_names)
             virtual_schema, refs = self._create_virtual_schema(target_kks=kks,
                                                                target_part=target_signal.part,
-                                                               descr=target_signal.descr,
+                                                               descr_rus=target_signal.descr_rus,
+                                                               descr_eng=target_signal.descr_eng,
                                                                source_signals=list(list(source_signals_by_cabinet.
                                                                                         values())[0]),
                                                                target_abonent=self._abonent_map[
@@ -1107,7 +1127,8 @@ class FillRef2:
                                     part=virtual_schema.part,
                                     cabinet=virtual_schema.cabinet,
                                     type=SignalType.TS_ODU,
-                                    descr=virtual_schema.descr)
+                                    descr_rus=virtual_schema.descr_rus,
+                                    descr_eng=virtual_schema.descr_eng)
             refs.append(self._get_ref_for_signal(source_signal=signal,
                                                  target_kks=target_signal.kks,
                                                  target_abonent=target_ts_odu_panel.abonent,
@@ -1127,7 +1148,8 @@ class FillRef2:
             part=target_signal.part,
             cabinet=target_signal.cabinet,
             type=SignalType.TS_ODU,
-            descr=target_signal.descr)
+            descr_rus=target_signal.descr_rus,
+            descr_eng=target_signal.descr_eng)
         for cabinet in source_signals_by_cabinet.keys():
             cabinet_index += 1
             cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
@@ -1151,7 +1173,8 @@ class FillRef2:
                 cabinet_schema, cabinet_refs = self._create_virtual_schema(
                     target_kks=kks,
                     target_part=target_signal.part,
-                    descr=target_signal.descr,
+                    descr_rus=target_signal.descr_rus,
+                    descr_eng=target_signal.descr_eng,
                     source_signals=source_signals_by_cabinet[cabinet],
                     target_abonent=self._abonent_map[cabinet])
                 source_cabinet_or_signal: Signal = Signal(kks=cabinet_schema.kks,
@@ -1268,14 +1291,16 @@ class FillRef2:
                 part=schema_part,
                 cabinet=schema_cabinet,
                 type=SignalType.WIRED,
-                descr='АварЗвук')] = template.alarm_sound_signal_port
+                descr_rus='АварЗвук',
+                descr_eng='AlarmSound')] = template.alarm_sound_signal_port
         if template.warn_sound_signal_port is not None:
             self._warn_sound_container[Signal(
                 kks=schema_kks + self._options.control_schema_name_postfix if add_kks_postfix else schema_kks,
                 part=schema_part,
                 cabinet=schema_cabinet,
                 type=SignalType.WIRED,
-                descr='ПредЗвук')] = template.warn_sound_signal_port
+                descr_rus='ПредЗвук',
+                descr_eng='WarnSound')] = template.warn_sound_signal_port
         input_port_list: list[InputPort] | None = template.input_ports[schema_part]
         if input_port_list is not None:
             for port in input_port_list:
@@ -1331,19 +1356,23 @@ class FillRef2:
     def _write_control_schemas(self, dynamic_schemas: list[VirtualSchema]):
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.predifend_control_schemas_table,
-            fields=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR'],
+            fields=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR_RUS', 'DESCR_ENG'],
             key_names=['ONLY_FOR_REF'],
             key_values=[False])
         for value in values:
             self._access.insert_row(table_name=self._options.control_schemas_table,
-                                    column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR'],
+                                    column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR_RUS',
+                                                  'DESCR_ENG'],
                                     values=[value['KKS'] + self._options.control_schema_name_postfix, value['CABINET'],
-                                            value['SCHEMA'], value['CHANNEL'], value['PART'], value['DESCR']])
+                                            value['SCHEMA'], value['CHANNEL'], value['PART'], value['DESCR_RUS'],
+                                            value['DESCR_ENG']])
         for dynamic_schema in dynamic_schemas:
             self._access.insert_row(table_name=self._options.control_schemas_table,
-                                    column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR'],
+                                    column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR_RUS',
+                                                  'DESCR_ENG'],
                                     values=[dynamic_schema.kks, dynamic_schema.cabinet, dynamic_schema.schema,
-                                            dynamic_schema.channel, dynamic_schema.part, dynamic_schema.descr])
+                                            dynamic_schema.channel, dynamic_schema.part, dynamic_schema.descr_rus,
+                                            dynamic_schema.descr_eng])
         self._access.commit()
 
     def _update_schemas(self, updated_schemas: list[tuple[str, str, str]]):
