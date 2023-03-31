@@ -70,6 +70,9 @@ class Options:
                                                   new_name_eng='Truck non-work pos',
                                                   new_full_name_eng='Non-working position of roll-out element truck',
                                                   new_part='XB08')
+        signal_modification3 = SignalModification(signal_kks='10BFR07GH001',
+                                                  signal_part='XA10',
+                                                  new_kks='10BFR07EK001')
 
         generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='[Network Data]',
                                                                      controller_data_table_name='TPTS',
@@ -85,7 +88,8 @@ class Options:
                                                                                   signal5, signal6, signal7],
                                                                      sw_templates=[sw_template1, sw_template2],
                                                                      signal_modifications=[signal_modification1,
-                                                                                           signal_modification2],
+                                                                                           signal_modification2,
+                                                                                           signal_modification3],
                                                                      copy_ds_to_sim_table=True)
         # <-------------------------------generate_table_options------------------------------------------------------->
 

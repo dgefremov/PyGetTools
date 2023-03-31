@@ -19,6 +19,7 @@ class SignalModification:
     new_name_eng: str | None = None
     new_full_name_eng: str | None = None
     new_part: str | None = None
+    new_kks: str | None = None
 
 
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
@@ -411,6 +412,9 @@ class GenerateTables:
                 sw_signal.template = self._get_sw_template(kksp=sw_signal.kksp,
                                                            cabinet=sw_signal.cabinet,
                                                            sw_template=sw_template)
+                if self._options.signal_modifications is not None:
+                    sw_signal = self._modificate_signal(signal=sw_signal)
+
                 self._add_signal_to_sim_table(sw_signal)
                 del sw_containers[sw_template]
             else:
@@ -429,6 +433,27 @@ class GenerateTables:
         logging.error('Не найдена схема подключения для управления')
         raise Exception('SWTemplateNotFound')
 
+    def _modificate_signal(self, signal: Signal) -> Signal:
+        signal_modification: SignalModification | None = \
+            next((item for item in self._options.signal_modifications
+                  if item.signal_kks == signal.kks and item.signal_part == signal.part), None)
+        if signal_modification is not None:
+            if signal_modification.new_template is not None:
+                signal.template = signal_modification.new_template
+            if signal_modification.new_name_rus is not None:
+                signal.name_rus = signal_modification.new_name_rus
+            if signal_modification.new_full_name_rus is not None:
+                signal.full_name_rus = signal_modification.new_full_name_rus
+            if signal_modification.new_name_eng is not None:
+                signal.name_eng = signal_modification.new_name_eng
+            if signal_modification.new_full_name_eng is not None:
+                signal.full_name_eng = signal_modification.new_full_name_eng
+            if signal_modification.new_part is not None:
+                signal.part = signal_modification.new_part
+            if signal_modification.new_kks is not None:
+                signal.kks = signal_modification.new_kks
+        return signal
+
     def _add_signal_to_sim_table(self, signal: Signal) -> None:
         """
         Добавление сигнала в таблицу СиМ
@@ -442,23 +467,7 @@ class GenerateTables:
                 signal.template = f'{signal.object_typ}_{signal.module}'
 
             if self._options.signal_modifications is not None:
-                signal_modification: SignalModification | None = \
-                    next((item for item in self._options.signal_modifications
-                          if item.signal_kks == signal.kks and item.signal_part == signal.part), None)
-                if signal_modification is not None:
-                    if signal_modification.new_template is not None:
-                        signal.template = signal_modification.new_template
-                    if signal_modification.new_name_rus is not None:
-                        signal.name_rus = signal_modification.new_name_rus
-                    if signal_modification.new_full_name_rus is not None:
-                        signal.full_name_rus = signal_modification.new_full_name_rus
-                    if signal_modification.new_name_eng is not None:
-                        signal.name_eng = signal_modification.new_name_eng
-                    if signal_modification.new_full_name_eng is not None:
-                        signal.full_name_eng = signal_modification.new_full_name_eng
-                    if signal_modification.new_part is not None:
-                        signal.part = signal_modification.new_part
-
+                signal = self._modificate_signal(signal=signal)
         channel: int
         if signal.module == '1623' and signal.object_typ != 'SW' and signal.channel < 50:
             signal.channel = signal.channel + 50

@@ -18,10 +18,10 @@ from tools.copy_cid import CopyCid
 
 def run_scripts():
     configure_logger('log', 'log')
-    options: Options = Options.load_kursk()
-    base_path: str = 'D:\\Work\\Курск база\\0.006_БД РАСУ.accdb'
-    # options: Options = Options.load_ruppur()
-    # base_path: str = 'D:\\Work\\Руппур база\\2.004_БД РАСУ.accdb'
+    # options: Options = Options.load_kursk()
+    # base_path: str = 'D:\\Work\\Курск база\\0.006_БД РАСУ.accdb'
+    options: Options = Options.load_ruppur()
+    base_path: str = 'D:\\Work\\Руппур база\\2.004_БД РАСУ.accdb'
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
@@ -41,13 +41,13 @@ def run_scripts():
 
     # Генерация CID файлов на основе шаблона
     # Закомментировать если не используется
-    #CopyCid.run(base_path=base_path,
+    # CopyCid.run(base_path=base_path,
     #            source_cid_path='D:\\Work\\Курск база\\!CID\\!All_in_one_25MV.cid',
     #            target_path='D:\\Work\\Курск база\\!CID\\',
     #            mask='255.255.255.0')
 
-    # RepairCid.run(cid_path='D:\\Work\\Руппур\\!CID\\',
-    #               file_filter='^D10BB[A-F](.*)')
+    # RepairCid.run(cid_path='D:\\Work\\Руппур база\\!CID\\',
+    #               file_filter='^D1(.*)')
 
 
 if __name__ == '__main__':
