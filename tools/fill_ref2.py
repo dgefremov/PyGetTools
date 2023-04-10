@@ -389,6 +389,21 @@ class FillRef2:
                           part=port.part,
                           cabinet=cabinet,
                           type=SignalType.WIRED)
+        # Поиск сигнала в таблице фейковых сигналов по KKS, PART
+        found_kks, _, error = self._get_signal_from_fake_signals(cabinet=cabinet,
+                                                                 kks=kks,
+                                                                 kksp=kksp,
+                                                                 port=port)
+        if error == ErrorType.TOOMANYVALUES:
+            logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
+                          f'с PART {port.part}')
+            return None
+        if error == ErrorType.NOERROR:
+            return Signal(kks=found_kks,
+                          part=port.part,
+                          cabinet=cabinet,
+                          type=SignalType.WIRED)
+
         # Поиск сигнала в таблице МЭК по PART и Cabinet
         found_kks, result = self._get_signal_from_iec_by_cabinet(kksp=kksp,
                                                                  port=port,
@@ -548,7 +563,7 @@ class FillRef2:
 
         values: list[dict[str, str]] = self._access.retrieve_data(
             table_name=self._options.fake_signals_table,
-            fields=['KKS', 'CABINET'],
+            fields=['KKS', 'CABINET', 'KKSp'],
             key_names=key_names,
             key_values=key_values,
             key_operator=key_operator)
