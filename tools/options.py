@@ -403,8 +403,8 @@ class Options:
                                   output_ports={'XA10': atsw_output},
                                   ts_odu_data=atsw_ts_data)
 
-        diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port2', kks='10BYA__EG801', part='XW01',
-                                                                     blink_port_name='Port1')]
+        diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks='10BYA__EG801', part='XW01',
+                                                                     blink_port_name='Port2')]
 
         diag_middle_output_ports: list[OutputPort] = \
             diag_standalone_output_ports + [OutputPort(name='Port1', kks='10BYA__EG951', part='XW01'),
@@ -778,7 +778,7 @@ class Options:
                                             input_ports={'XA99': template_davr2_input_ports},
                                             output_ports={'XA99': template_davr2_output_ports})
 
-        template_dltc3_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks='10BBT__CE001', part='XQ28',
+        template_dltc3_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks='_0BBT__CE001', part='XQ28',
                                                                  unrel_ref_cell_num=16)]
         template_dltc3_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=1, cell_num=7, kks=None,
                                                                     part='XA11'),
@@ -789,9 +789,9 @@ class Options:
                                             input_ports={'XA99': template_dltc3_input_ports},
                                             output_ports={'XA99': template_dltc3_output_ports})
 
-        wired_template_dsw1_input_ports: list[InputPort] = [InputPort(page=2, cell_num=11, kks='10BF%EK201',
+        wired_template_dsw1_input_ports: list[InputPort] = [InputPort(page=2, cell_num=11, kks='_0BF%EK201',
                                                                       part='XK52', unrel_ref_cell_num=None),
-                                                            InputPort(page=2, cell_num=12, kks='10BF%EK205',
+                                                            InputPort(page=2, cell_num=12, kks='_0BF%EK205',
                                                                       part='XK52', unrel_ref_cell_num=None)]
 
         wired_template_dsw1_output_ports: list[OutputPort] = []
@@ -814,8 +814,8 @@ class Options:
                                                 input_ports={'XA99': wired_template_avr_input_ports},
                                                 output_ports={'XA99': wired_template_avr_output_ports})
 
-        diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port2', kks='10BYA__EG801', part='XW01',
-                                                                     blink_port_name='Port1')]
+        diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks='_0BYA__EG801', part='XW01',
+                                                                     blink_port_name='Port2')]
 
         xq_s_input_ports: list[InputPort] = [InputPort(page=1, cell_num=7, kks=None, part='XQ23',
                                                        unrel_ref_cell_num=None),
@@ -827,27 +827,27 @@ class Options:
                                            output_ports={'XQ25': xq_s_output_ports})
 
         diag_middle_output_ports: list[OutputPort] = \
-            diag_standalone_output_ports + [OutputPort(name='Port1', kks='10BYA__EG951', part='XW01'),
-                                            OutputPort(name='Port2', kks='10BYA__EG952', part='XW01')]
+            diag_standalone_output_ports + [OutputPort(name='Port1', kks='_0BYA__EG951', part='XW01'),
+                                            OutputPort(name='Port2', kks='_0BYA__EG952', part='XW01')]
         diag_first_output_ports: list[OutputPort] = \
-            diag_standalone_output_ports + [OutputPort(name='Port3', kks='10BYA__EG802', part='XW01',
+            diag_standalone_output_ports + [OutputPort(name='Port3', kks='_0BYA__EG802', part='XW01',
                                                        blink_port_name='Port4')]
 
-        diag1_input_ports: list[InputPort] = [InputPort(page=1, cell_num=3, kks='10BYA__EG301', part='XG01',
+        diag1_input_ports: list[InputPort] = [InputPort(page=1, cell_num=3, kks='_0BYA__EG301', part='XG01',
                                                         unrel_ref_cell_num=None),
-                                              InputPort(page=1, cell_num=4, kks='10BYA__EG302', part='XG01',
+                                              InputPort(page=1, cell_num=4, kks='_0BYA__EG302', part='XG01',
                                                         unrel_ref_cell_num=None),
-                                              InputPort(page=1, cell_num=5, kks='10BYA__EG503', part='XG01',
+                                              InputPort(page=1, cell_num=5, kks='_0BYA__EG503', part='XG01',
                                                         unrel_ref_cell_num=None),
-                                              InputPort(page=1, cell_num=6, kks='10BYA__EG502', part='XG01',
+                                              InputPort(page=1, cell_num=6, kks='_0BYA__EG502', part='XG01',
                                                         unrel_ref_cell_num=None),
-                                              InputPort(page=1, cell_num=7, kks='10BYA__EG701', part='XG01',
+                                              InputPort(page=1, cell_num=7, kks='_0BYA__EG701', part='XG01',
                                                         unrel_ref_cell_num=None),
-                                              InputPort(page=1, cell_num=8, kks='10BYA__EG401', part='XG01',
+                                              InputPort(page=1, cell_num=8, kks='_0BYA__EG401', part='XG01',
                                                         unrel_ref_cell_num=None),
-                                              InputPort(page=2, cell_num=4, kks='10BYA__EG901', part='XG01',
+                                              InputPort(page=2, cell_num=4, kks='_0BYA__EG901', part='XG01',
                                                         unrel_ref_cell_num=None),
-                                              InputPort(page=2, cell_num=5, kks='10BYA__EG902', part='XG01',
+                                              InputPort(page=2, cell_num=5, kks='_0BYA__EG902', part='XG01',
                                                         unrel_ref_cell_num=None)]
         diag1: Template = Template(name='DIAG1',
                                    input_ports={'XG00': diag1_input_ports},
@@ -855,9 +855,9 @@ class Options:
                                    alarm_sound_signal_port=None)
 
         diag1_first_input_ports: list[InputPort] = \
-            diag1_input_ports + [InputPort(page=2, cell_num=16, kks='10BYA__EG953', part='XG01',
+            diag1_input_ports + [InputPort(page=2, cell_num=16, kks='_0BYA__EG953', part='XG01',
                                            unrel_ref_cell_num=None),
-                                 InputPort(page=2, cell_num=17, kks='10BYA__EG954', part='XG01',
+                                 InputPort(page=2, cell_num=17, kks='_0BYA__EG954', part='XG01',
                                            unrel_ref_cell_num=None)]
         diag1_first: Template = Template(name='DIAG1_FIRST',
                                          input_ports={'XG00': diag1_first_input_ports},
@@ -865,9 +865,9 @@ class Options:
                                          alarm_sound_signal_port=None)
 
         diag2_input_ports: list[InputPort] = \
-            diag1_input_ports + [InputPort(page=1, cell_num=9, kks='10BYA__EG601', part='XG01',
+            diag1_input_ports + [InputPort(page=1, cell_num=9, kks='_0BYA__EG601', part='XG01',
                                            unrel_ref_cell_num=None),
-                                 InputPort(page=1, cell_num=10, kks='10BYA__EG602', part='XG01',
+                                 InputPort(page=1, cell_num=10, kks='_0BYA__EG602', part='XG01',
                                            unrel_ref_cell_num=None)]
         diag2: Template = Template(name='DIAG2',
                                    input_ports={'XG00': diag2_input_ports,
@@ -876,9 +876,9 @@ class Options:
                                                  'XG20': diag_standalone_output_ports},
                                    alarm_sound_signal_port=None)
         diag2_first_input_ports: list[InputPort] = \
-            diag2_input_ports + [InputPort(page=2, cell_num=16, kks='10BYA__EG953', part='XG01',
+            diag2_input_ports + [InputPort(page=2, cell_num=16, kks='_0BYA__EG953', part='XG01',
                                            unrel_ref_cell_num=None),
-                                 InputPort(page=2, cell_num=17, kks='10BYA__EG954', part='XG01',
+                                 InputPort(page=2, cell_num=17, kks='_0BYA__EG954', part='XG01',
                                            unrel_ref_cell_num=None)]
 
         diag2_first: Template = Template(name='DIAG2_FIRST',
@@ -887,9 +887,9 @@ class Options:
                                          alarm_sound_signal_port=None)
 
         diag_bya03_input_ports: list[InputPort] = \
-            diag1_first_input_ports + [InputPort(page=1, cell_num=9, kks='10BYA__EG311', part='XG01',
+            diag1_first_input_ports + [InputPort(page=1, cell_num=9, kks='_0BYA__EG311', part='XG01',
                                                  unrel_ref_cell_num=None),
-                                       InputPort(page=1, cell_num=10, kks='10BYA__EG312', part='XG01',
+                                       InputPort(page=1, cell_num=10, kks='_0BYA__EG312', part='XG01',
                                                  unrel_ref_cell_num=None)]
         diag_bya03: Template = Template(name='DIAG_BYA03_KURSK',
                                         input_ports={'XG00': diag_bya03_input_ports},
@@ -897,9 +897,9 @@ class Options:
                                         alarm_sound_signal_port=None)
 
         diag_bya04_input_ports: list[InputPort] = \
-            diag1_input_ports + [InputPort(page=1, cell_num=9, kks='10BYA__EG311', part='XG01',
+            diag1_input_ports + [InputPort(page=1, cell_num=9, kks='_0BYA__EG311', part='XG01',
                                            unrel_ref_cell_num=None),
-                                 InputPort(page=1, cell_num=10, kks='10BYA__EG312', part='XG01',
+                                 InputPort(page=1, cell_num=10, kks='_0BYA__EG312', part='XG01',
                                            unrel_ref_cell_num=None)]
 
         diag_bya04: Template = Template(name='DIAG_BYA04_KURSK',
@@ -915,9 +915,9 @@ class Options:
                                         alarm_sound_signal_port=None)
 
         diag_bya21_input_ports: list[InputPort] = \
-            diag2_input_ports + [InputPort(page=1, cell_num=11, kks='10BYA__EG601', part='XG01',
+            diag2_input_ports + [InputPort(page=1, cell_num=11, kks='_0BYA__EG601', part='XG01',
                                            unrel_ref_cell_num=None),
-                                 InputPort(page=1, cell_num=12, kks='10BYA__EG602', part='XG01',
+                                 InputPort(page=1, cell_num=12, kks='_0BYA__EG602', part='XG01',
                                            unrel_ref_cell_num=None)]
 
         diag_bya21: Template = Template(name='DIAG_BYA21_KURSK',
