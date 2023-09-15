@@ -1495,7 +1495,7 @@ class FillRef2:
             fields=['KKS', 'PART', 'SCHEMA', 'KKSp'])
         logging.info('Запуск обработка нетиповых сигналов ТС ОДУ...')
         ProgressBar.config(max_value=len(values), step=1, prefix='Обработка нетиповых сигналов ТС ОДУ',
-                           suffix='Завершено')
+                           suffix='Завершено', length=50)
         cabinet: str = self._options.ts_odu_info.cabinet
         for value in values:
             ProgressBar.update_progress()

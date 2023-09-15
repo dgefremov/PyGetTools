@@ -403,8 +403,8 @@ class Options:
                                   output_ports={'XA10': atsw_output},
                                   ts_odu_data=atsw_ts_data)
 
-        diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks='10BYA__EG801', part='XW01',
-                                                                     blink_port_name='Port2')]
+        diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port2', kks='10BYA__EG801', part='XW01',
+                                                                     blink_port_name='Port1')]
 
         diag_middle_output_ports: list[OutputPort] = \
             diag_standalone_output_ports + [OutputPort(name='Port1', kks='10BYA__EG951', part='XW01'),
@@ -814,8 +814,8 @@ class Options:
                                                 input_ports={'XA99': wired_template_avr_input_ports},
                                                 output_ports={'XA99': wired_template_avr_output_ports})
 
-        diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks='10BYA__EG801', part='XW01',
-                                                                     blink_port_name='Port2')]
+        diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port2', kks='10BYA__EG801', part='XW01',
+                                                                     blink_port_name='Port1')]
 
         xq_s_input_ports: list[InputPort] = [InputPort(page=1, cell_num=7, kks=None, part='XQ23',
                                                        unrel_ref_cell_num=None),
