@@ -392,27 +392,27 @@ class MMSGenerator:
 
 class FillMMSAdress:
     _options: FillMMSAddressOptions
-    _access_base: Connection
+    _connection: Connection
 
-    def __init__(self, options: FillMMSAddressOptions, access_base: Connection):
+    def __init__(self, options: FillMMSAddressOptions, connection: Connection):
         self._options = options
-        self._access_base = access_base
+        self._connection = connection
 
     def _get_kksp_list(self) -> list[str]:
         """
         Функция загрузки списка KKSp из БД
         :return: Список KKSp
         """
-        values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.iec_table_name,
-                                                                       fields=['KKSp'],
-                                                                       key_names=None,
-                                                                       key_values=None,
-                                                                       uniq_values=True,
-                                                                       sort_by=None,
-                                                                       key_operator=None)
+        values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.iec_table_name,
+                                                                      fields=['KKSp'],
+                                                                      key_names=None,
+                                                                      key_values=None,
+                                                                      uniq_values=True,
+                                                                      sort_by=None,
+                                                                      key_operator=None)
         kksp_list: list[str] = []
         for value in values:
-            kksp_list.append(value['KKSp'])
+            kksp_list.append(value[self._connection.modify_column_name('KKSp')])
         return kksp_list
 
     def _write_mms(self, kks: str, part: str, mms_address: str, ied_name: str):
@@ -425,11 +425,11 @@ class FillMMSAdress:
             mms_pos = mms_address
         else:
             mms = mms_address
-        self._access_base.update_field(table_name=self._options.iec_table_name,
-                                       fields=['MMS', 'MMS_POS', 'MMS_COM', 'IED_NAME'],
-                                       values=[mms, mms_pos, mms_com, ied_name],
-                                       key_names=['KKS', 'PART'],
-                                       key_values=[kks, part])
+        self._connection.update_field(table_name=self._options.iec_table_name,
+                                      fields=['MMS', 'MMS_POS', 'MMS_COM', 'IED_NAME'],
+                                      values=[mms, mms_pos, mms_com, ied_name],
+                                      key_names=['KKS', 'PART'],
+                                      key_values=[kks, part])
 
     def _generate_mms_for_kksp(self, kksp: str):
         mms_generator: MMSGenerator = MMSGenerator(kksp=kksp,
@@ -437,14 +437,14 @@ class FillMMSAdress:
                                                    bsc_signals=self._options.bsc_signals,
                                                    dataset_descriptions=self.
                                                    _options.datasets)
-        values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.iec_table_name,
-                                                                       fields=['KKS', 'PART'],
-                                                                       key_names=['KKSp'],
-                                                                       key_values=[kksp])
+        values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.iec_table_name,
+                                                                      fields=['KKS', 'PART'],
+                                                                      key_names=['KKSp'],
+                                                                      key_values=[kksp])
         mms_addresses: list[tuple[str, str, str]] = []
         for value in values:
-            kks: str = value['KKS']
-            part: str = value['PART']
+            kks: str = value[self._connection.modify_column_name('KKS')]
+            part: str = value[self._connection.modify_column_name('PART')]
             result: tuple[str, str, str] | None = mms_generator.get_mms(kks=kks,
                                                                         part=part)
             if result is not None:
@@ -459,7 +459,7 @@ class FillMMSAdress:
             ProgressBar.update_progress()
         if self._options.datasets is not None and len(mms_generator.dataset_container) > 0:
             self._add_emulator_ied_record(mms_generator=mms_generator)
-        self._access_base.commit()
+        self._connection.commit()
 
     def _add_emulator_ied_record(self, mms_generator: MMSGenerator) -> None:
         """
@@ -470,29 +470,29 @@ class FillMMSAdress:
         dataset_list: str = ';'.join([dataset.path for dataset in mms_generator.dataset_container])
         rb_master_list: str = ';'.join([dataset.rcb_main for dataset in mms_generator.dataset_container])
         rb_slave_list: str = ';'.join([dataset.rcb_res for dataset in mms_generator.dataset_container])
-        self._access_base.insert_row(table_name=self._options.ied_table_name,
-                                     column_names=['IED_NAME', 'DATASET', 'RB_MASTER', 'RB_SLAVE', 'KKSp', 'ICD_PATH',
-                                                   'EMULATOR'],
-                                     values=[mms_generator.ied_name, dataset_list, rb_master_list, rb_slave_list,
-                                             mms_generator.kksp, mms_generator.filename, True])
+        self._connection.insert_row(table_name=self._options.ied_table_name,
+                                    column_names=['IED_NAME', 'DATASET', 'RB_MASTER', 'RB_SLAVE', 'KKSp', 'ICD_PATH',
+                                                  'EMULATOR'],
+                                    values=[mms_generator.ied_name, dataset_list, rb_master_list, rb_slave_list,
+                                            mms_generator.kksp, mms_generator.filename, True])
 
     def _add_real_ied_record(self, kksp: str, ied_name: str, file_name: str, dataset_list: list[str],
                              rb_master_list: list[str], rb_slave_list: list[str]) -> None:
         dataset_list: str = ';'.join(dataset_list)
         rb_master_list: str = ';'.join(rb_master_list)
         rb_slave_list: str = ';'.join(rb_slave_list)
-        self._access_base.insert_row(table_name=self._options.ied_table_name,
-                                     column_names=['IED_NAME', 'DATASET', 'RB_MASTER', 'RB_SLAVE', 'KKSp', 'ICD_PATH',
-                                                   'EMULATOR'],
-                                     values=[ied_name, dataset_list, rb_master_list, rb_slave_list,
-                                             kksp, file_name, False])
+        self._connection.insert_row(table_name=self._options.ied_table_name,
+                                    column_names=['IED_NAME', 'DATASET', 'RB_MASTER', 'RB_SLAVE', 'KKSp', 'ICD_PATH',
+                                                  'EMULATOR'],
+                                    values=[ied_name, dataset_list, rb_master_list, rb_slave_list,
+                                            kksp, file_name, False])
 
     def _is_emulator(self, kksp: str) -> bool:
-        values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.mms_table_name,
-                                                                       fields=['IED_NAME'],
-                                                                       key_names=['KKSp'],
-                                                                       key_values=[kksp],
-                                                                       uniq_values=True)
+        values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.mms_table_name,
+                                                                      fields=['IED_NAME'],
+                                                                      key_names=['KKSp'],
+                                                                      key_values=[kksp],
+                                                                      uniq_values=True)
         if len(values) == 0:
             return True
         if len(values) == 1:
@@ -500,30 +500,42 @@ class FillMMSAdress:
         raise Exception(f'Множественные значения в таблице {self._options.ied_table_name} для kksp {kksp}')
 
     def _copy_mms_for_kksp(self, kksp: str):
-        mms_values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.mms_table_name,
-                                                                           fields=['KKS', 'PART', 'MMS_address',
-                                                                                   'Dataset', 'Report_Master',
-                                                                                   'Report_Slave', 'IED_NAME',
-                                                                                   'Filename'],
-                                                                           key_names=['KKSp'],
-                                                                           key_values=[kksp])
-        mms_storage: dict[tuple[str, str], str] = dict([((value['KKS'], value['PART']), value['MMS_address'])
+        mms_values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.mms_table_name,
+                                                                          fields=['KKS', 'PART', 'MMS_address',
+                                                                                  'Dataset', 'Report_Master',
+                                                                                  'Report_Slave', 'IED_NAME',
+                                                                                  'Filename'],
+                                                                          key_names=['KKSp'],
+                                                                          key_values=[kksp])
+        mms_storage: dict[tuple[str, str], str] = dict([((value[self._connection.modify_column_name('KKS')],
+                                                          value[self._connection.modify_column_name('PART')]),
+                                                         value[self._connection.modify_column_name('MMS_address')])
                                                         for value in mms_values])
-        signal_values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.iec_table_name,
-                                                                              fields=['KKS', 'PART'],
-                                                                              key_names=['KKSp'],
-                                                                              key_values=[kksp])
-        dataset_list: list[str] = list({value['Dataset'] for value in mms_values if value['Dataset'] is not None
-                                        and value['Dataset'] != ''})
-        report_master_list: list[str] = list({value['Report_Master'] for value in mms_values if value['Report_Master']
-                                              is not None and value['Report_Master'] != ''})
-        report_slave_list: list[str] = list({value['Report_Slave'] for value in mms_values if value['Report_Slave']
-                                             is not None and value['Report_Slave'] != ''})
-        ied_name_list: list[str] = list({value['IED_NAME'] for value in mms_values})
+        signal_values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.iec_table_name,
+                                                                             fields=['KKS', 'PART'],
+                                                                             key_names=['KKSp'],
+                                                                             key_values=[kksp])
+        dataset_list: list[str] = list({value[self._connection.modify_column_name('Dataset')]
+                                        for value in mms_values if
+                                        value[self._connection.modify_column_name('Dataset')] is not None
+                                        and value[self._connection.modify_column_name('Dataset')] != ''})
+        report_master_list: list[str] = list({value[self._connection.modify_column_name('Report_Master')]
+                                              for value in mms_values if
+                                              value[self._connection.modify_column_name('Report_Master')]
+                                              is not None and value[
+                                                  self._connection.modify_column_name('Report_Master')] != ''})
+        report_slave_list: list[str] = list({value[self._connection.modify_column_name('Report_Slave')]
+                                             for value in mms_values if
+                                             value[self._connection.modify_column_name('Report_Slave')]
+                                             is not None and value[
+                                                 self._connection.modify_column_name('Report_Slave')] != ''})
+        ied_name_list: list[str] = list(
+            {value[self._connection.modify_column_name('IED_NAME')] for value in mms_values})
         if len(ied_name_list) > 1:
             logging.error(f'Для одного kksp {kksp} найдено несколько имен IED')
             raise Exception('IedNameError')
-        filename_list: list[str] = list({value['Filename'] for value in mms_values})
+        filename_list: list[str] = list(
+            {value[self._connection.modify_column_name('Filename')] for value in mms_values})
         if len(filename_list) > 1:
             logging.error(f'Для одного IED {ied_name_list[0]} найдено несколько имен файлов')
             raise Exception('CidFileNameError')
@@ -535,8 +547,8 @@ class FillMMSAdress:
                                   rb_slave_list=report_slave_list)
 
         for signal in signal_values:
-            kks: str = signal['KKS']
-            part: str = signal['PART']
+            kks: str = signal[self._connection.modify_column_name('KKS')]
+            part: str = signal[self._connection.modify_column_name('PART')]
             mms: str | None = mms_storage.get((kks, part), None)
             ied_name: str = ied_name_list[0]
             if mms == '' or mms is None:
@@ -549,16 +561,16 @@ class FillMMSAdress:
                             mms_address=mms,
                             ied_name=ied_name)
             ProgressBar.update_progress()
-        self._access_base.commit()
+        self._connection.commit()
 
     def _fill_mms(self) -> None:
         """
         Основная функция генерации таблиц
         :return: None
         """
-        max_value: int = self._access_base.get_row_count(self._options.iec_table_name)
+        max_value: int = self._connection.get_row_count(self._options.iec_table_name)
         logging.info('Очистка таблицы IED...')
-        self._access_base.clear_table(table_name=self._options.ied_table_name)
+        self._connection.clear_table(table_name=self._options.ied_table_name)
         logging.info('Завершено.')
         logging.info('Заполнение адресов MMS...')
         ProgressBar.config(max_value=max_value, step=1, prefix='Обработка MMS адресов', suffix='Завершено', length=50)
@@ -568,15 +580,15 @@ class FillMMSAdress:
                 self._generate_mms_for_kksp(kksp=kksp)
             else:
                 self._copy_mms_for_kksp(kksp=kksp)
-
+            self._connection.commit()
         logging.info('Завершено')
 
     @staticmethod
-    def run(options: FillMMSAddressOptions, base_path: str) -> None:
+    def run(options: FillMMSAddressOptions, connection: Connection) -> None:
         logging.info('Запуск скрипта "Заполнение MMS адресов"...')
-        with Connection.connect_to_mdb(base_path=base_path) as access_base:
+        with connection:
             fill_mms_class: FillMMSAdress = FillMMSAdress(options=options,
-                                                          access_base=access_base)
+                                                          connection=connection)
             fill_mms_class._fill_mms()
         logging.info('Выпонение скрипта "Заполнение MMS адресов" завершено.')
         logging.info('')

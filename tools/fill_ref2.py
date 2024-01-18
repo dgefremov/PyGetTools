@@ -185,20 +185,22 @@ class SignalType(Enum):
 
 class FillRef2:
     _options: FillRef2Options
-    _access: Connection
+    _connection: Connection
     _abonent_map: dict[str, int]
     _alarm_sound_container: dict[Signal, str]
     _warn_sound_container: dict[Signal, str]
 
-    def __init__(self, options: FillRef2Options, access: Connection):
+    def __init__(self, options: FillRef2Options, connection: Connection):
         self._options = options
-        self._access = access
+        self._connection = connection
         self._abonent_map = self._get_abonent_map()
         self._alarm_sound_container = {}
         self._warn_sound_container = {}
 
-    @staticmethod
-    def _choose_signal_by_kksp(values: list[dict, str], kksp: list[str]) -> tuple[str | None, str | None, ErrorType]:
+    # def _choose_signal_by_kksp(values: list[dict, str], kksp: list[str]) -> tuple[str | None, str | None, ErrorType]:
+    def _choose_signal_by_kksp(self, values: list[dict[str, str]], kksp: list[str]) -> tuple[
+        str | None, str | None, ErrorType]:
+
         """
         Выбор среди результата запроса ККС, у которого KKSp совпадает с заданным
         :param values: Результат запроса к базе
@@ -207,8 +209,9 @@ class FillRef2:
         """
         signals: list[tuple[str, str]] = []
         for value in values:
-            if value['KKSp'] in kksp:
-                signals.append((value['KKS'], value['CABINET']))
+            if value[self._connection.modify_column_name('KKSp')] in kksp:
+                signals.append((value[self._connection.modify_column_name('KKS')],
+                                value[self._connection.modify_column_name('CABINET')]))
         if len(signals) == 0:
             return None, None, ErrorType.NOVALUES
         if len(signals) > 1:
@@ -232,7 +235,7 @@ class FillRef2:
             key_names.append('CABINET')
             key_values.append(cabinet)
             key_operator.append('=')
-        values: list[dict[str, str]] = self._access.retrieve_data(
+        values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.sim_table,
             fields=['KKS', 'KKSp', 'CABINET'],
             key_names=key_names,
@@ -251,7 +254,8 @@ class FillRef2:
         if len(values) == 0:
             return None, None, ErrorType.NOVALUES
         if len(values) == 1:
-            return values[0]['KKS'], values[0]['CABINET'], ErrorType.NOERROR
+            return (values[0][self._connection.modify_column_name('KKS')],
+                    values[0][self._connection.modify_column_name('CABINET')], ErrorType.NOERROR)
 
     def _get_signal_from_iec_by_kks(self, kks: str, kksp: list[str] | None,
                                     port: InputPort | OutputPort, cabinet: str | None) -> tuple[str | None,
@@ -272,11 +276,11 @@ class FillRef2:
             key_values.append(cabinet)
             key_operator.append('=')
 
-        values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.iec_table,
-                                                                  fields=['KKS', 'KKSp', 'CABINET'],
-                                                                  key_names=key_names,
-                                                                  key_values=key_values,
-                                                                  key_operator=key_operator)
+        values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.iec_table,
+                                                                      fields=['KKS', 'KKSp', 'CABINET'],
+                                                                      key_names=key_names,
+                                                                      key_values=key_values,
+                                                                      key_operator=key_operator)
         if len(values) > 1:
             # Если не задана стойка и KKSp, то для нескольких сигналов будет попытка выбрать один, относящийся
             # к данному терминалу
@@ -287,7 +291,8 @@ class FillRef2:
             else:
                 return None, None, ErrorType.TOOMANYVALUES
         if len(values) == 1:
-            return values[0]['KKS'], values[0]['CABINET'], ErrorType.NOERROR
+            return (values[0][self._connection.modify_column_name('KKS')],
+                    values[0][self._connection.modify_column_name('CABINET')], ErrorType.NOERROR)
         return None, None, ErrorType.NOVALUES
 
     def _get_signal_from_sim_by_cabinet(self, kksp: list[str], port: InputPort | OutputPort, cabinet: str) -> \
@@ -299,7 +304,7 @@ class FillRef2:
         :param cabinet: Имя стойки
         :return: Кортеж из ККС (если найден) и кода ошибки
         """
-        values: list[dict[str, str]] = self._access.retrieve_data(
+        values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.sim_table,
             fields=['KKS', 'CABINET', 'KKSp'],
             key_names=['MODULE', 'PART', 'CABINET'],
@@ -310,7 +315,7 @@ class FillRef2:
                                                               kksp=kksp)
             return kks, error
         if len(values) == 1:
-            return values[0]['KKS'], ErrorType.NOERROR
+            return values[0][self._connection.modify_column_name('KKS')], ErrorType.NOERROR
         return None, ErrorType.NOVALUES
 
     def _get_signal_from_iec_by_cabinet(self, kksp: list[str], port: InputPort | OutputPort, cabinet: str) -> \
@@ -322,7 +327,7 @@ class FillRef2:
         :param cabinet: Имя стойки
         :return: Кортеж из ККС (если найден) и кода ошибки
         """
-        values: list[dict[str, str]] = self._access.retrieve_data(
+        values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.iec_table,
             fields=['KKS', 'KKSp', 'CABINET'],
             key_names=['PART', 'CABINET'],
@@ -332,7 +337,7 @@ class FillRef2:
                                                               kksp=kksp)
             return kks, error
         if len(values) == 1:
-            return values[0]['KKS'], ErrorType.NOERROR
+            return values[0][self._connection.modify_column_name('KKS')], ErrorType.NOERROR
         return None, ErrorType.NOVALUES
 
     def _get_signal_for_port(self, schema_kks: str, cabinet: str, kksp: list[str] | None, port: InputPort | OutputPort,
@@ -532,7 +537,7 @@ class FillRef2:
             key_values.append(cabinet)
             key_operator.append('=')
 
-        values: list[dict[str, str]] = self._access.retrieve_data(
+        values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.predifend_control_schemas_table,
             fields=['KKS', 'CABINET'],
             key_names=key_names,
@@ -548,7 +553,9 @@ class FillRef2:
             else:
                 return None, None, ErrorType.TOOMANYVALUES
         if len(values) == 1:
-            return values[0]['KKS'] + self._options.control_schema_name_postfix, values[0]['CABINET'], ErrorType.NOERROR
+            return (values[0][self._connection.modify_column_name('KKS')] +
+                    self._options.control_schema_name_postfix,
+                    values[0][self._connection.modify_column_name('CABINET')], ErrorType.NOERROR)
         return None, None, ErrorType.NOVALUES
 
     def _get_signal_from_fake_signals(self, kks: str, port: InputPort | OutputPort, cabinet: str | None,
@@ -561,7 +568,7 @@ class FillRef2:
             key_values.append(cabinet)
             key_operator.append('=')
 
-        values: list[dict[str, str]] = self._access.retrieve_data(
+        values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.fake_signals_table,
             fields=['KKS', 'CABINET', 'KKSp'],
             key_names=key_names,
@@ -577,7 +584,8 @@ class FillRef2:
             else:
                 return None, None, ErrorType.TOOMANYVALUES
         if len(values) == 1:
-            return values[0]['KKS'], values[0]['CABINET'], ErrorType.NOERROR
+            return (values[0][self._connection.modify_column_name('KKS')],
+                    values[0][self._connection.modify_column_name('CABINET')], ErrorType.NOERROR)
         return None, None, ErrorType.NOVALUES
 
     def _creare_ref_for_input_port(self, schema_kks: str, schema_part: str, cabinet: str,
@@ -707,7 +715,7 @@ class FillRef2:
         """
         error_flag: bool = False
         ref_list: list[SignalRef] = []
-        values: list[dict[str, str]] = self._access.retrieve_data(
+        values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.predifend_control_schemas_table,
             fields=['KKS', 'SCHEMA', 'PART', 'CABINET', 'TS_ODU_PANEL', 'INST_PLACE', 'KKSp', 'ONLY_FOR_REF'])
         logging.info('Запуск обработки таблицы со схемами управления...')
@@ -715,20 +723,22 @@ class FillRef2:
                            length=50)
         for value in values:
             ProgressBar.update_progress()
-            schema_kks: str = value['KKS']
-            schema_part: str = value['PART']
-            cabinet: str = value['CABINET']
-            template_name: str = value['SCHEMA']
-            if ';' in value['KKSp']:
-                kksp = value['KKSp'].split(';')
+            schema_kks: str = value[self._connection.modify_column_name('KKS')]
+            schema_part: str = value[self._connection.modify_column_name('PART')]
+            cabinet: str = value[self._connection.modify_column_name('CABINET')]
+            template_name: str = value[self._connection.modify_column_name('SCHEMA')]
+            if ';' in value[self._connection.modify_column_name('KKSp')]:
+                kksp = value[self._connection.modify_column_name('KKSp')].split(';')
             else:
-                kksp = [value['KKSp']]
+                kksp = [value[self._connection.modify_column_name('KKSp')]]
             mozaic_element: MozaicElement | None = None
-            if value['TS_ODU_PANEL'] is not None and value['TS_ODU_PANEL'] != '' and \
-                    value['INST_PLACE'] is not None and value['INST_PLACE'] != '':
-                mozaic_element = MozaicElement(ts_odu_panel=value['TS_ODU_PANEL'],
-                                               place=value['INST_PLACE'])
-            add_kks_postfix: bool = value['ONLY_FOR_REF'] == 'False'
+            if (value[self._connection.modify_column_name('TS_ODU_PANEL')] is not None and
+                    value[self._connection.modify_column_name('TS_ODU_PANEL')] != '' and
+                    value[self._connection.modify_column_name('INST_PLACE')] is not None and
+                    value[self._connection.modify_column_name('INST_PLACE')] != ''):
+                mozaic_element = MozaicElement(ts_odu_panel=value[self._connection.modify_column_name('TS_ODU_PANEL')],
+                                               place=value[self._connection.modify_column_name('INST_PLACE')])
+            add_kks_postfix: bool = value[self._connection.modify_column_name('ONLY_FOR_REF')] == 'False'
             ref_list_for_schema: list[SignalRef] | None = \
                 self._get_ref_for_schema(schema_kks=schema_kks,
                                          schema_part=schema_part,
@@ -806,51 +816,54 @@ class FillRef2:
         return refs, update_schemas
 
     def _get_abonent_map(self) -> dict[str, int]:
-        values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.abonent_table,
-                                                                  fields=['CABINET', 'ABONENT_ID'])
-        return {value['CABINET']: int(value['ABONENT_ID']) for value in values}
+        values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.abonent_table,
+                                                                      fields=['CABINET', 'ABONENT_ID'])
+        return {value[self._connection.modify_column_name('CABINET')]:
+                    int(value[self._connection.modify_column_name('ABONENT_ID')]) for value in values}
 
     def _get_signal_for_ts_odu_logic(self, kks: str, part: str) -> \
             tuple[Signal | None, ErrorType]:
-        values_from_sim: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.sim_table,
-                                                                           fields=['CABINET'],
-                                                                           key_names=['KKS', 'PART', 'MODULE'],
-                                                                           key_values=[kks, part, '1691'],
-                                                                           key_operator=['=', '=', '<>'])
+        values_from_sim: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.sim_table,
+                                                                               fields=['CABINET'],
+                                                                               key_names=['KKS', 'PART', 'MODULE'],
+                                                                               key_values=[kks, part, '1691'],
+                                                                               key_operator=['=', '=', '<>'])
         if len(values_from_sim) == 1:
-            cabinet: str = values_from_sim[0]['CABINET']
+            cabinet: str = values_from_sim[0][self._connection.modify_column_name('CABINET')]
             return Signal(kks=kks,
                           part=part,
                           cabinet=cabinet,
                           type=SignalType.WIRED), ErrorType.NOERROR
-        values_from_iec: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.iec_table,
-                                                                           fields=['CABINET'],
-                                                                           key_names=['KKS', 'PART'],
-                                                                           key_values=[kks, part])
+        values_from_iec: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.iec_table,
+                                                                               fields=['CABINET'],
+                                                                               key_names=['KKS', 'PART'],
+                                                                               key_values=[kks, part])
         if len(values_from_iec) == 1:
-            cabinet: str = values_from_iec[0]['CABINET']
+            cabinet: str = values_from_iec[0][self._connection.modify_column_name('CABINET')]
             return Signal(kks=kks,
                           part=part,
                           cabinet=cabinet,
                           type=SignalType.DIGITAL), ErrorType.NOERROR
 
-        values_from_fake: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.fake_signals_table,
-                                                                            fields=['CABINET'],
-                                                                            key_names=['KKS', 'PART'],
-                                                                            key_values=[kks, part])
+        values_from_fake: list[dict[str, str]] = self._connection.retrieve_data(
+            table_name=self._options.fake_signals_table,
+            fields=['CABINET'],
+            key_names=['KKS', 'PART'],
+            key_values=[kks, part])
+
         if len(values_from_fake) == 1:
-            cabinet: str = values_from_fake[0]['CABINET']
+            cabinet: str = values_from_fake[0][self._connection.modify_column_name('CABINET')]
             return Signal(kks=kks,
                           part=part,
                           cabinet=cabinet,
                           type=SignalType.WIRED), ErrorType.NOERROR
 
-        values_from_ts_odu: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
-                                                                              fields=['CABINET'],
-                                                                              key_names=['KKS', 'PART'],
-                                                                              key_values=[kks, part])
+        values_from_ts_odu: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.ts_odu_table,
+                                                                                  fields=['CABINET'],
+                                                                                  key_names=['KKS', 'PART'],
+                                                                                  key_values=[kks, part])
         if len(values_from_ts_odu) == 1:
-            cabinet: str = values_from_ts_odu[0]['CABINET']
+            cabinet: str = values_from_ts_odu[0][self._connection.modify_column_name('CABINET')]
             return Signal(kks=kks,
                           part=part,
                           cabinet=cabinet,
@@ -862,7 +875,7 @@ class FillRef2:
         ok_flag: bool = True
         used_names: list[str] = []
         dynamic_templates: list[DynamicTemplate] = []
-        values: list[dict[str, str]] = self._access.retrieve_data(
+        values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.ts_odu_algorithm,
             fields=['KKS', 'PART', 'CABINET', 'INST_PLACE', 'TS_ODU_PANEL', 'TYPE'])
         logging.info('Запуск обработки логики ТС ОДУ...')
@@ -870,22 +883,25 @@ class FillRef2:
                            length=50)
         for value in values:
             ProgressBar.update_progress()
-            source_signal, source_error = self._get_signal_for_ts_odu_logic(kks=value['KKS'],
-                                                                            part=value['PART'])
+            source_signal, source_error = self._get_signal_for_ts_odu_logic(
+                kks=value[self._connection.modify_column_name('KKS')],
+                part=value[self._connection.modify_column_name('PART')])
             if source_error != ErrorType.NOERROR:
                 ok_flag = False
                 continue
-            mozaic_element: MozaicElement = MozaicElement(place=value['INST_PLACE'],
-                                                          ts_odu_panel=value['TS_ODU_PANEL'])
+            mozaic_element: MozaicElement = MozaicElement(
+                place=value[self._connection.modify_column_name('INST_PLACE')],
+                ts_odu_panel=value[self._connection.modify_column_name('TS_ODU_PANEL')])
 
             dynamic_template: DynamicTemplate | None = \
                 next((template for template in dynamic_templates
                       if template.target.ts_odu_panel == mozaic_element.ts_odu_panel
-                      and template.target.place == mozaic_element.place and template.type == value['TYPE']), None)
+                      and template.target.place == mozaic_element.place and
+                      template.type == value[self._connection.modify_column_name('TYPE')]), None)
             if dynamic_template is None:
                 dynamic_template = DynamicTemplate(target=mozaic_element,
                                                    source=[source_signal],
-                                                   type=value['TYPE'])
+                                                   type=value[self._connection.modify_column_name('TYPE')])
                 dynamic_templates.append(dynamic_template)
             else:
                 dynamic_template.source.append(source_signal)
@@ -910,19 +926,19 @@ class FillRef2:
 
     def _process_ts_odu_signals(self, updated_schemas: list[tuple[str, str, str]]) -> list[SignalRef] | None:
         ok_flag: bool = True
-        values: list[dict[str, str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
-                                                                  fields=['KKS', 'PART', 'KKSp', 'SCHEMA'])
+        values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.ts_odu_table,
+                                                                      fields=['KKS', 'PART', 'KKSp', 'SCHEMA'])
         logging.info('Запуск обработки сигналов ТС ОДУ...')
         ProgressBar.config(max_value=len(values), step=1, prefix='Обработка сигналов ТС ОДУ', suffix='Завершено',
                            length=50)
         refs: list[SignalRef] = []
         for value in values:
             ProgressBar.update_progress()
-            kks: str = value['KKS']
-            part: str = value['PART']
+            kks: str = value[self._connection.modify_column_name('KKS')]
+            part: str = value[self._connection.modify_column_name('PART')]
             template_name: str = updated_schemas[2] if updated_schemas[0] == kks and updated_schemas[1] == part \
-                else value['SCHEMA']
-            ts_odu_panel_name: str = value['KKSp']
+                else value[self._connection.modify_column_name('SCHEMA')]
+            ts_odu_panel_name: str = value[self._connection.modify_column_name('KKSp')]
             template: TSODUTemplate | None = None
             if template_name is None:
                 continue
@@ -1044,11 +1060,11 @@ class FillRef2:
                                   ref=confirm_ref,
                                   unrel_ref=None))
         signals_in_mozaic_element: list[Signal] = []
-        values: list[dict[str]] = self._access.retrieve_data(table_name=self._options.ts_odu_table,
-                                                             fields=['KKS', 'PART'],
-                                                             key_names=['INST_PLACE', 'KKSp'],
-                                                             key_values=[mozaic_element.place,
-                                                                         mozaic_element.ts_odu_panel])
+        values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.ts_odu_table,
+                                                                      fields=['KKS', 'PART'],
+                                                                      key_names=['INST_PLACE', 'KKSp'],
+                                                                      key_values=[mozaic_element.place,
+                                                                                  mozaic_element.ts_odu_panel])
         if len(values) == 0:
             logging.error(f'Не найден сигналы для мозаичного элемента {mozaic_element.place} панели '
                           f'{mozaic_element.ts_odu_panel}')
@@ -1057,14 +1073,15 @@ class FillRef2:
             logging.error(f'Число сигналов для мозаичного элемента {mozaic_element.place} панели '
                           f'{mozaic_element.ts_odu_panel} не совпадает с числом сигналов в шаблоне')
             return None
-        if sum(value['PART'].startswith('XL') or value['PART'].startswith('XA') for value in values) \
+        if sum(value[self._connection.modify_column_name('PART')].startswith('XL') or
+               value[self._connection.modify_column_name('PART')].startswith('XA') for value in values) \
                 != len(ts_odu_data.input_ports):
             logging.error(f'Число команд для мозаичного элемента {mozaic_element.place} панели '
                           f'{mozaic_element.ts_odu_panel} не совпадает с числом сигналов в шаблоне')
             return None
         for value in values:
-            signals_in_mozaic_element.append(Signal(kks=value['KKS'],
-                                                    part=value['PART'],
+            signals_in_mozaic_element.append(Signal(kks=value[self._connection.modify_column_name('KKS')],
+                                                    part=value[self._connection.modify_column_name('PART')],
                                                     cabinet=self._options.ts_odu_info.cabinet,
                                                     type=SignalType.TS_ODU))
         for ouput_port in ts_odu_data.output_ports:
@@ -1102,19 +1119,19 @@ class FillRef2:
     def _get_target_signal_for_ts_odu(self, dynamic_template: DynamicTemplate) -> Signal | None:
         values: list[dict[str, str]]
         if self._options.read_english_description:
-            values = self._access.retrieve_data(table_name=self._options.ts_odu_table,
-                                                fields=['PART', 'NAME_RUS', 'NAME_ENG', 'KKS'],
-                                                key_names=['INST_PLACE', 'KKSp', 'TYPE'],
-                                                key_values=[dynamic_template.target.place,
-                                                            dynamic_template.target.ts_odu_panel,
-                                                            dynamic_template.type])
+            values = self._connection.retrieve_data(table_name=self._options.ts_odu_table,
+                                                    fields=['PART', 'NAME_RUS', 'NAME_ENG', 'KKS'],
+                                                    key_names=['INST_PLACE', 'KKSp', 'TYPE'],
+                                                    key_values=[dynamic_template.target.place,
+                                                                dynamic_template.target.ts_odu_panel,
+                                                                dynamic_template.type])
         else:
-            values = self._access.retrieve_data(table_name=self._options.ts_odu_table,
-                                                fields=['PART', 'NAME_RUS', 'KKS'],
-                                                key_names=['INST_PLACE', 'KKSp', 'TYPE'],
-                                                key_values=[dynamic_template.target.place,
-                                                            dynamic_template.target.ts_odu_panel,
-                                                            dynamic_template.type])
+            values = self._connection.retrieve_data(table_name=self._options.ts_odu_table,
+                                                    fields=['PART', 'NAME_RUS', 'KKS'],
+                                                    key_names=['INST_PLACE', 'KKSp', 'TYPE'],
+                                                    key_values=[dynamic_template.target.place,
+                                                                dynamic_template.target.ts_odu_panel,
+                                                                dynamic_template.type])
 
         if len(values) == 0:
             logging.error(f'Не найден МЭ в панели {dynamic_template.target.ts_odu_panel} по координатам '
@@ -1126,14 +1143,14 @@ class FillRef2:
             return None
         descr_eng: str
         if self._options.read_english_description:
-            descr_eng = values[0]['NAME_ENG']
+            descr_eng = values[0][self._connection.modify_column_name('NAME_ENG')]
         else:
             descr_eng = ""
-        signal: Signal = Signal(kks=values[0]['KKS'],
-                                part=values[0]['PART'],
+        signal: Signal = Signal(kks=values[0][self._connection.modify_column_name('KKS')],
+                                part=values[0][self._connection.modify_column_name('PART')],
                                 cabinet=self._options.ts_odu_info.cabinet,
                                 type=SignalType.TS_ODU,
-                                descr_rus=values[0]['NAME_RUS'],
+                                descr_rus=values[0][self._connection.modify_column_name('NAME_RUS')],
                                 descr_eng=descr_eng)
         return signal
 
@@ -1183,10 +1200,11 @@ class FillRef2:
             index += 1
         raise Exception('Не удалось подобрать индекс')
 
-    def _create_schemas_for_or_logic(self, template: DynamicTemplate, target_signal: Signal,
+    def _create_schemas_for_or_logic(self, template: DynamicTemplate,
+                                     target_signal: Signal,
                                      target_ts_odu_panel: TSODUPanel,
-                                     used_names: list[str]) -> tuple[list[VirtualSchema], list[SignalRef],
-                                                                     tuple[str, str, str] | None]:
+                                     used_names: list[str]) -> (
+            tuple)[list[VirtualSchema], list[SignalRef], tuple[str, str, str] | None]:
 
         # Сначала формируется словарь, где ключ - это имя стойки, значение - список сигналов от этой стойки,
         # т.е. группировка сигналов по имени стойки
@@ -1438,59 +1456,68 @@ class FillRef2:
         :return: None
         """
         for ref in ref_list:
-            self._access.insert_row(table_name=self._options.ref_table,
-                                    column_names=['KKS', 'PART', 'REF', 'UNREL_REF'],
-                                    values=[ref.kks, ref.part, ref.ref, ref.unrel_ref])
-        self._access.commit()
+            self._connection.insert_row(table_name=self._options.ref_table,
+                                        column_names=['KKS', 'PART', 'REF', 'UNREL_REF'],
+                                        values=[ref.kks, ref.part, ref.ref, ref.unrel_ref])
+        self._connection.commit()
 
     def _write_control_schemas(self, dynamic_schemas: list[VirtualSchema]):
-        values: list[dict[str, str]] = self._access.retrieve_data(
+        values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.predifend_control_schemas_table,
             fields=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR_RUS', 'DESCR_ENG'],
             key_names=['ONLY_FOR_REF'],
             key_values=[False])
         for value in values:
-            self._access.insert_row(table_name=self._options.control_schemas_table,
-                                    column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR_RUS',
-                                                  'DESCR_ENG'],
-                                    values=[value['KKS'] + self._options.control_schema_name_postfix, value['CABINET'],
-                                            value['SCHEMA'], value['CHANNEL'], value['PART'], value['DESCR_RUS'],
-                                            value['DESCR_ENG']])
-        values: list[dict[str, str]] = self._access.retrieve_data(
+            self._connection.insert_row(table_name=self._options.control_schemas_table,
+                                        column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR_RUS',
+                                                      'DESCR_ENG'],
+                                        values=[value[self._connection.modify_column_name('KKS')] +
+                                                self._options.control_schema_name_postfix,
+                                                value[self._connection.modify_column_name('CABINET')],
+                                                value[self._connection.modify_column_name('SCHEMA')],
+                                                value[self._connection.modify_column_name('CHANNEL')],
+                                                value[self._connection.modify_column_name('PART')],
+                                                value[self._connection.modify_column_name('DESCR_RUS')],
+                                                value[self._connection.modify_column_name('DESCR_ENG')]])
+        values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.fake_signals_table,
             fields=['KKS', 'CABINET', 'SCHEMA', 'PART', 'DESCR_RUS', 'DESCR_ENG'])
         for value in values:
-            self._access.insert_row(table_name=self._options.control_schemas_table,
-                                    column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR_RUS',
-                                                  'DESCR_ENG'],
-                                    values=[value['KKS'], value['CABINET'],
-                                            value['SCHEMA'], '0', value['PART'], value['DESCR_RUS'],
-                                            value['DESCR_ENG']])
+            self._connection.insert_row(table_name=self._options.control_schemas_table,
+                                        column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR_RUS',
+                                                      'DESCR_ENG'],
+                                        values=[value[self._connection.modify_column_name('KKS')],
+                                                value[self._connection.modify_column_name('CABINET')],
+                                                value[self._connection.modify_column_name('SCHEMA')],
+                                                '0',
+                                                value[self._connection.modify_column_name('PART')],
+                                                value[self._connection.modify_column_name('DESCR_RUS')],
+                                                value[self._connection.modify_column_name('DESCR_ENG')]])
         for dynamic_schema in dynamic_schemas:
-            self._access.insert_row(table_name=self._options.control_schemas_table,
-                                    column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR_RUS',
-                                                  'DESCR_ENG'],
-                                    values=[dynamic_schema.kks, dynamic_schema.cabinet, dynamic_schema.schema,
-                                            dynamic_schema.channel, dynamic_schema.part, dynamic_schema.descr_rus,
-                                            dynamic_schema.descr_eng])
-        self._access.commit()
+            self._connection.insert_row(table_name=self._options.control_schemas_table,
+                                        column_names=['KKS', 'CABINET', 'SCHEMA', 'CHANNEL', 'PART', 'DESCR_RUS',
+                                                      'DESCR_ENG'],
+                                        values=[dynamic_schema.kks, dynamic_schema.cabinet, dynamic_schema.schema,
+                                                dynamic_schema.channel, dynamic_schema.part, dynamic_schema.descr_rus,
+                                                dynamic_schema.descr_eng])
+        self._connection.commit()
 
     def _update_schemas(self, updated_schemas: list[tuple[str, str, str]]):
         for schema in updated_schemas:
             kks: str = schema[0]
             part: str = schema[1]
             name: str = schema[2]
-            self._access.update_field(table_name=self._options.ts_odu_table,
-                                      fields=['SCHEMA'],
-                                      values=[name],
-                                      key_names=['KKS', 'PART'],
-                                      key_values=[kks, part])
-        self._access.commit()
+            self._connection.update_field(table_name=self._options.ts_odu_table,
+                                          fields=['SCHEMA'],
+                                          values=[name],
+                                          key_names=['KKS', 'PART'],
+                                          key_values=[kks, part])
+        self._connection.commit()
 
     def _process_custom_schemas_in_ts_odu(self) -> list[SignalRef] | None:
         ref_list: list[SignalRef] = []
         error_flag: bool = False
-        values: list[dict[str, str]] = self._access.retrieve_data(
+        values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.ts_odu_table,
             fields=['KKS', 'PART', 'SCHEMA', 'KKSp'])
         logging.info('Запуск обработка нетиповых сигналов ТС ОДУ...')
@@ -1499,9 +1526,9 @@ class FillRef2:
         cabinet: str = self._options.ts_odu_info.cabinet
         for value in values:
             ProgressBar.update_progress()
-            schema_kks: str = value['KKS']
-            schema_part: str = value['PART']
-            template_name: str = value['SCHEMA']
+            schema_kks: str = value[self._connection.modify_column_name('KKS')]
+            schema_part: str = value[self._connection.modify_column_name('PART')]
+            template_name: str = value[self._connection.modify_column_name('SCHEMA')]
             mozaic_element: MozaicElement | None = None
             add_kks_postfix: bool = False
             ref_list_for_schema: list[SignalRef] | None = \
@@ -1548,19 +1575,19 @@ class FillRef2:
         refs: list[SignalRef] = \
             ref_for_predefined_schemas + ts_odu_ref_list + refs_for_ts_odu_signals + sound_refs + custom_refs
         logging.info('Запись результатов...')
-        self._access.clear_table(table_name=self._options.ref_table)
-        self._access.clear_table(table_name=self._options.control_schemas_table)
+        self._connection.clear_table(table_name=self._options.ref_table)
+        self._connection.clear_table(table_name=self._options.control_schemas_table)
         self._write_ref(ref_list=refs)
         self._write_control_schemas(dynamic_schemas=virtual_schemas)
         self._update_schemas(updated_schemas=updated_schemas + updated_sound_schemas)
         logging.info('Завершено.')
 
     @staticmethod
-    def run(options: FillRef2Options, base_path: str) -> None:
+    def run(options: FillRef2Options, connection: Connection) -> None:
         logging.info('Запуск скрипта "Расстановка ссылок"...')
-        with Connection.connect_to_mdb(base_path=base_path) as access:
+        with connection:
             fill_ref_class: FillRef2 = FillRef2(options=options,
-                                                access=access)
+                                                connection=connection)
             fill_ref_class._process()
         logging.info('Выпонение скрипта "Расстановка ссылок" завершено.')
         logging.info('')

@@ -4,8 +4,6 @@ from tools.fill_mms_address import FillMMSAddressOptions, DPCSignal, DatasetDesc
     BSCSignal, SignalRange
 from tools.fill_ref2 import FillRef2Options, InputPort, OutputPort, Template, TSODUPanel, TSODUData, TSODUDescription, \
     TSODUTemplate
-from tools.find_schemas import FindSchemasOptions, Schema
-
 from dataclasses import dataclass
 
 
@@ -14,7 +12,6 @@ class Options:
     generate_table_options: GenerateTableOptions
     fill_mms_address_options: FillMMSAddressOptions
     fill_ref2_options: FillRef2Options
-    find_schemas_options: FindSchemasOptions
 
     @staticmethod
     def load_ruppur() -> 'Options':
@@ -74,15 +71,15 @@ class Options:
                                                   signal_part='XA10',
                                                   new_kks='10BFR07EK001')
 
-        generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='[Network Data]',
+        generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='Network Data',
                                                                      controller_data_table_name='TPTS',
-                                                                     aep_table_name='[Сигналы и механизмы АЭП]',
-                                                                     sim_table_name='[Сигналы и механизмы]',
-                                                                     iec_table_name='[МЭК 61850]',
-                                                                     ied_table_name='[IED]',
-                                                                     ref_table_name='[REF]',
-                                                                     fake_signals_table_name='[FAKE_SIGNALS]',
-                                                                     sign_table_name='[DIAG]',
+                                                                     aep_table_name='Сигналы и механизмы АЭП',
+                                                                     sim_table_name='Сигналы и механизмы',
+                                                                     iec_table_name='МЭК 61850',
+                                                                     ied_table_name='IED',
+                                                                     ref_table_name='REF',
+                                                                     fake_signals_table_name='FAKE_SIGNALS',
+                                                                     sign_table_name='DIAG',
                                                                      skip_signals=[('00BCE', 'XB20')],
                                                                      dps_signals=[signal1, signal2, signal3, signal4,
                                                                                   signal5, signal6, signal7],
@@ -135,9 +132,9 @@ class Options:
 
         dpc_signals: list[DPCSignal] = [dps_signal_cb, dps_signal_cb2, dps_signal_alt, dps_signal_gb, dps_signal_cb3]
 
-        fill_mms_options: FillMMSAddressOptions = FillMMSAddressOptions(iec_table_name='[МЭК 61850]',
-                                                                        ied_table_name='[IED]',
-                                                                        mms_table_name='[MMS]',
+        fill_mms_options: FillMMSAddressOptions = FillMMSAddressOptions(iec_table_name='МЭК 61850',
+                                                                        ied_table_name='IED',
+                                                                        mms_table_name='MMS',
                                                                         dpc_signals=dpc_signals,
                                                                         bsc_signals=[bsc_signal],
                                                                         datasets=DatasetDescriptionList(
@@ -588,12 +585,12 @@ class Options:
                                                                 cabinet='10BYA02',
                                                                 )
 
-        fill_ref2_options: FillRef2Options = FillRef2Options(control_schemas_table='[VIRTUAL SCHEMAS]',
-                                                             predifend_control_schemas_table='[PREDEFINED SCHEMAS]',
-                                                             ref_table='[REF]',
-                                                             sim_table='[Сигналы и механизмы]',
-                                                             iec_table='[МЭК 61850]',
-                                                             fake_signals_table='[FAKE_SIGNALS]',
+        fill_ref2_options: FillRef2Options = FillRef2Options(control_schemas_table='VIRTUAL SCHEMAS',
+                                                             predifend_control_schemas_table='PREDEFINED SCHEMAS',
+                                                             ref_table='REF',
+                                                             sim_table='Сигналы и механизмы',
+                                                             iec_table='МЭК 61850',
+                                                             fake_signals_table='FAKE_SIGNALS',
                                                              templates=[ats, ats_vk, ltc, ltc_failure,
                                                                         sc_cb_24, sc_kru_10_3_sign,
                                                                         sc_kru_10_6_sign, sc_kru_10_7_sign,
@@ -607,10 +604,10 @@ class Options:
                                                              wired_signal_output_blink_default_cell=9,
                                                              wired_signal_output_flicker_default_page=1,
                                                              wired_signal_output_flicker_default_cell=11,
-                                                             ts_odu_algorithm='[Логика ТС ОДУ]',
-                                                             ts_odu_table='[Сигналы и механизмы ТС ОДУ]',
+                                                             ts_odu_algorithm='Логика ТС ОДУ',
+                                                             ts_odu_table='Сигналы и механизмы ТС ОДУ',
                                                              ts_odu_info=ts_odu_description,
-                                                             abonent_table='[TPTS]',
+                                                             abonent_table='TPTS',
                                                              wired_signal_default_input_port='Port1',
                                                              ts_odu_templates=[display, lamp],
                                                              custom_templates_ts_odu=[custom_template_f_meas],
@@ -618,18 +615,8 @@ class Options:
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
 
-        # <-------------------------------find_schemas_options--------------------------------------------------------->
-
-        schema1: Schema = Schema(name="Управление выключателем",
-                                 command_parts=['XL01', 'XL02'],
-                                 signal_parts=['XB01', 'XB02', 'XB07', 'XB08', 'XF26', 'XF27', 'XF03', 'XF02', 'XF19',
-                                               'XF06', 'XF07'])
-        find_schemas_options = FindSchemasOptions(sim_table_name='[Сигналы и механизмы]',
-                                                  schemas=[schema1])
-        # <-------------------------------find_schemas_options--------------------------------------------------------->
-
         return Options(generate_table_options=generate_option,
-                       fill_mms_address_options=fill_mms_options, find_schemas_options=find_schemas_options,
+                       fill_mms_address_options=fill_mms_options,
                        fill_ref2_options=fill_ref2_options)
 
     @staticmethod
@@ -666,15 +653,15 @@ class Options:
                                               variants=[SWTemplateVariant(schema='SW_1623_AVR',
                                                                           parts=[])])
 
-        generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='[Network Data]',
+        generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='Network Data',
                                                                      controller_data_table_name='TPTS',
-                                                                     aep_table_name='[Сигналы и механизмы АЭП]',
-                                                                     sim_table_name='[Сигналы и механизмы]',
-                                                                     iec_table_name='[МЭК 61850]',
-                                                                     ied_table_name='[IED]',
-                                                                     fake_signals_table_name='[FAKE_SIGNALS]',
-                                                                     ref_table_name='[REF]',
-                                                                     sign_table_name='[DIAG]',
+                                                                     aep_table_name='Сигналы и механизмы АЭП',
+                                                                     sim_table_name='Сигналы и механизмы',
+                                                                     iec_table_name='МЭК 61850',
+                                                                     ied_table_name='IED',
+                                                                     fake_signals_table_name='FAKE_SIGNALS',
+                                                                     ref_table_name='REF',
+                                                                     sign_table_name='DIAG',
                                                                      skip_signals=[],
                                                                      dps_signals=[signal1, signal2, signal3, signal4,
                                                                                   signal5, signal6],
@@ -718,13 +705,13 @@ class Options:
 
         dpc_signals: list[DPCSignal] = [dps_signal_cb, dps_signal_alt, dps_signal_gb]
 
-        fill_mms_options: FillMMSAddressOptions = FillMMSAddressOptions(iec_table_name='[МЭК 61850]',
-                                                                        ied_table_name='[IED]',
+        fill_mms_options: FillMMSAddressOptions = FillMMSAddressOptions(iec_table_name='МЭК 61850',
+                                                                        ied_table_name='IED',
                                                                         dpc_signals=dpc_signals,
                                                                         bsc_signals=[bsc_signal],
                                                                         datasets=DatasetDescriptionList(
                                                                             [dataset_1, dataset_2, dataset_3]),
-                                                                        mms_table_name='[MMS]')
+                                                                        mms_table_name='MMS')
         # <-------------------------------fill_mms_address_options----------------------------------------------------->
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
@@ -925,12 +912,12 @@ class Options:
                                         output_ports={'XG00': diag_middle_output_ports},
                                         alarm_sound_signal_port=None)
 
-        fill_ref2_options: FillRef2Options = FillRef2Options(control_schemas_table='[VIRTUAL SCHEMAS]',
-                                                             predifend_control_schemas_table='[PREDEFINED SCHEMAS]',
-                                                             ref_table='[REF]',
-                                                             sim_table='[Сигналы и механизмы]',
-                                                             iec_table='[МЭК 61850]',
-                                                             fake_signals_table='[FAKE_SIGNALS]',
+        fill_ref2_options: FillRef2Options = FillRef2Options(control_schemas_table='VIRTUAL SCHEMAS',
+                                                             predifend_control_schemas_table='PREDEFINED SCHEMAS',
+                                                             ref_table='REF',
+                                                             sim_table='Сигналы и механизмы',
+                                                             iec_table='МЭК 61850',
+                                                             fake_signals_table='FAKE_SIGNALS',
                                                              templates=[template_dsw1, template_dsw2, template_dsw3,
                                                                         template_davr2, template_dltc3,
                                                                         wired_template_dsw1,
@@ -944,10 +931,10 @@ class Options:
                                                              wired_signal_output_blink_default_cell=9,
                                                              wired_signal_output_flicker_default_page=1,
                                                              wired_signal_output_flicker_default_cell=11,
-                                                             ts_odu_algorithm='[Логика ТС ОДУ]',
-                                                             ts_odu_table='[Сигналы и механизмы ТС ОДУ]',
+                                                             ts_odu_algorithm='Логика ТС ОДУ',
+                                                             ts_odu_table='Сигналы и механизмы ТС ОДУ',
                                                              ts_odu_info=None,
-                                                             abonent_table='[TPTS]',
+                                                             abonent_table='TPTS',
                                                              wired_signal_default_input_port='Port1',
                                                              ts_odu_templates=[],
                                                              custom_templates_ts_odu=[],
@@ -955,14 +942,5 @@ class Options:
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
 
-        # <-------------------------------find_schemas_options--------------------------------------------------------->
-
-        schema1: Schema = Schema(name="Управление выключателем",
-                                 command_parts=['XA01', 'XA02'],
-                                 signal_parts=['XB01', 'XB02', 'XB07', 'XB08', 'XF19'])
-        find_schemas_options = FindSchemasOptions(sim_table_name='[МЭК 61850]',
-                                                  schemas=[schema1])
-        # <-------------------------------find_schemas_options--------------------------------------------------------->
-
         return Options(generate_table_options=generate_option, fill_mms_address_options=fill_mms_options,
-                       find_schemas_options=find_schemas_options, fill_ref2_options=fill_ref2_options)
+                       fill_ref2_options=fill_ref2_options)

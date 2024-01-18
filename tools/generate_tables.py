@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass, field, fields
 
 from tools.utils.progress_utils import ProgressBar
-from tools.utils.sql_utils import Connection
+from tools.utils.sql_utils import Connection, BaseType
 
 
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
@@ -70,11 +70,22 @@ class Signal:
     template: str | None = field(default=None, metadata={'column_name': 'SCHEMA'})
 
     @staticmethod
-    def create_from_row(value: dict[str, str]) -> 'Signal':
+    def create_from_row(value: dict[str, str], base_type: BaseType) -> 'Signal':
         signal: Signal = Signal()
         for dataclass_field in fields(signal):
             if 'column_name' in dataclass_field.metadata:
-                column_name: str = dataclass_field.metadata['column_name']
+                if base_type == BaseType.ACCESS:
+                    column_name: str = dataclass_field.metadata['column_name']
+                elif base_type == BaseType.POSTGRES:
+                    match dataclass_field.name:
+                        case 'module':
+                            column_name = 'module_name'
+                        case 'schema':
+                            column_name = 'schema_name'
+                        case _:
+                            column_name: str = str(dataclass_field.metadata['column_name']).lower()
+                else:
+                    raise Exception("Неподдерживаемый тип DBEngine")
                 if column_name in value:
                     if value[column_name] is None:
                         setattr(signal, dataclass_field.name, None)
@@ -206,31 +217,53 @@ class GenerateTables:
     Основной класс генерации таблиц
     """
     _options: 'GenerateTableOptions'
-    _access_base: Connection
+    _connection: Connection
     _columns_list: dict[str, list[str]]
 
-    def __init__(self, options: GenerateTableOptions, access_base: Connection):
+    def __init__(self, options: GenerateTableOptions, connection: Connection):
         self._options = options
-        self._access_base = access_base
+        self._connection = connection
         self._columns_list = {}
 
-    @staticmethod
-    def _get_column_set(signal_type: dataclass) -> set[str]:
+    def _get_column_set(self, signal_type: dataclass) -> set[str]:
         columns: set[str] = set()
         for dataclass_field in fields(signal_type):
-            if 'column_name' in dataclass_field.metadata:
-                columns.add(dataclass_field.metadata['column_name'])
+            if self._connection.get_base_type() == BaseType.ACCESS:
+                if 'column_name' in dataclass_field.metadata:
+                    columns.add(dataclass_field.metadata['column_name'])
+            elif self._connection.get_base_type() == BaseType.POSTGRES:
+                match dataclass_field.name:
+                    case 'schema':
+                        columns.add('schema_name')
+                    case 'module':
+                        columns.add('module_name')
+                    case _:
+                        columns.add(str(dataclass_field.metadata['column_name']).lower())
+            else:
+                raise Exception("Неподдерживаемый тип DBEngine")
         return columns
 
-    @staticmethod
-    def _get_columns_and_values(signal: dataclass, columns_from_table: list[str]) -> tuple[list[str], list[str]]:
+    def _get_columns_and_values(self, signal: dataclass, columns_from_table: list[str]) -> tuple[list[str], list[str]]:
         columns: list[str] = []
         values: list[str] = []
         for dataclass_field in fields(signal):
-            if 'column_name' in dataclass_field.metadata and \
-                    dataclass_field.metadata['column_name'] in columns_from_table:
-                columns.append(dataclass_field.metadata['column_name'])
-                values.append(getattr(signal, dataclass_field.name))
+            if 'column_name' in dataclass_field.metadata:
+                column_name: str
+                if self._connection.get_base_type() == BaseType.ACCESS:
+                    column_name = dataclass_field.metadata['column_name']
+                elif self._connection.get_base_type() == BaseType.POSTGRES:
+                    match dataclass_field.name:
+                        case 'schema':
+                            column_name = 'schema_name'
+                        case 'module':
+                            column_name = 'module_name'
+                        case _:
+                            column_name = str(dataclass_field.metadata['column_name']).lower()
+                else:
+                    raise Exception("Неподдерживаемый тип DBEngine")
+                if column_name in columns_from_table:
+                    columns.append(dataclass_field.metadata['column_name'])
+                    values.append(getattr(signal, dataclass_field.name))
         return columns, values
 
     def _get_kksp_list(self) -> list[str]:
@@ -238,16 +271,16 @@ class GenerateTables:
         Функция получения списка KKSp
         :return: Список KKSp
         """
-        values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.aep_table_name,
-                                                                       fields=['KKSp'],
-                                                                       key_names=None,
-                                                                       key_values=None,
-                                                                       uniq_values=True,
-                                                                       sort_by=None,
-                                                                       key_operator=None)
+        values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.aep_table_name,
+                                                                      fields=['KKSp'],
+                                                                      key_names=None,
+                                                                      key_values=None,
+                                                                      uniq_values=True,
+                                                                      sort_by=None,
+                                                                      key_operator=None)
         kksp_list: list[str] = []
         for value in values:
-            kksp_list.append(value['KKSp'])
+            kksp_list.append(value[self.get_column_name(self._connection.modify_column_name('KKSp'))])
         return kksp_list
 
     def _generate_table_for_kksp(self, kksp: str) -> None:
@@ -256,23 +289,26 @@ class GenerateTables:
         :param kksp: KKSp для генерации
         :return: None
         """
+
         values: list[dict[str, str]] = \
-            self._access_base.retrieve_data(table_name=self._options.aep_table_name,
-                                            fields=self._columns_list[self._options.aep_table_name],
-                                            key_names=['KKSp'],
-                                            key_values=[kksp])
+            self._connection.retrieve_data(table_name=self._options.aep_table_name,
+                                           fields=self._columns_list[self._options.aep_table_name],
+                                           key_names=['KKSp'],
+                                           key_values=[kksp])
         sw_containers: dict[SWTemplate, dict[str, list[Signal]]] = {}
         for sw_template in self._options.sw_templates:
             sw_containers[sw_template] = {}
         for value in values:
             ProgressBar.update_progress()
-            signal: Signal = Signal.create_from_row(value)
+            signal: Signal = Signal.create_from_row(value=value,
+                                                    base_type=self._connection.get_base_type())
+
             if signal.module in ['1623', '1631', '1661', '1662', '1671', '1673']:
                 self._process_wired_signal(signal=signal, sw_containers=sw_containers)
             elif signal.module == '1691':
                 self._process_digital_signal(signal=signal)
         self._flush_sw_container(sw_containers=sw_containers)
-        self._access_base.commit()
+        self._connection.commit()
 
     def _process_wired_signal(self, signal: Signal, sw_containers: dict[SWTemplate, dict[str, list[Signal]]]) -> None:
         """
@@ -422,11 +458,11 @@ class GenerateTables:
                 raise Exception('SignalGroupError')
 
     def _get_sw_template(self, kksp: str, cabinet: str, sw_template: SWTemplate) -> str:
-        values: list[dict[str, str]] = self._access_base.retrieve_data(table_name=self._options.aep_table_name,
-                                                                       fields=['PART'],
-                                                                       key_names=['KKSp', 'CABINET'],
-                                                                       key_values=[kksp, cabinet])
-        path_list: list[str] = [value['PART'] for value in values]
+        values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.aep_table_name,
+                                                                      fields=['PART'],
+                                                                      key_names=['KKSp', 'CABINET'],
+                                                                      key_values=[kksp, cabinet])
+        path_list: list[str] = [value[self.get_column_name('PART')] for value in values]
         for sw_template in sorted(sw_template.variants, key=lambda item: len(item.parts), reverse=True):
             if len(sw_template.parts) == 0 or all(part in path_list for part in sw_template.parts):
                 return sw_template.schema
@@ -476,17 +512,17 @@ class GenerateTables:
         columns, values = self._get_columns_and_values(signal=signal,
                                                        columns_from_table=self._columns_list[
                                                            self._options.sim_table_name])
-        self._access_base.insert_row(table_name=self._options.sim_table_name,
-                                     column_names=columns,
-                                     values=values)
+        self._connection.insert_row(table_name=self._options.sim_table_name,
+                                    column_names=columns,
+                                    values=values)
 
     def _add_signal_to_fake_table(self, signal: Signal):
-        self._access_base.update_field(table_name=self._options.fake_signals_table_name,
-                                       fields=['DESCR_RUS', 'DESCR_ENG', 'CABINET', 'KKSP'],
-                                       values=[signal.name_rus, signal.name_eng,
-                                               signal.cabinet, signal.kksp],
-                                       key_names=['KKS', 'PART'],
-                                       key_values=[signal.kks, signal.part])
+        self._connection.update_field(table_name=self._options.fake_signals_table_name,
+                                      fields=['DESCR_RUS', 'DESCR_ENG', 'CABINET', 'KKSP'],
+                                      values=[signal.name_rus, signal.name_eng,
+                                              signal.cabinet, signal.kksp],
+                                      key_names=['KKS', 'PART'],
+                                      key_values=[signal.kks, signal.part])
 
     def _add_signal_to_iec_table(self, signal: Signal) -> None:
         """
@@ -494,22 +530,27 @@ class GenerateTables:
         :param signal: Сигнал (запись в базе)
         :return: None
         """
-        if (self._access_base.contains_value(table_name=self._options.fake_signals_table_name,
-                                             key_names=['KKS', 'PART'],
-                                             key_values=[signal.kks, signal.part])):
+        if (self._connection.contains_value(table_name=self._options.fake_signals_table_name,
+                                            key_names=['KKS', 'PART'],
+                                            key_values=[signal.kks, signal.part])):
             self._add_signal_to_fake_table(signal=signal)
         else:
             digital_signal: DigitalSignal = DigitalSignal.create_from_signal(signal=signal)
-            digital_signal.area = self._access_base.retrieve_data('TPTS', ['AREA'], ['CABINET'], [signal.cabinet])[0][
-                'AREA']
-            digital_signal.ip = self._access_base.retrieve_data('[Network data]', ['IP'], ['KKSp'], [signal.kksp])[0][
-                'IP']
+            digital_signal.area = self._connection.retrieve_data(
+                'TPTS', ['AREA'],
+                ['CABINET'],
+                [signal.cabinet])[0][self._connection.modify_column_name('AREA')]
+            digital_signal.ip = self._connection.retrieve_data(
+                self._options.network_data_table_name,
+                ['IP'], ['KKSp'],
+                [signal.kksp])[0][
+                self._connection.modify_column_name('IP')]
             columns, values = self._get_columns_and_values(signal=digital_signal,
                                                            columns_from_table=self._columns_list[
                                                                self._options.iec_table_name])
-            self._access_base.insert_row(table_name=self._options.iec_table_name,
-                                         column_names=columns,
-                                         values=values)
+            self._connection.insert_row(table_name=self._options.iec_table_name,
+                                        column_names=columns,
+                                        values=values)
 
     @staticmethod
     def _sanitizate_signal_name(signal_name: str) -> str:
@@ -552,28 +593,29 @@ class GenerateTables:
         :return: None
         """
         values: list[dict[str, str]] = \
-            self._access_base.retrieve_data(table_name=self._options.sign_table_name,
-                                            fields=self._columns_list[self._options.sign_table_name],
-                                            key_names=None,
-                                            key_values=None)
+            self._connection.retrieve_data(table_name=self._options.sign_table_name,
+                                           fields=self._columns_list[self._options.sign_table_name],
+                                           key_names=None,
+                                           key_values=None)
         ProgressBar.config(max_value=len(values), length=50, step=1,
                            prefix=f'Добавление диагностических сигналов', suffix='Завершено')
         for value in values:
             values_to_add: list[str] = []
             for column in self._columns_list[self._options.sign_table_name]:
                 values_to_add.append(value[column])
-            self._access_base.insert_row(table_name=self._options.sim_table_name,
-                                         column_names=self._columns_list[self._options.sign_table_name],
-                                         values=values_to_add)
+            self._connection.insert_row(table_name=self._options.sim_table_name,
+                                        column_names=self._columns_list[self._options.sign_table_name],
+                                        values=values_to_add)
             ProgressBar.update_progress()
+        self._connection.commit()
 
     def _get_table_columns(self):
         columns_from_signal: set[str] = self._get_column_set(signal_type=Signal)
         columns_from_digital_signal: set[str] = self._get_column_set(signal_type=DigitalSignal)
-        columns_from_table_aep: set[str] = self._access_base.get_column_names(table_name=self._options.aep_table_name)
-        columns_from_table_sim: set[str] = self._access_base.get_column_names(table_name=self._options.sim_table_name)
-        columns_from_table_iec: set[str] = self._access_base.get_column_names(table_name=self._options.iec_table_name)
-        columns_from_table_sign: set[str] = self._access_base.get_column_names(table_name=self._options.sign_table_name)
+        columns_from_table_aep: set[str] = self._connection.get_column_names(table_name=self._options.aep_table_name)
+        columns_from_table_sim: set[str] = self._connection.get_column_names(table_name=self._options.sim_table_name)
+        columns_from_table_iec: set[str] = self._connection.get_column_names(table_name=self._options.iec_table_name)
+        columns_from_table_sign: set[str] = self._connection.get_column_names(table_name=self._options.sign_table_name)
         excluded_columns: set[str] = columns_from_signal.difference(columns_from_table_aep)
         if len(excluded_columns) > 0:
             logging.info('Следующие поля не будут загружены: {}'.format(','.join(excluded_columns)))
@@ -587,37 +629,41 @@ class GenerateTables:
         self._columns_list[self._options.sign_table_name] = list(
             columns_from_table_sign.intersection(columns_from_table_sim))
 
+    def get_column_name(self, column_name: str) -> str:
+        return self._connection.modify_column_name(column_name)
+
     def generate(self) -> None:
         """
         Основная функция генерации таблиц
         :return: None
         """
         logging.info(f'Очистка таблицы {self._options.sim_table_name}...')
-        self._access_base.clear_table(self._options.sim_table_name)
+        self._connection.clear_table(self._options.sim_table_name)
         logging.info('Завершено.')
 
         logging.info(f'Очистка таблицы {self._options.iec_table_name}...')
-        self._access_base.clear_table(self._options.iec_table_name)
+        self._connection.clear_table(self._options.iec_table_name)
         logging.info('Завершено')
 
         self._get_table_columns()
 
-        max_value: int = self._access_base.get_row_count(self._options.aep_table_name)
+        max_value: int = self._connection.get_row_count(self._options.aep_table_name)
         logging.info('Заполнение таблиц...')
         ProgressBar.config(max_value=max_value, step=1, prefix='Обработка таблицы АЭП', suffix='Завершено', length=50)
         kksp_list: list[str] = self._get_kksp_list()
         for kksp in kksp_list:
             self._generate_table_for_kksp(kksp=kksp)
+            self._connection.commit()
 
         self._read_signalization_table()
         logging.info('Завершено')
 
     @staticmethod
-    def run(options: GenerateTableOptions, base_path: str) -> None:
+    def run(options: GenerateTableOptions, connection: Connection) -> None:
         logging.info('Запуск скрипта "Заполнение таблиц"...')
-        with Connection.connect_to_mdb(base_path=base_path) as access_base:
+        with connection:
             generate_class: GenerateTables = GenerateTables(options=options,
-                                                            access_base=access_base)
+                                                            connection=connection)
             generate_class.generate()
         logging.info('Выпонение скрипта "Заполнение таблиц" завершено.')
         logging.info('')
