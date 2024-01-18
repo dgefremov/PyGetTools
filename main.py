@@ -31,11 +31,11 @@ def run_scripts():
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
-    FillMMSAdress.run(options=options.fill_mms_address_options, connection=connection)
+    # FillMMSAdress.run(options=options.fill_mms_address_options, connection=connection)
 
     # Расстановка ссылок
     # Закомментировать если не используется
-    FillRef2.run(options=options.fill_ref2_options, connection=connection)
+    # FillRef2.run(options=options.fill_ref2_options, connection=connection)
 
     # Генерация CID файлов на основе шаблона
     # Закомментировать если не используется

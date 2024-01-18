@@ -51,25 +51,25 @@ class Options:
                                               signals={'XB21', 'XB22', 'XL21', 'XL22'},
                                               variants=[SWTemplateVariant(schema='ATSW_1623',
                                                                           parts=[])])
-        signal_modification1 = SignalModification(signal_kks='10BBG01GS001',
-                                                  signal_part='XB17',
+        signal_modification1 = SignalModification(signal_kks=r'^[1-2]0BBG0[13]GS001$',  # 10BBG01GS001, 10BBG03GS001
+                                                  signal_part='^XB17$',
                                                   new_template='BI_1623_INV',
                                                   new_name_rus='Нерабочее положение',
                                                   new_full_name_rus='Нерабочее положение тележки выкатного элемента',
                                                   new_name_eng='Truck non-work pos',
                                                   new_full_name_eng='Non-working position of roll-out element truck',
                                                   new_part='XB08')
-        signal_modification2 = SignalModification(signal_kks='10BBG03GS001',
-                                                  signal_part='XB17',
+        # signal_modification2 = SignalModification(signal_kks='10BFR07GH001',
+        #                                          signal_part='XA10',
+        #                                          new_kks='10BFR07EK001')
+        signal_modification3 = SignalModification(signal_kks=r'^[12]0BB[A-C]27GU012$',
+                                                  signal_part='^XF20$',
                                                   new_template='BI_1623_INV',
-                                                  new_name_rus='Нерабочее положение',
-                                                  new_full_name_rus='Нерабочее положение тележки выкатного элемента',
-                                                  new_name_eng='Truck non-work pos',
-                                                  new_full_name_eng='Non-working position of roll-out element truck',
-                                                  new_part='XB08')
-        signal_modification3 = SignalModification(signal_kks='10BFR07GH001',
-                                                  signal_part='XA10',
-                                                  new_kks='10BFR07EK001')
+                                                  new_name_rus='БАВР-В исправно',
+                                                  new_full_name_rus='БАВР-В исправно',
+                                                  new_name_eng='BAVR-V works correct',
+                                                  new_full_name_eng='BAVR-V works correct'
+                                                  )
 
         generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='Network Data',
                                                                      controller_data_table_name='TPTS',
@@ -85,7 +85,7 @@ class Options:
                                                                                   signal5, signal6, signal7],
                                                                      sw_templates=[sw_template1, sw_template2],
                                                                      signal_modifications=[signal_modification1,
-                                                                                           signal_modification2,
+                                                                                           # signal_modification2,
                                                                                            signal_modification3],
                                                                      copy_ds_to_sim_table=True)
         # <-------------------------------generate_table_options------------------------------------------------------->

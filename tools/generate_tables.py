@@ -472,7 +472,7 @@ class GenerateTables:
     def _modificate_signal(self, signal: Signal) -> Signal:
         signal_modification: SignalModification | None = \
             next((item for item in self._options.signal_modifications
-                  if item.signal_kks == signal.kks and item.signal_part == signal.part), None)
+                  if re.search(item.signal_kks, signal.kks) and re.search(item.signal_part, signal.part)), None)
         if signal_modification is not None:
             if signal_modification.new_template is not None:
                 signal.template = signal_modification.new_template
