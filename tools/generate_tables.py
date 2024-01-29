@@ -82,6 +82,8 @@ class Signal:
                             column_name = 'module_name'
                         case 'schema':
                             column_name = 'schema_name'
+                        case 'connection':
+                            column_name = 'conn'
                         case _:
                             column_name: str = str(dataclass_field.metadata['column_name']).lower()
                 else:
@@ -235,6 +237,8 @@ class GenerateTables:
                 match dataclass_field.name:
                     case 'schema':
                         columns.add('schema_name')
+                    case 'connection':
+                        columns.add('conn')
                     case 'module':
                         columns.add('module_name')
                     case _:
@@ -257,6 +261,8 @@ class GenerateTables:
                             column_name = 'schema_name'
                         case 'module':
                             column_name = 'module_name'
+                        case 'connection':
+                            column_name = 'conn'
                         case _:
                             column_name = str(dataclass_field.metadata['column_name']).lower()
                 else:
