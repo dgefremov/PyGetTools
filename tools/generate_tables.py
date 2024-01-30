@@ -207,7 +207,7 @@ class GenerateTableOptions:
     ref_table_name: str
     sign_table_name: str
     fake_signals_table_name: str
-    skip_signals: list[tuple[str, str]]
+    skip_duplicate_signals: list[tuple[str, str]]
     copy_ds_to_sim_table: bool
     dps_signals: list[DoublePointSignal]
     sw_templates: list[SWTemplate]
@@ -352,7 +352,7 @@ class GenerateTables:
         if signal.part in [dps_signal.single_part for dps_signal in self._options.dps_signals
                            if dps_signal.single_part is not None] and \
                 not any(signal.kks.upper().startswith(item_kks.upper()) and signal.part.upper() == item_part.upper()
-                        for (item_kks, item_part) in self._options.skip_signals):
+                        for (item_kks, item_part) in self._options.skip_duplicate_signals):
             self._duplicate_signal(signal=signal)
         else:
             self._add_signal_to_iec_table(signal=signal)
@@ -539,6 +539,8 @@ class GenerateTables:
         if (self._connection.contains_value(table_name=self._options.fake_signals_table_name,
                                             key_names=['KKS', 'PART'],
                                             key_values=[signal.kks, signal.part])):
+            # Фейковые цифровые сигналы не попадают в таблицу МЭК, т.к. по сути не являются
+            # цифровыми
             self._add_signal_to_fake_table(signal=signal)
         else:
             digital_signal: DigitalSignal = DigitalSignal.create_from_signal(signal=signal)
