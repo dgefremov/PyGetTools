@@ -512,7 +512,7 @@ class FillMMSAdress:
                                                          value[self._connection.modify_column_name('MMS_address')])
                                                         for value in mms_values])
         signal_values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.iec_table_name,
-                                                                             fields=['KKS', 'PART'],
+                                                                             fields=['KKS', 'PART', 'FAKE'],
                                                                              key_names=['KKSp'],
                                                                              key_values=[kksp])
         dataset_list: list[str] = list({value[self._connection.modify_column_name('Dataset')]
@@ -549,6 +549,10 @@ class FillMMSAdress:
         for signal in signal_values:
             kks: str = signal[self._connection.modify_column_name('KKS')]
             part: str = signal[self._connection.modify_column_name('PART')]
+            is_fake: bool = True if signal[self._connection.modify_column_name('FAKE')] else False
+            if is_fake:
+                continue
+
             mms: str | None = mms_storage.get((kks, part), None)
             ied_name: str = ied_name_list[0]
             if mms == '' or mms is None:
