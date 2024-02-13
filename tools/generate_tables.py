@@ -80,7 +80,7 @@ class Signal:
                     match dataclass_field.name:
                         case 'module':
                             column_name = 'module_name'
-                        case 'schema':
+                        case 'template':
                             column_name = 'schema_name'
                         case 'connection':
                             column_name = 'conn'
@@ -236,7 +236,7 @@ class GenerateTables:
                     columns.add(dataclass_field.metadata['column_name'])
             elif self._connection.get_base_type() == BaseType.POSTGRES:
                 match dataclass_field.name:
-                    case 'schema':
+                    case 'template':
                         columns.add('schema_name')
                     case 'connection':
                         columns.add('conn')
@@ -258,7 +258,7 @@ class GenerateTables:
                     column_name = dataclass_field.metadata['column_name']
                 elif self._connection.get_base_type() == BaseType.POSTGRES:
                     match dataclass_field.name:
-                        case 'schema':
+                        case 'template':
                             column_name = 'schema_name'
                         case 'module':
                             column_name = 'module_name'

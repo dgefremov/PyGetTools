@@ -547,9 +547,10 @@ class FillMMSAdress:
                                   rb_slave_list=report_slave_list)
 
         for signal in signal_values:
+            ProgressBar.update_progress()
             kks: str = signal[self._connection.modify_column_name('KKS')]
             part: str = signal[self._connection.modify_column_name('PART')]
-            is_fake: bool = True if signal[self._connection.modify_column_name('FAKE')] else False
+            is_fake: bool = True if signal[self._connection.modify_column_name('FAKE')] == 'True' else False
             if is_fake:
                 continue
 
@@ -564,7 +565,6 @@ class FillMMSAdress:
                             part=part,
                             mms_address=mms,
                             ied_name=ied_name)
-            ProgressBar.update_progress()
         self._connection.commit()
 
     def _fill_mms(self) -> None:
