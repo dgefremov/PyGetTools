@@ -70,6 +70,14 @@ class Options:
                                                   new_name_eng='BAVR-V works correct',
                                                   new_full_name_eng='BAVR-V works correct'
                                                   )
+        ignal_modification4 = SignalModification(signal_kks=r'^[12]0BB[A-C]27GU012$',
+                                                 signal_part='^XF20$',
+                                                 new_template='BI_1623_INV',
+                                                 new_name_rus='БАВР-В исправно',
+                                                 new_full_name_rus='БАВР-В исправно',
+                                                 new_name_eng='BAVR-V works correct',
+                                                 new_full_name_eng='BAVR-V works correct'
+                                                 )
 
         generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='Network Data',
                                                                      controller_data_table_name='TPTS',
@@ -204,7 +212,7 @@ class Options:
                       unrel_ref_cell_num=21),
             InputPort(page=3, cell_num=8, kks=None, part='XF26',
                       unrel_ref_cell_num=22),
-            InputPort(page=3, cell_num=9, kks=None, part='XK00',
+            InputPort(page=3, cell_num=9, kks='10_____GU011', part='XK00',
                       unrel_ref_cell_num=23),
             InputPort(page=3, cell_num=10, kks=None, part='XB08',
                       unrel_ref_cell_num=24),
@@ -225,6 +233,13 @@ class Options:
                                               ts_odu_data=cb_ts_data,
                                               alarm_sound_signal_port='Port3',
                                               warn_sound_signal_port='Port4')
+
+        sc_kru_10_7_ext_sign: Template = Template(name='SC_KRU_10_7_EXT_SIGN',
+                                                  input_ports={'XA00': sc_kru_10_6_sign_input},
+                                                  output_ports={'XA00': cb_output},
+                                                  ts_odu_data=cb_ts_data,
+                                                  alarm_sound_signal_port='Port3',
+                                                  warn_sound_signal_port='Port4')
 
         sc_nku_04_1_sign_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB02',
                                                              unrel_ref_cell_num=18),
@@ -514,6 +529,29 @@ class Options:
                                                                           part='XQ22',
                                                                           unrel_ref_cell_num=None)]},
                                           output_ports={'XQ22': []})
+        custom_template_sum = Template(name='AO_TS_ODU_SUM',
+                                       input_ports={'XQ23': [InputPort(page=2,
+                                                                       cell_num=8,
+                                                                       kks='10MKA01CE101',
+                                                                       part='XQ23',
+                                                                       unrel_ref_cell_num=None),
+                                                             InputPort(page=2,
+                                                                       cell_num=10,
+                                                                       kks='10MKA01CE201',
+                                                                       part='XQ23',
+                                                                       unrel_ref_cell_num=None)],
+                                                    'XQ24': [InputPort(page=2,
+                                                                       cell_num=8,
+                                                                       kks='10MKA01CE101',
+                                                                       part='XQ24',
+                                                                       unrel_ref_cell_num=None),
+                                                             InputPort(page=2,
+                                                                       cell_num=10,
+                                                                       kks='10MKA01CE201',
+                                                                       part='XQ24',
+                                                                       unrel_ref_cell_num=None)],
+                                                    },
+                                       output_ports={'XQ23': [], 'XQ24': []})
 
         ts_odu_panel1: TSODUPanel = TSODUPanel(name='10CWG09',
                                                confirm_part='XG01',
@@ -594,6 +632,7 @@ class Options:
                                                              templates=[ats, ats_vk, ltc, ltc_failure,
                                                                         sc_cb_24, sc_kru_10_3_sign,
                                                                         sc_kru_10_6_sign, sc_kru_10_7_sign,
+                                                                        sc_kru_10_7_ext_sign,
                                                                         sc_nku_04_1_sign, scw_nku_04_0_sign,
                                                                         scw_nku_04_3_sign, scw_nku_04_4_sign, atsw,
                                                                         diag1, diag1_first, diag2, diag2_first,
@@ -610,7 +649,8 @@ class Options:
                                                              abonent_table='TPTS',
                                                              wired_signal_default_input_port='Port1',
                                                              ts_odu_templates=[display, lamp],
-                                                             custom_templates_ts_odu=[custom_template_f_meas],
+                                                             custom_templates_ts_odu=[custom_template_f_meas,
+                                                                                      custom_template_sum],
                                                              read_english_description=True)
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->

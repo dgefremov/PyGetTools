@@ -375,7 +375,7 @@ class Connection:
                 case 'Сигналы и механизмы АЭП':
                     return 'signals_and_mechanisms_aep'
                 case 'Сигналы и механизмы ТС ОДУ':
-                    return 'signals_and_mechanisms_ts_odu'
+                    return 'ts_odu_signals_and_mechanisms'
                 case 'REF':
                     return 'refs'
                 case _:

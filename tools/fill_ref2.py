@@ -304,12 +304,20 @@ class FillRef2:
         :param cabinet: Имя стойки
         :return: Кортеж из ККС (если найден) и кода ошибки
         """
+        key_names = ['MODULE', 'PART', 'CABINET']
+        key_values = ['1691', port.part, cabinet]
+        key_operator = ['<>', '=', '=']
+        if port.kks is not None:
+            key_names.append('KKS')
+            key_values.append(port.kks)
+            key_operator.append('LIKE')
+
         values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.sim_table,
             fields=['KKS', 'CABINET', 'KKSp'],
-            key_names=['MODULE', 'PART', 'CABINET'],
-            key_values=['1691', port.part, cabinet],
-            key_operator=['<>', '=', '='])
+            key_names=key_names,
+            key_values=key_values,
+            key_operator=key_operator)
         if len(values) > 1:
             kks, cabinet, error = self._choose_signal_by_kksp(values=values,
                                                               kksp=kksp)
@@ -327,11 +335,20 @@ class FillRef2:
         :param cabinet: Имя стойки
         :return: Кортеж из ККС (если найден) и кода ошибки
         """
+        key_names = ['PART', 'CABINET']
+        key_values = [port.part, cabinet]
+        key_operator = ['=', '=']
+        if port.kks is not None:
+            key_names.append('KKS')
+            key_values.append(port.kks)
+            key_operator.append('LIKE')
+
         values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.iec_table,
             fields=['KKS', 'KKSp', 'CABINET'],
-            key_names=['PART', 'CABINET'],
-            key_values=[port.part, cabinet])
+            key_names=key_names,
+            key_values=key_values,
+            key_operator=key_operator)
         if len(values) > 1:
             kks, cabinet, error = self._choose_signal_by_kksp(values=values,
                                                               kksp=kksp)
