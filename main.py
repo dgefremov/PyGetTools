@@ -17,21 +17,21 @@ from tools.utils.sql_utils import Connection
 
 def run_scripts():
     configure_logger('log', 'log')
-    options: Options = Options.load_kursk()
-    # options: Options = Options.load_ruppur()
-    connection: Connection = Connection.connect_to_postgres(database='kursk_un_1',
+    # options: Options = Options.load_kursk()
+    options: Options = Options.load_ruppur()
+    connection: Connection = Connection.connect_to_postgres(database='ruppur_un_1',
                                                             user='postgres',
                                                             password='postgres',
-                                                            server='SR-RET-CAD',
+                                                            server='localhost',
                                                             port=5432)
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
-    GenerateTables.run(options=options.generate_table_options, connection=connection)
+    # GenerateTables.run(options=options.generate_table_options, connection=connection)
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
-    FillMMSAdress.run(options=options.fill_mms_address_options, connection=connection)
+    # FillMMSAdress.run(options=options.fill_mms_address_options, connection=connection)
 
     # Расстановка ссылок
     # Закомментировать если не используется

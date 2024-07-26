@@ -1,8 +1,11 @@
 import logging
+import re
 from dataclasses import dataclass
 from enum import Enum
 from tools.utils.sql_utils import Connection
 from tools.utils.progress_utils import ProgressBar
+
+brackets_pattern = re.compile('({.+?})+')
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -219,9 +222,10 @@ class FillRef2:
         return signals[0][0], signals[0][1], ErrorType.NOERROR
 
     def _get_signal_from_sim_by_kks(self, cabinet: str | None, kks: str, kksp: list[str] | None,
-                                    port: InputPort | OutputPort) -> tuple[str | None, str | None, ErrorType]:
+                                    port: InputPort | OutputPort, schema_kks: str | None = None) -> tuple[
+        str | None, str | None, ErrorType]:
         """
-        Поиск сигнала по ККС в таблице  СиМ
+        Поиск сигнала по ККС в таблице СиМ
         :param cabinet: Имя стойки. Если None, поиск будет осуществляться и по другим стойкам
         :param kks: Шаблон для ККС искомого сигнала. Может быть None
         :param kksp: Код терминала. Не учитывается, если Cabinet=None
@@ -229,7 +233,7 @@ class FillRef2:
         :return: Кортеж из ККС (если найден), имени стойки (если найдена) и кода ошибки
         """
         key_names: list[str] = ['KKS', 'MODULE', 'PART']
-        key_values: list[str] = [kks, '1691', port.part]
+        key_values: list[str] = [self.transform_kks(kks, schema_kks), '1691', port.part]
         key_operator = ['LIKE', '<>', '=', '=']
         if cabinet is not None:
             key_names.append('CABINET')
@@ -258,8 +262,9 @@ class FillRef2:
                     values[0][self._connection.modify_column_name('CABINET')], ErrorType.NOERROR)
 
     def _get_signal_from_iec_by_kks(self, kks: str, kksp: list[str] | None,
-                                    port: InputPort | OutputPort, cabinet: str | None) -> tuple[str | None,
-                                                                                                str | None, ErrorType]:
+                                    port: InputPort | OutputPort, cabinet: str | None,
+                                    schema_kks: str | None = None) -> tuple[str | None,
+                                                                     str | None, ErrorType]:
         """
         Поиск сигнала по ККС в таблице МЭК
         :param cabinet: Имя стойки. Если None, поиск будет осуществляться и по другим стойкам
@@ -269,7 +274,7 @@ class FillRef2:
         :return: Кортеж из ККС (если найден), имени стойки (если найдена) и кода ошибки
         """
         key_names = ['KKS', 'PART']
-        key_values = [kks, port.part]
+        key_values = [self.transform_kks(kks, schema_kks), port.part]
         key_operator = ['LIKE', '=']
         if cabinet is not None:
             key_names.append('CABINET')
@@ -295,7 +300,8 @@ class FillRef2:
                     values[0][self._connection.modify_column_name('CABINET')], ErrorType.NOERROR)
         return None, None, ErrorType.NOVALUES
 
-    def _get_signal_from_sim_by_cabinet(self, kksp: list[str], port: InputPort | OutputPort, cabinet: str) -> \
+    def _get_signal_from_sim_by_cabinet(self, kksp: list[str], port: InputPort | OutputPort, cabinet: str,
+                                        schema_kks: str | None = None) -> \
             tuple[str | None, ErrorType]:
         """
         Поиск сигнала в таблице СиМ по KKSp
@@ -309,7 +315,7 @@ class FillRef2:
         key_operator = ['<>', '=', '=']
         if port.kks is not None:
             key_names.append('KKS')
-            key_values.append(port.kks)
+            key_values.append(self.transform_kks(port.kks, schema_kks))
             key_operator.append('LIKE')
 
         values: list[dict[str, str]] = self._connection.retrieve_data(
@@ -326,7 +332,8 @@ class FillRef2:
             return values[0][self._connection.modify_column_name('KKS')], ErrorType.NOERROR
         return None, ErrorType.NOVALUES
 
-    def _get_signal_from_iec_by_cabinet(self, kksp: list[str], port: InputPort | OutputPort, cabinet: str) -> \
+    def _get_signal_from_iec_by_cabinet(self, kksp: list[str], port: InputPort | OutputPort, cabinet: str,
+                                        schema_kks: str | None = None) -> \
             tuple[str | None, ErrorType]:
         """
         Поиск сигнала в таблице МЭК по KKSp
@@ -340,7 +347,7 @@ class FillRef2:
         key_operator = ['=', '=']
         if port.kks is not None:
             key_names.append('KKS')
-            key_values.append(port.kks)
+            key_values.append(self.transform_kks(port.kks, schema_kks))
             key_operator.append('LIKE')
 
         values: list[dict[str, str]] = self._connection.retrieve_data(
@@ -369,11 +376,12 @@ class FillRef2:
         :return: Сигнал как кортеж KKS, PART, ФлагЦифровогоСигнала
         """
         kks: str = port.kks if port.kks is not None else schema_kks
-        # Поиск сигнала в таблице СИМ  по KKS, PART
+        # Поиск сигнала в таблице СИМ по KKS, PART
         found_kks, _, error = self._get_signal_from_sim_by_kks(cabinet=cabinet,
                                                                kks=kks,
                                                                kksp=kksp,
-                                                               port=port)
+                                                               port=port,
+                                                               schema_kks=schema_kks)
         if error == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
@@ -388,7 +396,8 @@ class FillRef2:
         found_kks, _, result = self._get_signal_from_iec_by_kks(kks=kks,
                                                                 port=port,
                                                                 cabinet=cabinet,
-                                                                kksp=kksp)
+                                                                kksp=kksp,
+                                                                schema_kks=schema_kks)
         if result == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
@@ -401,7 +410,8 @@ class FillRef2:
         # Поиск сигнала в таблице СИМ по PART и KKSp
         found_kks, result = self._get_signal_from_sim_by_cabinet(kksp=kksp,
                                                                  port=port,
-                                                                 cabinet=cabinet)
+                                                                 cabinet=cabinet,
+                                                                 schema_kks=schema_kks)
         if result == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
@@ -429,7 +439,8 @@ class FillRef2:
         # Поиск сигнала в таблице МЭК по PART и Cabinet
         found_kks, result = self._get_signal_from_iec_by_cabinet(kksp=kksp,
                                                                  port=port,
-                                                                 cabinet=cabinet)
+                                                                 cabinet=cabinet,
+                                                                 schema_kks=schema_kks)
         if result == ErrorType.TOOMANYVALUES:
             logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                           f'с PART {port.part}')
@@ -474,12 +485,14 @@ class FillRef2:
             found_kks, cabinet, result = self._get_signal_from_sim_by_kks(kks=kks,
                                                                           kksp=None,
                                                                           port=port,
-                                                                          cabinet=None)
+                                                                          cabinet=None,
+                                                                          schema_kks=schema_kks)
             if result == ErrorType.TOOMANYVALUES:
                 found_kks, cabinet, result = self._get_signal_from_sim_by_kks(kks=kks,
                                                                               kksp=kksp,
                                                                               port=port,
-                                                                              cabinet=None)
+                                                                              cabinet=None,
+                                                                              schema_kks=schema_kks)
                 if result == ErrorType.NOERROR:
                     return Signal(kks=found_kks,
                                   part=port.part,
@@ -498,7 +511,8 @@ class FillRef2:
             found_kks, cabinet, result = self._get_signal_from_iec_by_kks(kks=kks,
                                                                           kksp=None,
                                                                           port=port,
-                                                                          cabinet=None)
+                                                                          cabinet=None,
+                                                                          schema_kks=schema_kks)
             if result == ErrorType.TOOMANYVALUES:
                 logging.error(f'Найдено больше одного сигнала для шаблона {template_name} с KKS {schema_kks} для порта '
                               f'с PART {port.part}')
@@ -574,6 +588,19 @@ class FillRef2:
                     self._options.control_schema_name_postfix,
                     values[0][self._connection.modify_column_name('CABINET')], ErrorType.NOERROR)
         return None, None, ErrorType.NOVALUES
+
+    @staticmethod
+    def transform_kks(kks: str, schema_kks: str | None) -> str:
+        if schema_kks is not None and kks.count('{') >= 1:
+            for str_template in re.findall(brackets_pattern, kks):
+                if re.match(r'^{schema_kks:\d+:\d+}$', str_template):
+                    parts: list[str] = str_template[1:-1].split(':')
+                    kks = kks.replace(str_template, schema_kks[int(parts[1]): int(parts[2])])
+                else:
+                    raise Exception(f'Ошибка шаблона: {kks}')
+            return kks
+        else:
+            return kks
 
     def _get_signal_from_fake_signals(self, kks: str, port: InputPort | OutputPort, cabinet: str | None,
                                       kksp: list[str] | None):
