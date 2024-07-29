@@ -70,7 +70,7 @@ class Options:
                                                   new_name_eng='BAVR-V works correct',
                                                   new_full_name_eng='BAVR-V works correct'
                                                   )
-        ignal_modification4 = SignalModification(signal_kks=r'^[12]0BB[A-C]27GU012$',
+        signal_modification4 = SignalModification(signal_kks=r'^[12]0BB[A-C]27GU012$',
                                                  signal_part='^XF20$',
                                                  new_template='BI_1623_INV',
                                                  new_name_rus='БАВР-В исправно',
@@ -94,7 +94,8 @@ class Options:
                                                                      sw_templates=[sw_template1, sw_template2],
                                                                      signal_modifications=[signal_modification1,
                                                                                            # signal_modification2,
-                                                                                           signal_modification3],
+                                                                                           signal_modification3,
+                                                                                           signal_modification4],
                                                                      copy_ds_to_sim_table=True)
         # <-------------------------------generate_table_options------------------------------------------------------->
 
@@ -116,6 +117,9 @@ class Options:
 
         bsc_signal = BSCSignal(signal_part='XB10',
                                command_part=('XL11', 'XL12'))
+
+        bsc_signal = BSCSignal(signal_part='XB10',
+                               command_part=None)
 
         dataset_1: DatasetDescription = DatasetDescription(name='Dataset01',
                                                            sps_range=SignalRange(1, 50),
@@ -562,12 +566,12 @@ class Options:
                                                        unrel_ref_cell_num=None),
                                              InputPort(page=2,
                                                        cell_num=4,
-                                                       kks=r'{schema_kks:0:7}EK011{schema_kks:12:13}',
+                                                       kks=r'{schema_kks:0:7}EK021{schema_kks:12:13}',
                                                        part='XB11',
                                                        unrel_ref_cell_num=None),
                                              InputPort(page=2,
                                                        cell_num=5,
-                                                       kks=r'{schema_kks:0:7}EK011{schema_kks:12:13}',
+                                                       kks=r'{schema_kks:0:7}EK031{schema_kks:12:13}',
                                                        part='XB11',
                                                        unrel_ref_cell_num=None),
 
@@ -578,12 +582,12 @@ class Options:
                                                        unrel_ref_cell_num=None),
                                              InputPort(page=2,
                                                        cell_num=9,
-                                                       kks=r'{schema_kks:0:7}EK011{schema_kks:12:13}',
+                                                       kks=r'{schema_kks:0:7}EK021{schema_kks:12:13}',
                                                        part='XB12',
                                                        unrel_ref_cell_num=None),
                                              InputPort(page=2,
                                                        cell_num=10,
-                                                       kks=r'{schema_kks:0:7}EK011{schema_kks:12:13}',
+                                                       kks=r'{schema_kks:0:7}EK031{schema_kks:12:13}',
                                                        part='XB12',
                                                        unrel_ref_cell_num=None),
 
@@ -594,12 +598,12 @@ class Options:
                                                        unrel_ref_cell_num=None),
                                              InputPort(page=2,
                                                        cell_num=14,
-                                                       kks=r'{schema_kks:0:7}EK011{schema_kks:12:13}',
+                                                       kks=r'{schema_kks:0:7}EK021{schema_kks:12:13}',
                                                        part='XB70',
                                                        unrel_ref_cell_num=None),
                                              InputPort(page=2,
                                                        cell_num=15,
-                                                       kks=r'{schema_kks:0:7}EK011{schema_kks:12:13}',
+                                                       kks=r'{schema_kks:0:7}EK031{schema_kks:12:13}',
                                                        part='XB70',
                                                        unrel_ref_cell_num=None)
                                          ]},

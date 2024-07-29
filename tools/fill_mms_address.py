@@ -37,13 +37,17 @@ class BSCSignal:
     """
     Класс хранения сигнала РПН типа BSC
     """
-    signal_part: str
-    command_part: tuple[str, str]
+    signal_part: str | None
+    command_part: tuple[str, str] | None
 
     def is_command(self, value: str) -> bool:
+        if self.command_part is None:
+            return False
         return value.upper() in (command_part.upper() for command_part in self.command_part)
 
     def is_signal(self, value: str) -> bool:
+        if self.signal_part is None:
+            return False
         return value.upper() == self.signal_part
 
     def get_signals_num(self):
@@ -220,28 +224,30 @@ class MMSGenerator:
             if bsc_signal.is_signal(part) or bsc_signal.is_command(part):
                 if kks not in self.bsc_container:
                     self.bsc_container[kks] = [part]
-                    return None
                 else:
                     self.bsc_container[kks].append(part)
-                if set([bsc_signal.signal_part] + list(bsc_signal.command_part)).issubset(set(self.bsc_container[kks])):
-                    if set([bsc_signal.signal_part] + list(bsc_signal.command_part)) == set(self.bsc_container[kks]):
-                        del self.bsc_container[kks]
-                    else:
-                        self.bsc_container[kks] = list(set(self.bsc_container[kks]) -
-                                                       set([bsc_signal.signal_part] + list(bsc_signal.command_part)))
-                    self.bsc_index += 1
-                    dataset: DatasetDescription | None = self.dataset_descriptions.get_by_bsc_index(self.bsc_index)
-                    if dataset is None:
-                        logging.error(f'Не найден Dataset для BSC {self.bsc_index}')
-                        raise Exception('DatasetError')
-                    if not self.dataset_container.__contains__(dataset):
-                        self.dataset_container.append(dataset)
-                    command_adress: str = self.ied_name + self.BSC_PREFIX + str(
-                        self.bsc_index) + self.BSC_COMMAND_POSTFIX
-                    signal_address: str = self.ied_name + self.BSC_PREFIX + str(self.bsc_index) + self.BSC_POS_POSTFIX
-                    return [(kks, bsc_signal.signal_part, signal_address),
-                            (kks, bsc_signal.command_part[0], command_adress),
-                            (kks, bsc_signal.command_part[1], command_adress)]
+        for bsc_signal in self.bsc_signals:
+            if bsc_signal.signal_part is None or bsc_signal.command_part is None:
+                continue
+            if set([bsc_signal.signal_part] + list(bsc_signal.command_part)).issubset(set(self.bsc_container[kks])):
+                if set([bsc_signal.signal_part] + list(bsc_signal.command_part)) == set(self.bsc_container[kks]):
+                    del self.bsc_container[kks]
+                else:
+                    self.bsc_container[kks] = list(set(self.bsc_container[kks]) -
+                                                   set([bsc_signal.signal_part] + list(bsc_signal.command_part)))
+                self.bsc_index += 1
+                dataset: DatasetDescription | None = self.dataset_descriptions.get_by_bsc_index(self.bsc_index)
+                if dataset is None:
+                    logging.error(f'Не найден Dataset для BSC {self.bsc_index}')
+                    raise Exception('DatasetError')
+                if not self.dataset_container.__contains__(dataset):
+                    self.dataset_container.append(dataset)
+                command_adress: str = self.ied_name + self.BSC_PREFIX + str(
+                    self.bsc_index) + self.BSC_COMMAND_POSTFIX
+                signal_address: str = self.ied_name + self.BSC_PREFIX + str(self.bsc_index) + self.BSC_POS_POSTFIX
+                return [(kks, bsc_signal.signal_part, signal_address),
+                        (kks, bsc_signal.command_part[0], command_adress),
+                        (kks, bsc_signal.command_part[1], command_adress)]
         return None
 
     def get_mms_for_spc(self, kks: str, part: str) -> list[tuple[str, str, str]]:
@@ -293,6 +299,8 @@ class MMSGenerator:
                                     part=part)
 
     def add_undubled_signals(self) -> list[tuple[str, str, str]]:
+        if len(self.dpc_container) == 0 :
+            return []
         mms_addresses: list[tuple[str, str, str]] = []
         # Сначала ищем ККС в котором только команды
         for dpc_signal in self.dpc_signals:
@@ -389,6 +397,103 @@ class MMSGenerator:
                                           self.SPC_POSTFIX))
         return mms_addresses
 
+    def add_undubled_bsc_signals(self) -> list[tuple[str, str, str]]:
+        if len(self.bsc_container) == 0:
+            return []
+        mms_addresses: list[tuple[str, str, str]] = []
+        # Сначала ищем ККС в котором только команды
+        for bsc_signal in self.bsc_signals:
+            keys: list[str] = list(self.bsc_container)
+            # Только для команд у которых есть и команды и сигналы
+            if bsc_signal.signal_part is None or bsc_signal.command_part is None:
+                continue
+            commands_parts_set: set[str] = {part for part in bsc_signal.command_part}
+            signals_parts_set: set[str] = {bsc_signal.signal_part}
+            removed_keys: list[str] = []
+            for kks_with_commands in keys:
+                if kks_with_commands in removed_keys:
+                    continue
+                if commands_parts_set.issubset(set(self.bsc_container[kks_with_commands])):
+                    # дальше пытаемся найти ККС в котором есть сигналы для данных команд
+                    for kks_with_signals in keys:
+                        if kks_with_signals in removed_keys:
+                            continue
+                        if signals_parts_set.issubset(set(self.bsc_container[kks_with_signals])) \
+                                and kks_with_signals[:6] == kks_with_commands[:6]:
+                            if signals_parts_set == set(self.bsc_container[kks_with_signals]):
+                                del self.bsc_container[kks_with_signals]
+                            else:
+                                self.bsc_container[kks_with_signals] = list(set(self.bsc_container[kks_with_signals])
+                                                                            - signals_parts_set)
+                            if commands_parts_set == set(self.bsc_container[kks_with_commands]):
+                                del self.bsc_container[kks_with_commands]
+                            else:
+                                self.bsc_container[kks_with_commands] = list(set(self.bsc_container[kks_with_commands])
+                                                                             - commands_parts_set)
+                            removed_keys.append(kks_with_signals)
+                            removed_keys.append(kks_with_commands)
+                            self.bsc_index += 1
+                            dataset: DatasetDescription | None = self.dataset_descriptions.get_by_bsc_index(
+                                self.bsc_index)
+                            if dataset is None:
+                                logging.error(f'Не найден Dataset для BSC {self.bsc_index}')
+                                raise Exception('DatasetError')
+                            if not self.dataset_container.__contains__(dataset):
+                                self.dataset_container.append(dataset)
+                            self.bsc_index += 1
+                            command_adress: str = self.ied_name + self.BSC_PREFIX + str(
+                                self.bsc_index) + self.BSC_COMMAND_POSTFIX
+                            signal_address: str = self.ied_name + self.BSC_PREFIX + str(
+                                self.bsc_index) + self.BSC_POS_POSTFIX
+
+                            mms_addresses.append((kks_with_signals, bsc_signal.signal_part, signal_address))
+                            mms_addresses.append((kks_with_commands, bsc_signal.command_part[0], command_adress))
+                            mms_addresses.append((kks_with_commands, bsc_signal.command_part[1], command_adress))
+            if len(self.bsc_container) == 0:
+                return mms_addresses
+        # Следующий шаг: ищем ККС в которых есть только сигналы
+        for bsc_signal in self.bsc_signals:
+            keys: list[str] = list(self.bsc_container)
+            removed_keys: list[str] = []
+            if bsc_signal.command_part is not None:
+                continue
+            signals_parts_set: set[str] = {bsc_signal.signal_part}
+            for kks_with_signals in keys:
+                if kks_with_signals in removed_keys:
+                    continue
+                if set(signals_parts_set).issubset(set(self.bsc_container[kks_with_signals])):
+                    if set(self.bsc_container[kks_with_signals]) == signals_parts_set:
+                        del self.bsc_container[kks_with_signals]
+                    else:
+                        self.bsc_container[kks_with_signals] = list(set(self.bsc_container[kks_with_signals]) -
+                                                                    signals_parts_set)
+                    removed_keys.append(kks_with_signals)
+                    self.bsc_index += 1
+                    dataset: DatasetDescription | None = self.dataset_descriptions.get_by_bsc_index(
+                        self.bsc_index)
+                    if dataset is None:
+                        logging.error(f'Не найден Dataset для DPC {self.bsc_index}')
+                        raise Exception('DatasetError')
+                    if not self.dataset_container.__contains__(dataset):
+                        self.dataset_container.append(dataset)
+                    signal_address: str = self.ied_name + self.BSC_PREFIX + str(
+                        self.bsc_index) + self.BSC_POS_POSTFIX
+
+                    mms_addresses.append((kks_with_signals, bsc_signal.signal_part, signal_address))
+        # Все оставшиеся сигналы классифицируются как SPC\SPS
+        for kks in self.bsc_container:
+            part_list: list[str] = self.bsc_container[kks]
+            for part in part_list:
+                if any(bsc_signal.is_signal(part) for bsc_signal in self.bsc_signals):
+                    self.sps_index += 1
+                    mms_addresses.append((kks, part, self.ied_name + self.SPS_PREFIX + str(self.sps_index) +
+                                          self.SPS_POSTFIX))
+                else:
+                    self.spc_index += 1
+                    mms_addresses.append((kks, part, self.ied_name + self.SPC_PREFIX + str(self.spc_index) +
+                                          self.SPC_POSTFIX))
+        return mms_addresses
+
 
 class FillMMSAdress:
     _options: FillMMSAddressOptions
@@ -450,6 +555,7 @@ class FillMMSAdress:
             if result is not None:
                 mms_addresses += result
         mms_addresses += mms_generator.add_undubled_signals()
+        mms_addresses += mms_generator.add_undubled_bsc_signals()
         ied_name: str = 'IED_' + kksp.replace('-', '_')
         for kks, part, mms_address in mms_addresses:
             self._write_mms(kks=kks,
