@@ -70,14 +70,6 @@ class Options:
                                                   new_name_eng='BAVR-V works correct',
                                                   new_full_name_eng='BAVR-V works correct'
                                                   )
-        signal_modification4 = SignalModification(signal_kks=r'^[12]0BB[A-C]27GU012$',
-                                                 signal_part='^XF20$',
-                                                 new_template='BI_1623_INV',
-                                                 new_name_rus='БАВР-В исправно',
-                                                 new_full_name_rus='БАВР-В исправно',
-                                                 new_name_eng='BAVR-V works correct',
-                                                 new_full_name_eng='BAVR-V works correct'
-                                                 )
 
         generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='Network Data',
                                                                      controller_data_table_name='TPTS',
@@ -94,8 +86,7 @@ class Options:
                                                                      sw_templates=[sw_template1, sw_template2],
                                                                      signal_modifications=[signal_modification1,
                                                                                            # signal_modification2,
-                                                                                           signal_modification3,
-                                                                                           signal_modification4],
+                                                                                           signal_modification3],
                                                                      copy_ds_to_sim_table=True)
         # <-------------------------------generate_table_options------------------------------------------------------->
 
@@ -317,8 +308,8 @@ class Options:
                                        OutputPort(name='Port2', kks=None, part='XL22'),
                                        OutputPort(name='Port3', kks=None, part='XA20', page=3, cell_num=5),
                                        OutputPort(name='Port4', kks=None, part='XA20', page=3, cell_num=6),
-                                       OutputPort(name='Port5', kks=None, part='XA20', page=3, cell_num=7),
-                                       OutputPort(name='Port6', kks=None, part='XA20', page=3, cell_num=8)]
+                                       OutputPort(name='Port6', kks=None, part='XA20', page=3, cell_num=7),
+                                       OutputPort(name='Port7', kks=None, part='XA20', page=3, cell_num=8)]
 
         ats_ts_output: list[OutputPort] = [OutputPort(name='Port3', kks=None, part='XB22',
                                                       blink_port_name='Port4', flicker_port_name='Port5'),
