@@ -19,7 +19,7 @@ def run_scripts():
     configure_logger('log', 'log')
     # options: Options = Options.load_kursk()
     options: Options = Options.load_ruppur()
-    connection: Connection = Connection.connect_to_postgres(database='ruppur_un_1',
+    connection: Connection = Connection.connect_to_postgres(database='ruppur_un_2',
                                                             user='postgres',
                                                             password='postgres',
                                                             server='SR-RET-CAD',

@@ -202,7 +202,7 @@ class FillRef2:
 
     # def _choose_signal_by_kksp(values: list[dict, str], kksp: list[str]) -> tuple[str | None, str | None, ErrorType]:
     def _choose_signal_by_kksp(self, values: list[dict[str, str]], kksp: list[str]) -> tuple[
-        str | None, str | None, ErrorType]:
+                            str | None, str | None, ErrorType]:
 
         """
         Выбор среди результата запроса ККС, у которого KKSp совпадает с заданным
@@ -223,7 +223,7 @@ class FillRef2:
 
     def _get_signal_from_sim_by_kks(self, cabinet: str | None, kks: str, kksp: list[str] | None,
                                     port: InputPort | OutputPort, schema_kks: str | None = None) -> tuple[
-        str | None, str | None, ErrorType]:
+                                        str | None, str | None, ErrorType]:
         """
         Поиск сигнала по ККС в таблице СиМ
         :param cabinet: Имя стойки. Если None, поиск будет осуществляться и по другим стойкам
@@ -264,7 +264,7 @@ class FillRef2:
     def _get_signal_from_iec_by_kks(self, kks: str, kksp: list[str] | None,
                                     port: InputPort | OutputPort, cabinet: str | None,
                                     schema_kks: str | None = None) -> tuple[str | None,
-                                                                     str | None, ErrorType]:
+                                                                            str | None, ErrorType]:
         """
         Поиск сигнала по ККС в таблице МЭК
         :param cabinet: Имя стойки. Если None, поиск будет осуществляться и по другим стойкам
@@ -763,107 +763,114 @@ class FillRef2:
             table_name=self._options.predifend_control_schemas_table,
             fields=['KKS', 'SCHEMA', 'PART', 'CABINET', 'TS_ODU_PANEL', 'INST_PLACE', 'KKSp', 'ONLY_FOR_REF'])
         logging.info('Запуск обработки таблицы со схемами управления...')
-        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка схем управления', suffix='Завершено',
-                           length=50)
-        for value in values:
-            ProgressBar.update_progress()
-            schema_kks: str = value[self._connection.modify_column_name('KKS')]
-            schema_part: str = value[self._connection.modify_column_name('PART')]
-            cabinet: str = value[self._connection.modify_column_name('CABINET')]
-            template_name: str = value[self._connection.modify_column_name('SCHEMA')]
-            if ';' in value[self._connection.modify_column_name('KKSp')]:
-                kksp = value[self._connection.modify_column_name('KKSp')].split(';')
-            else:
-                kksp = [value[self._connection.modify_column_name('KKSp')]]
-            mozaic_element: MozaicElement | None = None
-            if (value[self._connection.modify_column_name('TS_ODU_PANEL')] is not None and
-                    value[self._connection.modify_column_name('TS_ODU_PANEL')] != '' and
-                    value[self._connection.modify_column_name('INST_PLACE')] is not None and
-                    value[self._connection.modify_column_name('INST_PLACE')] != ''):
-                mozaic_element = MozaicElement(ts_odu_panel=value[self._connection.modify_column_name('TS_ODU_PANEL')],
-                                               place=value[self._connection.modify_column_name('INST_PLACE')])
-            add_kks_postfix: bool = value[self._connection.modify_column_name('ONLY_FOR_REF')] == 'False'
-            ref_list_for_schema: list[SignalRef] | None = \
-                self._get_ref_for_schema(schema_kks=schema_kks,
-                                         schema_part=schema_part,
-                                         schema_cabinet=cabinet,
-                                         template_name=template_name,
-                                         mozaic_element=mozaic_element,
-                                         kksp=kksp,
-                                         add_kks_postfix=add_kks_postfix,
-                                         template_list=self._options.templates)
-            if ref_list_for_schema is None:
-                error_flag = True
-            else:
-                ref_list = ref_list + ref_list_for_schema
-        if error_flag:
-            logging.info('Завершено с ошибками.')
-            return None
+        if len(values) > 0:
+            ProgressBar.config(max_value=len(values), step=1, prefix='Обработка схем управления', suffix='Завершено',
+                               length=50)
+            for value in values:
+                ProgressBar.update_progress()
+                schema_kks: str = value[self._connection.modify_column_name('KKS')]
+                schema_part: str = value[self._connection.modify_column_name('PART')]
+                cabinet: str = value[self._connection.modify_column_name('CABINET')]
+                template_name: str = value[self._connection.modify_column_name('SCHEMA')]
+                if ';' in value[self._connection.modify_column_name('KKSp')]:
+                    kksp = value[self._connection.modify_column_name('KKSp')].split(';')
+                else:
+                    kksp = [value[self._connection.modify_column_name('KKSp')]]
+                mozaic_element: MozaicElement | None = None
+                if (value[self._connection.modify_column_name('TS_ODU_PANEL')] is not None and
+                        value[self._connection.modify_column_name('TS_ODU_PANEL')] != '' and
+                        value[self._connection.modify_column_name('INST_PLACE')] is not None and
+                        value[self._connection.modify_column_name('INST_PLACE')] != ''):
+                    mozaic_element = MozaicElement(
+                        ts_odu_panel=value[self._connection.modify_column_name('TS_ODU_PANEL')],
+                        place=value[self._connection.modify_column_name('INST_PLACE')])
+                add_kks_postfix: bool = value[self._connection.modify_column_name('ONLY_FOR_REF')] == 'False'
+                ref_list_for_schema: list[SignalRef] | None = \
+                    self._get_ref_for_schema(schema_kks=schema_kks,
+                                             schema_part=schema_part,
+                                             schema_cabinet=cabinet,
+                                             template_name=template_name,
+                                             mozaic_element=mozaic_element,
+                                             kksp=kksp,
+                                             add_kks_postfix=add_kks_postfix,
+                                             template_list=self._options.templates)
+                if ref_list_for_schema is None:
+                    error_flag = True
+                else:
+                    ref_list = ref_list + ref_list_for_schema
+            if error_flag:
+                logging.info('Завершено с ошибками.')
+                return None
         logging.info('Завершено')
         return ref_list
 
     def _process_sound_signals(self) -> tuple[list[SignalRef], list[tuple[str, str, str]]]:
 
         refs: list[SignalRef] = []
+        update_schemas: list[tuple[str, str, str]] = []
         refs_on_page: int = self._options.or_schema_end_cell - self._options.or_schema_start_cell + 1
         logging.info('Запуск обработки звуковых сигналов')
-        ProgressBar.config(max_value=len(self._alarm_sound_container) + len(self._warn_sound_container),
-                           step=1, prefix='Обработка звуковых сигналов', suffix='Завершено', length=50)
-        index: int = 0
-        for signal in self._alarm_sound_container:
-            ProgressBar.update_progress()
-            cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
-            page_num: int = index // (refs_on_page - 1) + 2
-            refs.append(self._get_ref_for_signal(source_signal=signal,
-                                                 target_kks=self._options.ts_odu_info.alarm_sound_kks,
-                                                 target_abonent=self._abonent_map[self._options.ts_odu_info.cabinet],
-                                                 target_part=self._options.ts_odu_info.alarm_sound_part,
-                                                 target_page=page_num,
-                                                 target_cell=cell_num,
-                                                 source_port=self._alarm_sound_container[signal]))
-            index += 1
-        index = 0
-        for signal in self._warn_sound_container:
-            ProgressBar.update_progress()
-            cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
-            page_num: int = index // (refs_on_page - 1) + 2
-            refs.append(self._get_ref_for_signal(source_signal=signal,
-                                                 target_kks=self._options.ts_odu_info.alarm_sound_kks,
-                                                 target_abonent=self._abonent_map[self._options.ts_odu_info.cabinet],
-                                                 target_part=self._options.ts_odu_info.warning_sound_part,
-                                                 target_page=page_num,
-                                                 target_cell=cell_num,
-                                                 source_port=self._warn_sound_container[signal]))
-            index += 1
-        refs.append(SignalRef(kks=self._options.ts_odu_info.alarm_sound_check_kks,
-                              part=self._options.ts_odu_info.alarm_sound_check_part,
-                              ref=f'{self._options.ts_odu_info.alarm_sound_kks}_'
-                                  f'{self._options.ts_odu_info.alarm_sound_part}\\'
-                                  f'{self._options.ts_odu_info.alarm_sound_check_page}\\'
-                                  f'{self._options.ts_odu_info.alarm_sound_check_cell}',
-                              unrel_ref=None))
-        refs.append(SignalRef(kks=self._options.ts_odu_info.warn_sound_check_kks,
-                              part=self._options.ts_odu_info.warn_sound_check_part,
-                              ref=f'{self._options.ts_odu_info.warning_sound_kks}_'
-                                  f'{self._options.ts_odu_info.warning_sound_part}\\'
-                                  f'{self._options.ts_odu_info.warn_sound_check_page}\\'
-                                  f'{self._options.ts_odu_info.warn_sound_check_cell}',
-                              unrel_ref=None))
+        if len(self._alarm_sound_container) > 0:
+            ProgressBar.config(max_value=len(self._alarm_sound_container) + len(self._warn_sound_container),
+                               step=1, prefix='Обработка звуковых сигналов', suffix='Завершено', length=50)
+            index: int = 0
+            for signal in self._alarm_sound_container:
+                ProgressBar.update_progress()
+                cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
+                page_num: int = index // (refs_on_page - 1) + 2
+                refs.append(self._get_ref_for_signal(source_signal=signal,
+                                                     target_kks=self._options.ts_odu_info.alarm_sound_kks,
+                                                     target_abonent=self._abonent_map[
+                                                         self._options.ts_odu_info.cabinet],
+                                                     target_part=self._options.ts_odu_info.alarm_sound_part,
+                                                     target_page=page_num,
+                                                     target_cell=cell_num,
+                                                     source_port=self._alarm_sound_container[signal]))
+                index += 1
+            index = 0
+            for signal in self._warn_sound_container:
+                ProgressBar.update_progress()
+                cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
+                page_num: int = index // (refs_on_page - 1) + 2
+                refs.append(self._get_ref_for_signal(source_signal=signal,
+                                                     target_kks=self._options.ts_odu_info.alarm_sound_kks,
+                                                     target_abonent=self._abonent_map[
+                                                         self._options.ts_odu_info.cabinet],
+                                                     target_part=self._options.ts_odu_info.warning_sound_part,
+                                                     target_page=page_num,
+                                                     target_cell=cell_num,
+                                                     source_port=self._warn_sound_container[signal]))
+                index += 1
+            refs.append(SignalRef(kks=self._options.ts_odu_info.alarm_sound_check_kks,
+                                  part=self._options.ts_odu_info.alarm_sound_check_part,
+                                  ref=f'{self._options.ts_odu_info.alarm_sound_kks}_'
+                                      f'{self._options.ts_odu_info.alarm_sound_part}\\'
+                                      f'{self._options.ts_odu_info.alarm_sound_check_page}\\'
+                                      f'{self._options.ts_odu_info.alarm_sound_check_cell}',
+                                  unrel_ref=None))
+            refs.append(SignalRef(kks=self._options.ts_odu_info.warn_sound_check_kks,
+                                  part=self._options.ts_odu_info.warn_sound_check_part,
+                                  ref=f'{self._options.ts_odu_info.warning_sound_kks}_'
+                                      f'{self._options.ts_odu_info.warning_sound_part}\\'
+                                      f'{self._options.ts_odu_info.warn_sound_check_page}\\'
+                                      f'{self._options.ts_odu_info.warn_sound_check_cell}',
+                                  unrel_ref=None))
 
-        update_schemas: list[tuple[str, str, str]] = [(self._options.ts_odu_info.alarm_sound_kks,
-                                                       self._options.ts_odu_info.alarm_sound_part,
-                                                       f'SOUND_ALARM_{len(self._alarm_sound_container)}'),
-                                                      (self._options.ts_odu_info.warning_sound_kks,
-                                                       self._options.ts_odu_info.warning_sound_part,
-                                                       f'SOUND_WARN_{len(self._warn_sound_container)}')]
+            update_schemas = [(self._options.ts_odu_info.alarm_sound_kks,
+                               self._options.ts_odu_info.alarm_sound_part,
+                               f'SOUND_ALARM_{len(self._alarm_sound_container)}'),
+                              (self._options.ts_odu_info.warning_sound_kks,
+                               self._options.ts_odu_info.warning_sound_part,
+                               f'SOUND_WARN_{len(self._warn_sound_container)}')]
         logging.info('Завершено.')
         return refs, update_schemas
 
     def _get_abonent_map(self) -> dict[str, int]:
         values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.abonent_table,
                                                                       fields=['CABINET', 'ABONENT_ID'])
-        return {value[self._connection.modify_column_name('CABINET')]:
-                    int(value[self._connection.modify_column_name('ABONENT_ID')]) for value in values}
+        return {value[
+                    self._connection.modify_column_name('CABINET')]:
+                        int(value[self._connection.modify_column_name('ABONENT_ID')]) for value in values}
 
     def _get_signal_for_ts_odu_logic(self, kks: str, part: str) -> \
             tuple[Signal | None, ErrorType]:
@@ -919,52 +926,53 @@ class FillRef2:
         ok_flag: bool = True
         used_names: list[str] = []
         dynamic_templates: list[DynamicTemplate] = []
+        updated_schemas: list[tuple[str, str, str]] = []
+        virtual_schemas: list[VirtualSchema] = []
+        signal_refs: list[SignalRef] = []
         values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.ts_odu_algorithm,
             fields=['KKS', 'PART', 'CABINET', 'INST_PLACE', 'TS_ODU_PANEL', 'TYPE'])
         logging.info('Запуск обработки логики ТС ОДУ...')
-        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка логики ТС ОДУ', suffix='Завершено',
-                           length=50)
-        for value in values:
-            ProgressBar.update_progress()
-            source_signal, source_error = self._get_signal_for_ts_odu_logic(
-                kks=value[self._connection.modify_column_name('KKS')],
-                part=value[self._connection.modify_column_name('PART')])
-            if source_error != ErrorType.NOERROR:
-                ok_flag = False
-                continue
-            mozaic_element: MozaicElement = MozaicElement(
-                place=value[self._connection.modify_column_name('INST_PLACE')],
-                ts_odu_panel=value[self._connection.modify_column_name('TS_ODU_PANEL')])
+        if len(values) > 0:
+            ProgressBar.config(max_value=len(values), step=1, prefix='Обработка логики ТС ОДУ', suffix='Завершено',
+                               length=50)
+            for value in values:
+                ProgressBar.update_progress()
+                source_signal, source_error = self._get_signal_for_ts_odu_logic(
+                    kks=value[self._connection.modify_column_name('KKS')],
+                    part=value[self._connection.modify_column_name('PART')])
+                if source_error != ErrorType.NOERROR:
+                    ok_flag = False
+                    continue
+                mozaic_element: MozaicElement = MozaicElement(
+                    place=value[self._connection.modify_column_name('INST_PLACE')],
+                    ts_odu_panel=value[self._connection.modify_column_name('TS_ODU_PANEL')])
 
-            dynamic_template: DynamicTemplate | None = \
-                next((template for template in dynamic_templates
-                      if template.target.ts_odu_panel == mozaic_element.ts_odu_panel
-                      and template.target.place == mozaic_element.place and
-                      template.type == value[self._connection.modify_column_name('TYPE')]), None)
-            if dynamic_template is None:
-                dynamic_template = DynamicTemplate(target=mozaic_element,
-                                                   source=[source_signal],
-                                                   type=value[self._connection.modify_column_name('TYPE')])
-                dynamic_templates.append(dynamic_template)
-            else:
-                dynamic_template.source.append(source_signal)
-        updated_schemas: list[tuple[str, str, str]] = []
-        virtual_schemas: list[VirtualSchema] = []
-        signal_refs: list[SignalRef] = []
-        for dynamic_template in dynamic_templates:
-            result = self._get_refs_for_dynamic_template(dynamic_template=dynamic_template,
-                                                         used_names=used_names)
-            if result is None:
-                ok_flag = False
-                continue
-            virtual_schemas += result[0]
-            signal_refs += result[1]
-            if result[2] is not None:
-                updated_schemas.append(result[2])
-        if not ok_flag:
-            logging.info('Завершено с ошибками.')
-            return None
+                dynamic_template: DynamicTemplate | None = \
+                    next((template for template in dynamic_templates
+                          if template.target.ts_odu_panel == mozaic_element.ts_odu_panel
+                          and template.target.place == mozaic_element.place and
+                          template.type == value[self._connection.modify_column_name('TYPE')]), None)
+                if dynamic_template is None:
+                    dynamic_template = DynamicTemplate(target=mozaic_element,
+                                                       source=[source_signal],
+                                                       type=value[self._connection.modify_column_name('TYPE')])
+                    dynamic_templates.append(dynamic_template)
+                else:
+                    dynamic_template.source.append(source_signal)
+            for dynamic_template in dynamic_templates:
+                result = self._get_refs_for_dynamic_template(dynamic_template=dynamic_template,
+                                                             used_names=used_names)
+                if result is None:
+                    ok_flag = False
+                    continue
+                virtual_schemas += result[0]
+                signal_refs += result[1]
+                if result[2] is not None:
+                    updated_schemas.append(result[2])
+            if not ok_flag:
+                logging.info('Завершено с ошибками.')
+                return None
         logging.info('Завершено.')
         return virtual_schemas, signal_refs, updated_schemas
 
@@ -973,110 +981,116 @@ class FillRef2:
         values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.ts_odu_table,
                                                                       fields=['KKS', 'PART', 'KKSp', 'SCHEMA'])
         logging.info('Запуск обработки сигналов ТС ОДУ...')
-        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка сигналов ТС ОДУ', suffix='Завершено',
-                           length=50)
         refs: list[SignalRef] = []
-        for value in values:
-            ProgressBar.update_progress()
-            kks: str = value[self._connection.modify_column_name('KKS')]
-            part: str = value[self._connection.modify_column_name('PART')]
-            template_name: str = updated_schemas[2] if updated_schemas[0] == kks and updated_schemas[1] == part \
-                else value[self._connection.modify_column_name('SCHEMA')]
-            ts_odu_panel_name: str = value[self._connection.modify_column_name('KKSp')]
-            template: TSODUTemplate | None = None
-            if template_name is None:
-                continue
-            for templ in self._options.ts_odu_templates:
-                if (templ.name.endswith('%') and template_name.startswith(templ.name[:-1])) \
-                        or template_name == templ.name:
-                    template = templ
-                    break
-            if template is None:
-                continue
-            ts_odu_panel: TSODUPanel = next((panel for panel in self._options.ts_odu_info.panels if panel.name ==
-                                             ts_odu_panel_name), None)
-            acknowledgment_signal: Signal = Signal(kks=ts_odu_panel.acknowledgment_kks,
-                                                   part=ts_odu_panel.acknowledgment_part,
-                                                   cabinet=self._options.ts_odu_info.cabinet,
-                                                   type=SignalType.TS_ODU)
-            if template.acknolegment_cell is not None and template.acknolegment_page is not None:
-                ref: SignalRef = self._get_ref_for_signal(source_signal=acknowledgment_signal,
-                                                          target_abonent=self._abonent_map[
-                                                              acknowledgment_signal.cabinet],
-                                                          target_kks=kks,
-                                                          target_part=part,
-                                                          target_page=template.acknolegment_page,
-                                                          target_cell=template.acknolegment_cell)
-                refs.append(ref)
-            if template.warning_port is not None:
-                self._warn_sound_container[Signal(kks=kks,
-                                                  part=part,
-                                                  cabinet=acknowledgment_signal.cabinet,
-                                                  type=SignalType.TS_ODU)] = template.warning_port
+        if len(values) > 0:
+            ProgressBar.config(max_value=len(values), step=1, prefix='Обработка сигналов ТС ОДУ', suffix='Завершено',
+                               length=50)
+            for value in values:
+                ProgressBar.update_progress()
+                kks: str = value[self._connection.modify_column_name('KKS')]
+                part: str = value[self._connection.modify_column_name('PART')]
+                template_name: str = updated_schemas[2] if updated_schemas[0] == kks and updated_schemas[1] == part \
+                    else value[self._connection.modify_column_name('SCHEMA')]
+                ts_odu_panel_name: str = value[self._connection.modify_column_name('KKSp')]
+                template: TSODUTemplate | None = None
+                if template_name is None:
+                    continue
+                for templ in self._options.ts_odu_templates:
+                    if (templ.name.endswith('%') and template_name.startswith(templ.name[:-1])) \
+                            or template_name == templ.name:
+                        template = templ
+                        break
+                if template is None:
+                    continue
+                ts_odu_panel: TSODUPanel = next((panel for panel in self._options.ts_odu_info.panels if panel.name ==
+                                                 ts_odu_panel_name), None)
+                acknowledgment_signal: Signal = Signal(kks=ts_odu_panel.acknowledgment_kks,
+                                                       part=ts_odu_panel.acknowledgment_part,
+                                                       cabinet=self._options.ts_odu_info.cabinet,
+                                                       type=SignalType.TS_ODU)
+                if template.acknolegment_cell is not None and template.acknolegment_page is not None:
+                    ref: SignalRef = self._get_ref_for_signal(source_signal=acknowledgment_signal,
+                                                              target_abonent=self._abonent_map[
+                                                                  acknowledgment_signal.cabinet],
+                                                              target_kks=kks,
+                                                              target_part=part,
+                                                              target_page=template.acknolegment_page,
+                                                              target_cell=template.acknolegment_cell)
+                    refs.append(ref)
+                if template.warning_port is not None:
+                    self._warn_sound_container[Signal(kks=kks,
+                                                      part=part,
+                                                      cabinet=acknowledgment_signal.cabinet,
+                                                      type=SignalType.TS_ODU)] = template.warning_port
 
-            if template.display_test_cell is not None and template.display_test_page is not None \
-                    and ts_odu_panel.display_test_kks is not None and \
-                    ts_odu_panel.display_test_part is not None \
-                    and ts_odu_panel.display_test_port is not None:
-                display_test_ref: str = f'{ts_odu_panel.display_test_port}:{kks}_{part}\\' \
-                                        f'{template.display_test_page}\\{template.display_test_cell}'
-                refs.append(SignalRef(kks=ts_odu_panel.display_test_kks,
-                                      part=ts_odu_panel.display_test_part,
-                                      ref=display_test_ref,
-                                      unrel_ref=None))
-            if template.lamp_test_cell is not None and template.lamp_test_page is not None \
-                    and ts_odu_panel.lamp_test_kks is not None and \
-                    ts_odu_panel.lamp_test_part is not None \
-                    and ts_odu_panel.lamp_test_port is not None:
-                lamp_test_ref: str = f'{ts_odu_panel.lamp_test_port}:{kks}_{part}\\' \
-                                     f'{template.lamp_test_page}\\{template.lamp_test_cell}'
-                refs.append(SignalRef(kks=ts_odu_panel.lamp_test_kks,
-                                      part=ts_odu_panel.lamp_test_part,
-                                      ref=lamp_test_ref,
-                                      unrel_ref=None))
-            input_port_list: list[InputPort] = template.input_ports
-            if input_port_list is not None:
-                for input_port in input_port_list:
-                    source_signal, error = self._get_signal_for_ts_odu_logic(kks=input_port.kks,
-                                                                             part=input_port.part)
-                    if error == ErrorType.TOOMANYVALUES:
-                        logging.error(f'Найдено больше одного сигнала для порта {input_port.kks}_{input_port.part} для '
-                                      f'шкафа {ts_odu_panel_name}')
-                        ok_flag = False
-                        continue
-                    if error == ErrorType.NOVALUES:
-                        logging.error(f'Не найдено ни одного сигнала для порта {input_port.kks}_{input_port.part} для '
-                                      f'шкафа {ts_odu_panel_name}')
-                        ok_flag = False
-                        continue
-                    ref: str = f'{kks}_{part}\\{input_port.page}\\{input_port.cell_num}'
-                    refs.append(SignalRef(kks=source_signal.kks,
-                                          part=source_signal.part,
-                                          ref=ref,
+                if template.display_test_cell is not None and template.display_test_page is not None \
+                        and ts_odu_panel.display_test_kks is not None and \
+                        ts_odu_panel.display_test_part is not None \
+                        and ts_odu_panel.display_test_port is not None:
+                    display_test_ref: str = f'{ts_odu_panel.display_test_port}:{kks}_{part}\\' \
+                                            f'{template.display_test_page}\\{template.display_test_cell}'
+                    refs.append(SignalRef(kks=ts_odu_panel.display_test_kks,
+                                          part=ts_odu_panel.display_test_part,
+                                          ref=display_test_ref,
                                           unrel_ref=None))
-            output_port_list: list[OutputPort] = template.output_ports
-            if output_port_list is not None:
-                for output_port in output_port_list:
-                    target_signal, error = self._get_signal_for_ts_odu_logic(kks=output_port.kks,
-                                                                             part=output_port.part)
-                    if error == ErrorType.TOOMANYVALUES:
-                        logging.error(f'Найдено больше одного сигнала для порта {output_port.kks}_{output_port.part} '
-                                      f'для шкафа {ts_odu_panel_name}')
-                        ok_flag = False
-                        continue
-                    if error == ErrorType.NOVALUES:
-                        logging.error(f'Не найдено ни одного сигнала для порта {output_port.kks}_{output_port.part} для'
-                                      f' шкафа {ts_odu_panel_name}')
-                        ok_flag = False
-                        continue
-                    ref: str = f'{target_signal.kks}_{target_signal.part}\\{output_port.page}\\{output_port.cell_num}'
-                    refs.append(SignalRef(kks=kks,
-                                          part=part,
-                                          ref=ref,
+                if template.lamp_test_cell is not None and template.lamp_test_page is not None \
+                        and ts_odu_panel.lamp_test_kks is not None and \
+                        ts_odu_panel.lamp_test_part is not None \
+                        and ts_odu_panel.lamp_test_port is not None:
+                    lamp_test_ref: str = f'{ts_odu_panel.lamp_test_port}:{kks}_{part}\\' \
+                                         f'{template.lamp_test_page}\\{template.lamp_test_cell}'
+                    refs.append(SignalRef(kks=ts_odu_panel.lamp_test_kks,
+                                          part=ts_odu_panel.lamp_test_part,
+                                          ref=lamp_test_ref,
                                           unrel_ref=None))
-        if not ok_flag:
-            logging.info('Завершено с ошибками.')
-            return None
+                input_port_list: list[InputPort] = template.input_ports
+                if input_port_list is not None:
+                    for input_port in input_port_list:
+                        source_signal, error = self._get_signal_for_ts_odu_logic(kks=input_port.kks,
+                                                                                 part=input_port.part)
+                        if error == ErrorType.TOOMANYVALUES:
+                            logging.error(
+                                f'Найдено больше одного сигнала для порта {input_port.kks}_{input_port.part} для '
+                                f'шкафа {ts_odu_panel_name}')
+                            ok_flag = False
+                            continue
+                        if error == ErrorType.NOVALUES:
+                            logging.error(
+                                f'Не найдено ни одного сигнала для порта {input_port.kks}_{input_port.part} для '
+                                f'шкафа {ts_odu_panel_name}')
+                            ok_flag = False
+                            continue
+                        ref: str = f'{kks}_{part}\\{input_port.page}\\{input_port.cell_num}'
+                        refs.append(SignalRef(kks=source_signal.kks,
+                                              part=source_signal.part,
+                                              ref=ref,
+                                              unrel_ref=None))
+                output_port_list: list[OutputPort] = template.output_ports
+                if output_port_list is not None:
+                    for output_port in output_port_list:
+                        target_signal, error = self._get_signal_for_ts_odu_logic(kks=output_port.kks,
+                                                                                 part=output_port.part)
+                        if error == ErrorType.TOOMANYVALUES:
+                            logging.error(
+                                f'Найдено больше одного сигнала для порта {output_port.kks}_{output_port.part} '
+                                f'для шкафа {ts_odu_panel_name}')
+                            ok_flag = False
+                            continue
+                        if error == ErrorType.NOVALUES:
+                            logging.error(
+                                f'Не найдено ни одного сигнала для порта {output_port.kks}_{output_port.part} для'
+                                f' шкафа {ts_odu_panel_name}')
+                            ok_flag = False
+                            continue
+                        ref: str = (f'{target_signal.kks}_{target_signal.part}\\{output_port.page}\\'
+                                    f'{output_port.cell_num}')
+                        refs.append(SignalRef(kks=kks,
+                                              part=part,
+                                              ref=ref,
+                                              unrel_ref=None))
+            if not ok_flag:
+                logging.info('Завершено с ошибками.')
+                return None
         logging.info('Завершено.')
         return refs
 
@@ -1565,31 +1579,32 @@ class FillRef2:
             table_name=self._options.ts_odu_table,
             fields=['KKS', 'PART', 'SCHEMA', 'KKSp'])
         logging.info('Запуск обработка нетиповых сигналов ТС ОДУ...')
-        ProgressBar.config(max_value=len(values), step=1, prefix='Обработка нетиповых сигналов ТС ОДУ',
-                           suffix='Завершено', length=50)
-        cabinet: str = self._options.ts_odu_info.cabinet
-        for value in values:
-            ProgressBar.update_progress()
-            schema_kks: str = value[self._connection.modify_column_name('KKS')]
-            schema_part: str = value[self._connection.modify_column_name('PART')]
-            template_name: str = value[self._connection.modify_column_name('SCHEMA')]
-            mozaic_element: MozaicElement | None = None
-            add_kks_postfix: bool = False
-            ref_list_for_schema: list[SignalRef] | None = \
-                self._get_ref_for_schema(schema_kks=schema_kks, schema_part=schema_part, schema_cabinet=cabinet,
-                                         template_name=template_name,
-                                         mozaic_element=mozaic_element,
+        if len(values) > 0:
+            ProgressBar.config(max_value=len(values), step=1, prefix='Обработка нетиповых сигналов ТС ОДУ',
+                               suffix='Завершено', length=50)
+            cabinet: str = self._options.ts_odu_info.cabinet
+            for value in values:
+                ProgressBar.update_progress()
+                schema_kks: str = value[self._connection.modify_column_name('KKS')]
+                schema_part: str = value[self._connection.modify_column_name('PART')]
+                template_name: str = value[self._connection.modify_column_name('SCHEMA')]
+                mozaic_element: MozaicElement | None = None
+                add_kks_postfix: bool = False
+                ref_list_for_schema: list[SignalRef] | None = \
+                    self._get_ref_for_schema(schema_kks=schema_kks, schema_part=schema_part, schema_cabinet=cabinet,
+                                             template_name=template_name,
+                                             mozaic_element=mozaic_element,
 
-                                         add_kks_postfix=add_kks_postfix,
-                                         template_list=self._options.custom_templates_ts_odu,
-                                         skip_schemas=True)
-            if ref_list_for_schema is None:
-                error_flag = True
-            else:
-                ref_list = ref_list + ref_list_for_schema
-        if error_flag:
-            logging.info('Завершено с ошибками.')
-            return None
+                                             add_kks_postfix=add_kks_postfix,
+                                             template_list=self._options.custom_templates_ts_odu,
+                                             skip_schemas=True)
+                if ref_list_for_schema is None:
+                    error_flag = True
+                else:
+                    ref_list = ref_list + ref_list_for_schema
+            if error_flag:
+                logging.info('Завершено с ошибками.')
+                return None
         logging.info('Завершено.')
         return ref_list
 
