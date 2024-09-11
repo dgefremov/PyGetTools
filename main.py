@@ -39,9 +39,9 @@ def run_scripts():
 
     # Генерация CID файлов на основе шаблона
     # Закомментировать если не используется
-    # CopyCid.run(base_path=base_path,
-    #            source_cid_path='C:\\Data\\Курск база\\All_in_one_25MV.cid',
-    #            target_path='C:\\Data\\Курск база\\!CID\\',
+    # CopyCid.run(connection=connection,
+    #            source_cid_path='/home/dgefremov@rasu.local/Проекты/Руппур/ППО/All_in_one_25MV.cid',
+    #            target_path='/home/dgefremov@rasu.local/Проекты/Руппур/ППО/CID_EMUL_un2/',
     #            mask='255.255.255.0')
 
     # RepairCid.run(cid_path='D:\\Work\\Руппур\\!CID\\',

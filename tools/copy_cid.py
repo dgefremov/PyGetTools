@@ -21,13 +21,13 @@ class CopyCid:
     """
     Основной класс копирования CID файлов
     """
-    _base_path: str
+    _connection: Connection
     _source_cid_path: str
     _target_path: str
     _mask: str
 
-    def __init__(self, base_path: str, source_cid_path: str, target_path: str, mask: str):
-        self._base_path = base_path
+    def __init__(self, connection: Connection, source_cid_path: str, target_path: str, mask: str):
+        self._connection = connection
         self._source_cid_path = source_cid_path
         self._target_path = target_path
         self._mask = mask
@@ -37,24 +37,24 @@ class CopyCid:
         Загрузка данных для генерации из базы
         :return: Словарь со значениями из базы
         """
-        with Connection.connect_to_mdb(self._base_path) as access_base:
-            data: list[dict[str, str]] = access_base.retrieve_data_from_joined_table(
-                table_name1='[МЭК 61850]',
-                table_name2='[IED]',
-                joined_fields=['IED_NAME'],
-                fields=['ICD_PATH', 'IP', 'SENSR_TYPE', '[IED].IED_NAME'],
+        with self._connection as base:
+            data: list[dict[str, str]] = base.retrieve_data_from_joined_table(
+                table_name1='iec_61850',
+                table_name2='ied',
+                joined_fields=['ied_name'],
+                fields=['icd_path', 'ip', 'sensr_type', 'ied.ied_name'],
                 key_names=None,
                 key_values=None,
                 uniq_values=True)
             data_for_xml: dict[str, list[tuple[ParameterData, str]]] = {}
             _, file_extension = os.path.splitext(self._source_cid_path)
             for value in data:
-                file_name: str = self._target_path + value['ICD_PATH']
+                file_name: str = self._target_path + value['icd_path']
                 if file_name[-4:].upper() not in ('.CID', '.ICD', 'SCD'):
                     file_name = file_name + file_extension
-                    ip: str = value['IP']
-                    ied_name: str = value['[IED].IED_NAME']
-                    sensr_type: str = value['SENSR_TYPE']
+                    ip: str = value['ip']
+                    ied_name: str = value['ied.ied_name']
+                    sensr_type: str = value['sensr_type']
                 parameters: list[tuple[any, str]] = [(Nodes.IP.value, ip),
                                                      (Nodes.MASK.value, self._mask),
                                                      (Nodes.IEDNAME.value, ied_name),
@@ -77,9 +77,9 @@ class CopyCid:
             ProgressBar.update_progress()
 
     @staticmethod
-    def run(base_path: str, source_cid_path: str, target_path: str, mask: str) -> None:
+    def run(connection: Connection, source_cid_path: str, target_path: str, mask: str) -> None:
         logging.info('Запуск скрипта...')
-        copy_class: CopyCid = CopyCid(base_path=base_path,
+        copy_class: CopyCid = CopyCid(connection=connection,
                                       source_cid_path=source_cid_path,
                                       target_path=target_path,
                                       mask=mask)
