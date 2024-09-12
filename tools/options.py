@@ -40,16 +40,20 @@ class Options:
         sw_template1: SWTemplate = SWTemplate(name='XA00',
                                               connection='NTSW0113',
                                               signals={'XB01', 'XB02', 'XL01', 'XL02', 'XB07', 'XB08'},
-                                              variants=[SWTemplateVariant(schema='SCW_NKU_04_0_SIGN',
+                                              variants=[SWTemplateVariant(schema=['SCW_NKU_04_0_SIGN',
+                                                                                  'SCW_NKU_04_0_SIGN_WITHOUT_BPU'],
                                                                           parts=[]),
-                                                        SWTemplateVariant(schema='SCW_NKU_04_3_SIGN',
+                                                        SWTemplateVariant(schema=['SCW_NKU_04_3_SIGN',
+                                                                                  'SCW_NKU_04_3_SIGN_WITHOUT_BPU'],
                                                                           parts=['XK17', 'XF06']),
-                                                        SWTemplateVariant(schema='SCW_NKU_04_4_SIGN',
+                                                        SWTemplateVariant(schema=['SCW_NKU_04_4_SIGN',
+                                                                                  'SCW_NKU_04_4_SIGN_WITHOUT_BPU'],
                                                                           parts=['XK52', 'XK00', 'XK39', 'XB07'])])
         sw_template2: SWTemplate = SWTemplate(name='XA10',
                                               connection='NTSW0114',
                                               signals={'XB21', 'XB22', 'XL21', 'XL22'},
-                                              variants=[SWTemplateVariant(schema='ATSW_1623',
+                                              variants=[SWTemplateVariant(schema=['ATSW_1623',
+                                                                                  'ATSW_1623_WITHOUT_BPU'],
                                                                           parts=[])])
         signal_modification1 = SignalModification(signal_kks=r'^[1-2]0BBG0[13]GS001$',  # 10BBG01GS001, 10BBG03GS001
                                                   signal_part='^XB17$',
@@ -86,6 +90,7 @@ class Options:
                                                                      iec_table_name='МЭК 61850',
                                                                      ied_table_name='IED',
                                                                      ref_table_name='REF',
+                                                                     ps_table_name='PREDEFINED_SCHEMAS',
                                                                      fake_signals_table_name='FAKE_SIGNALS',
                                                                      sign_table_name='DIAG',
                                                                      skip_duplicate_signals=[('00BCE', 'XB20')],
@@ -382,6 +387,13 @@ class Options:
                                                     InputPort(page=3, cell_num=7, kks=None, part='XF07',
                                                               unrel_ref_cell_num=None)]
 
+        scw_nku_04_3_sign_input_without_bpu: list[InputPort] = [InputPort(page=2, cell_num=5, kks=None, part='XK17',
+                                                                          unrel_ref_cell_num=None),
+                                                                InputPort(page=2, cell_num=6, kks=None, part='XF06',
+                                                                          unrel_ref_cell_num=None),
+                                                                InputPort(page=2, cell_num=7, kks=None, part='XF07',
+                                                                          unrel_ref_cell_num=None)]
+
         cbw_ts_output: list[OutputPort] = [OutputPort(name='Port3', kks=None, part='XB02',
                                                       blink_port_name='Port4', flicker_port_name='Port5'),
                                            OutputPort(name='Port6', kks=None, part='XB01',
@@ -400,7 +412,7 @@ class Options:
                                                warn_sound_signal_port='Port2')
 
         scw_nku_04_3_sign_without_bpu: Template = Template(name='SCW_NKU_04_3_SIGN_WITHOUT_BPU',
-                                                           input_ports={'XA00': scw_nku_04_3_sign_input},
+                                                           input_ports={'XA00': scw_nku_04_3_sign_input_without_bpu},
                                                            output_ports={'XA00': []})
 
         scw_nku_04_0_sign: Template = Template(name='SCW_NKU_04_0_SIGN',
@@ -423,6 +435,16 @@ class Options:
                                                     InputPort(page=3, cell_num=8, kks=None, part='XB07',
                                                               unrel_ref_cell_num=None)]
 
+        scw_nku_04_4_sign_input_without_bpu: list[InputPort] = [InputPort(page=2, cell_num=5, kks=None, part='XK52',
+                                                                          unrel_ref_cell_num=None),
+                                                                InputPort(page=2, cell_num=6, kks='_0_____EW204',
+                                                                          part='XK00',
+                                                                          unrel_ref_cell_num=None),
+                                                                InputPort(page=2, cell_num=7, kks=None, part='XK39',
+                                                                          unrel_ref_cell_num=None),
+                                                                InputPort(page=2, cell_num=8, kks=None, part='XB07',
+                                                                          unrel_ref_cell_num=None)]
+
         scw_nku_04_4_sign: Template = Template(name='SCW_NKU_04_4_SIGN',
                                                input_ports={'XA00': scw_nku_04_4_sign_input},
                                                output_ports={'XA00': []},
@@ -431,7 +453,7 @@ class Options:
                                                warn_sound_signal_port='Port2')
 
         scw_nku_04_4_sign_without_bpu: Template = Template(name='SCW_NKU_04_4_SIGN_WITHOUT_BPU',
-                                                           input_ports={'XA00': scw_nku_04_4_sign_input},
+                                                           input_ports={'XA00': scw_nku_04_4_sign_input_without_bpu},
                                                            output_ports={'XA00': []})
 
         atsw_output: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA30', page=3, cell_num=5),
@@ -794,14 +816,14 @@ class Options:
         sw_template1: SWTemplate = SWTemplate(name='XA99',
                                               connection='NTSW0113',
                                               signals={'XB01', 'XB02', 'XA01', 'XA02', 'XB07', 'XB08'},
-                                              variants=[SWTemplateVariant(schema='SW_1623_1',
+                                              variants=[SWTemplateVariant(schema=['SW_1623_1'],
                                                                           parts=['XF27']),
-                                                        SWTemplateVariant(schema='SW_1623_2',
+                                                        SWTemplateVariant(schema=['SW_1623_2'],
                                                                           parts=['XK52'])])
         sw_template2: SWTemplate = SWTemplate(name='XA99',
                                               connection='NTSW0114',
                                               signals={'XB21', 'XB22', 'XA21', 'XA22'},
-                                              variants=[SWTemplateVariant(schema='SW_1623_AVR',
+                                              variants=[SWTemplateVariant(schema=['SW_1623_AVR'],
                                                                           parts=[])])
 
         generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='Network Data',

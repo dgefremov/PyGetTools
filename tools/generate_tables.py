@@ -24,7 +24,7 @@ class SignalModification:
 
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
 class SWTemplateVariant:
-    schema: str
+    schema: list[str]
     parts: list[str]
 
 
@@ -207,6 +207,7 @@ class GenerateTableOptions:
     ied_table_name: str
     ref_table_name: str
     sign_table_name: str
+    ps_table_name: str
     fake_signals_table_name: str
     skip_duplicate_signals: list[tuple[str, str]]
     copy_ds_to_sim_table: bool
@@ -452,7 +453,9 @@ class GenerateTables:
                 else:
                     sw_signal.full_name_eng = self._get_common_prefix(list(map(lambda item: item.full_name_eng,
                                                                                sw_signals)))
-                sw_signal.template = self._get_sw_template(kksp=sw_signal.kksp,
+                sw_signal.template = self._get_sw_template(kks=sw_signal.kks,
+                                                           part=sw_signal.part,
+                                                           kksp=sw_signal.kksp,
                                                            cabinet=sw_signal.cabinet,
                                                            sw_template=sw_template)
                 if self._options.signal_modifications is not None:
@@ -464,7 +467,7 @@ class GenerateTables:
                 logging.error('Неверный набор сигналов в группе SW')
                 raise Exception('SignalGroupError')
 
-    def _get_sw_template(self, kksp: str, cabinet: str, sw_template: SWTemplate) -> str:
+    def _get_sw_template(self, kks: str, part: str, kksp: str, cabinet: str, sw_template: SWTemplate) -> str:
         values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.aep_table_name,
                                                                       fields=['PART'],
                                                                       key_names=['KKSp', 'CABINET'],
@@ -472,7 +475,15 @@ class GenerateTables:
         path_list: list[str] = [value[self.get_column_name('PART')] for value in values]
         for sw_template in sorted(sw_template.variants, key=lambda item: len(item.parts), reverse=True):
             if len(sw_template.parts) == 0 or all(part in path_list for part in sw_template.parts):
-                return sw_template.schema
+                values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.ps_table_name,
+                                                                              fields=['SCHEMA'],
+                                                                              key_names=['KKS', 'PART', 'CABINET'],
+                                                                              key_values=[kks, part, cabinet])
+                if len(values) != 1:
+                    raise Exception('Ошибка получения схемы для SW')
+                if values[0][self.get_column_name('SCHEMA')] not in sw_template.schema:
+                    raise Exception('Ошибка получения схемы для SW')
+                return values[0][self.get_column_name('SCHEMA')]
         logging.error('Не найдена схема подключения для управления')
         raise Exception('SWTemplateNotFound')
 
