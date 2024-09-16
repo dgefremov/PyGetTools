@@ -817,9 +817,9 @@ class Options:
                                               connection='NTSW0113',
                                               signals={'XB01', 'XB02', 'XA01', 'XA02', 'XB07', 'XB08'},
                                               variants=[SWTemplateVariant(schema=['SW_1623_1'],
-                                                                          parts=['XF27']),
+                                                                          parts=['XK52']),
                                                         SWTemplateVariant(schema=['SW_1623_2'],
-                                                                          parts=['XK52'])])
+                                                                          parts=['XF06', 'XF07'])])
         sw_template2: SWTemplate = SWTemplate(name='XA99',
                                               connection='NTSW0114',
                                               signals={'XB21', 'XB22', 'XA21', 'XA22'},
@@ -832,6 +832,7 @@ class Options:
                                                                      sim_table_name='Сигналы и механизмы',
                                                                      iec_table_name='МЭК 61850',
                                                                      ied_table_name='IED',
+                                                                     ps_table_name='PREDEFINED_SCHEMAS',
                                                                      fake_signals_table_name='FAKE_SIGNALS',
                                                                      ref_table_name='REF',
                                                                      sign_table_name='DIAG',
