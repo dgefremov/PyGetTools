@@ -820,10 +820,10 @@ class Options:
                                                                           parts=['XK52']),
                                                         SWTemplateVariant(schema=['SW_1623_2'],
                                                                           parts=['XF06', 'XF07'])])
-        sw_template2: SWTemplate = SWTemplate(name='XA99',
+        sw_template2: SWTemplate = SWTemplate(name='XA10',
                                               connection='NTSW0114',
                                               signals={'XB21', 'XB22', 'XA21', 'XA22'},
-                                              variants=[SWTemplateVariant(schema=['SW_1623_AVR'],
+                                              variants=[SWTemplateVariant(schema=['ATSW_1623_WITHOUT_BPU'],
                                                                           parts=[])])
 
         generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='Network Data',
@@ -889,66 +889,6 @@ class Options:
         # <-------------------------------fill_mms_address_options----------------------------------------------------->
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
-        template_dsw1_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB01',
-                                                                unrel_ref_cell_num=15),
-                                                      InputPort(page=3, cell_num=4, kks=None, part='XB02',
-                                                                unrel_ref_cell_num=None)]
-        template_dsw_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks=None,
-                                                                  part='XA01'),
-                                                       OutputPort(name='Port2', kks=None,
-                                                                  part='XA02')]
-        template_dsw1: Template = Template(name='DSW1',
-                                           input_ports={'XA99': template_dsw1_input_ports},
-                                           output_ports={'XA99': template_dsw_output_ports})
-
-        template_dsw2_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB01',
-                                                                unrel_ref_cell_num=15),
-                                                      InputPort(page=3, cell_num=4, kks=None, part='XB02',
-                                                                unrel_ref_cell_num=None),
-                                                      InputPort(page=3, cell_num=5, kks=None, part='XB07',
-                                                                unrel_ref_cell_num=16),
-                                                      InputPort(page=3, cell_num=6, kks=None, part='XB08',
-                                                                unrel_ref_cell_num=17)]
-        template_dsw2: Template = Template(name='DSW2',
-                                           input_ports={'XA99': template_dsw2_input_ports},
-                                           output_ports={'XA99': template_dsw_output_ports})
-
-        template_dsw3_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB01',
-                                                                unrel_ref_cell_num=15),
-                                                      InputPort(page=3, cell_num=4, kks=None, part='XB02',
-                                                                unrel_ref_cell_num=None),
-                                                      InputPort(page=3, cell_num=5, kks=None, part='XB07',
-                                                                unrel_ref_cell_num=16),
-                                                      InputPort(page=3, cell_num=6, kks=None, part='XB08',
-                                                                unrel_ref_cell_num=17),
-                                                      InputPort(page=3, cell_num=7, kks=None, part='XF26',
-                                                                unrel_ref_cell_num=18)]
-        template_dsw3: Template = Template(name='DSW3',
-                                           input_ports={'XA99': template_dsw3_input_ports},
-                                           output_ports={'XA99': template_dsw_output_ports})
-
-        template_davr2_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB21',
-                                                                 unrel_ref_cell_num=12),
-                                                       InputPort(page=3, cell_num=4, kks=None, part='XB22',
-                                                                 unrel_ref_cell_num=None)]
-        template_davr2_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks=None,
-                                                                    part='XA21'),
-                                                         OutputPort(name='Port2', kks=None,
-                                                                    part='XA22')]
-        template_davr2: Template = Template(name='DAVR2',
-                                            input_ports={'XA99': template_davr2_input_ports},
-                                            output_ports={'XA99': template_davr2_output_ports})
-
-        template_dltc3_input_ports: list[InputPort] = [InputPort(page=3, cell_num=3, kks='_0BBT__CE001', part='XQ28',
-                                                                 unrel_ref_cell_num=16)]
-        template_dltc3_output_ports: list[OutputPort] = [OutputPort(name='Port1', page=1, cell_num=7, kks=None,
-                                                                    part='XA11'),
-                                                         OutputPort(name='Port2', page=1, cell_num=7, kks=None,
-                                                                    part='XA12')]
-
-        template_dltc3: Template = Template(name='DLTC3',
-                                            input_ports={'XA99': template_dltc3_input_ports},
-                                            output_ports={'XA99': template_dltc3_output_ports})
 
         wired_template_dsw1_input_ports: list[InputPort] = [InputPort(page=2, cell_num=11, kks='_0BF%EK201',
                                                                       part='XK52', unrel_ref_cell_num=None),
@@ -969,12 +909,143 @@ class Options:
                                                  input_ports={'XA99': wired_template_dsw2_input_ports},
                                                  output_ports={'XA99': wired_template_dsw2_output_ports})
 
-        wired_template_avr_input_ports: list[InputPort] = []
-        wired_template_avr_output_ports: list[OutputPort] = []
-        wired_template_avr: Template = Template(name='SW_1623_AVR',
-                                                input_ports={'XA99': wired_template_avr_input_ports},
-                                                output_ports={'XA99': wired_template_avr_output_ports})
+        # --------------------------------------------------------------------------------------------------------------
+        sc_nku_04_1_sign_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB02',
+                                                             unrel_ref_cell_num=18),
+                                                   InputPort(page=3, cell_num=4, kks=None, part='XB01',
+                                                             unrel_ref_cell_num=None),
+                                                   InputPort(page=3, cell_num=5, kks=None, part='XF27',
+                                                             unrel_ref_cell_num=19),
+                                                   InputPort(page=3, cell_num=12, kks=None, part='XB07',
+                                                             unrel_ref_cell_num=20)]
 
+        cb_output: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA01'),
+                                       OutputPort(name='Port2', kks=None, part='XA02')]
+
+        cb_ts_data: TSODUData = TSODUData(input_ports=[],
+                                          output_ports=[])
+
+        sc_nku_04_1_sign: Template = Template(name='SC_NKU_04_1_SIGN_WITHOUT_ME',
+                                              input_ports={'XA00': sc_nku_04_1_sign_input},
+                                              output_ports={'XA00': cb_output},
+                                              ts_odu_data=cb_ts_data,
+                                              alarm_sound_signal_port='Port3',
+                                              warn_sound_signal_port='Port4')
+
+        sc_kru_10_6_sign_input: list[InputPort] = [
+            InputPort(page=3, cell_num=3, kks=None, part='XB02',
+                      unrel_ref_cell_num=18),
+            InputPort(page=3, cell_num=4, kks=None, part='XB01',
+                      unrel_ref_cell_num=None),
+            InputPort(page=3, cell_num=5, kks=None, part='XF02',
+                      unrel_ref_cell_num=19),
+            InputPort(page=3, cell_num=6, kks=None, part='XF03',
+                      unrel_ref_cell_num=20),
+            InputPort(page=3, cell_num=7, kks=None, part='XF27',
+                      unrel_ref_cell_num=21),
+            InputPort(page=3, cell_num=8, kks=None, part='XF26',
+                      unrel_ref_cell_num=22),
+            InputPort(page=3, cell_num=9, kks=None, part='XF09',
+                      unrel_ref_cell_num=23),
+            InputPort(page=3, cell_num=10, kks=None, part='XB08',
+                      unrel_ref_cell_num=24),
+            InputPort(page=3, cell_num=12, kks=None, part='XB07',
+                      unrel_ref_cell_num=25)]
+        sc_kru_10_6_sign: Template = Template(name='SC_KRU_10_6_SIGN_WITHOUT_ME',
+                                              input_ports={'XA00': sc_kru_10_6_sign_input},
+                                              output_ports={'XA00': cb_output},
+                                              ts_odu_data=cb_ts_data,
+                                              alarm_sound_signal_port='Port3',
+                                              warn_sound_signal_port='Port4')
+
+        sc_kru_10_6_sign_without_contr: Template = Template(name='SC_KRU_10_6_SIGN_WITHOUT_ME_C',
+                                                            input_ports={'XA00': sc_kru_10_6_sign_input},
+                                                            output_ports={'XA00': []},
+                                                            ts_odu_data=cb_ts_data,
+                                                            alarm_sound_signal_port='Port3',
+                                                            warn_sound_signal_port='Port4')
+
+        sc_kru_10_8_sign_input: list[InputPort] = [
+            InputPort(page=3, cell_num=3, kks=None, part='XB02',
+                      unrel_ref_cell_num=18),
+            InputPort(page=3, cell_num=4, kks=None, part='XB01',
+                      unrel_ref_cell_num=None),
+            InputPort(page=3, cell_num=5, kks=None, part='XF02',
+                      unrel_ref_cell_num=19),
+            InputPort(page=3, cell_num=6, kks=None, part='XF03',
+                      unrel_ref_cell_num=20),
+            InputPort(page=3, cell_num=7, kks=None, part='XF27',
+                      unrel_ref_cell_num=21),
+            InputPort(page=3, cell_num=8, kks=None, part='XF26',
+                      unrel_ref_cell_num=22),
+            InputPort(page=3, cell_num=9, kks=None, part='XF09',
+                      unrel_ref_cell_num=23),
+            InputPort(page=3, cell_num=10, kks=None, part='XB08',
+                      unrel_ref_cell_num=24),
+            InputPort(page=3, cell_num=11, kks=None, part='XK02',
+                      unrel_ref_cell_num=25),
+            InputPort(page=3, cell_num=12, kks=None, part='XB07',
+                      unrel_ref_cell_num=26)]
+        sc_kru_10_8_sign: Template = Template(name='SC_KRU_10_8_SIGN_WITHOUT_ME',
+                                              input_ports={'XA00': sc_kru_10_8_sign_input},
+                                              output_ports={'XA00': cb_output},
+                                              ts_odu_data=cb_ts_data,
+                                              alarm_sound_signal_port='Port3',
+                                              warn_sound_signal_port='Port4')
+
+        ats_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB22', unrel_ref_cell_num=18),
+                                      InputPort(page=3, cell_num=4, kks=None, part='XB21',
+                                                unrel_ref_cell_num=None)]
+        ats_ouput: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA21'),
+                                       OutputPort(name='Port2', kks=None, part='XA22'),
+                                       OutputPort(name='Port3', kks=None, part='XA20', page=3, cell_num=5),
+                                       OutputPort(name='Port4', kks=None, part='XA20', page=3, cell_num=6),
+                                       OutputPort(name='Port6', kks=None, part='XA20', page=3, cell_num=7),
+                                       OutputPort(name='Port7', kks=None, part='XA20', page=3, cell_num=8)]
+        ats_without_bpu: Template = Template(name='ATS_WITHOUT_BPU',
+                                             input_ports={'XA10': ats_input},
+                                             output_ports={'XA10': ats_ouput})
+
+        ats_vk_ouput: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA10', page=3, cell_num=23),
+                                          OutputPort(name='Port2', kks=None, part='XA10', page=3, cell_num=21),
+                                          OutputPort(name='Port3', kks=None, part='XA10', page=3, cell_num=22)]
+        ats_vk_ouput_2: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA10', page=2, cell_num=23),
+                                            OutputPort(name='Port2', kks=None, part='XA10', page=2, cell_num=21),
+                                            OutputPort(name='Port3', kks=None, part='XA10', page=2, cell_num=22)]
+        ats_vk: Template = Template(name='ATS_VK',
+                                    input_ports={'XA20': [], 'XA30': []},
+                                    output_ports={'XA20': ats_vk_ouput, 'XA30': ats_vk_ouput_2},
+                                    ts_odu_data=None)
+
+        ltc_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks='_0BBT0_CE001', part='XQ28',
+                                                unrel_ref_cell_num=None)]
+
+        ltc_output: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA11'),
+                                        OutputPort(name='Port2', kks=None, part='XA12')]
+
+        ltc_ts_input: list[InputPort] = [InputPort(page=3, cell_num=10, kks=None, part='XA11',
+                                                   unrel_ref_cell_num=None),
+                                         InputPort(page=3, cell_num=11, kks=None, part='XA12',
+                                                   unrel_ref_cell_num=None)]
+        ltc_ts_data: TSODUData = TSODUData(input_ports=ltc_ts_input,
+                                           output_ports=[])
+
+        ltc: Template = Template(name='LTC',
+                                 input_ports={'XA20': ltc_input},
+                                 output_ports={'XA20': ltc_output},
+                                 ts_odu_data=ltc_ts_data,
+                                 alarm_sound_signal_port=None)
+
+        atsw_output: list[OutputPort] = [OutputPort(name='Port1', kks=None, part='XA30', page=3, cell_num=5),
+                                         OutputPort(name='Port2', kks=None, part='XA30', page=3, cell_num=6),
+                                         OutputPort(name='Port4', kks=None, part='XA30', page=3, cell_num=7),
+                                         OutputPort(name='Port5', kks=None, part='XA30', page=3, cell_num=8)]
+
+        atsw_without_bpu: Template = Template(name='ATSW_1623_WITHOUT_BPU',
+                                              input_ports={'XA10': []},
+                                              output_ports={'XA10': atsw_output})
+
+        # --------------------------------------------------------------------------------------------------------------
         diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks='_0BYA__EG801', part='XW01',
                                                                      blink_port_name='Port2')]
 
@@ -1086,16 +1157,94 @@ class Options:
                                         output_ports={'XG00': diag_middle_output_ports},
                                         alarm_sound_signal_port=None)
 
+        # --------------------------------------------------------------------------------------------------------------
+        custom_template_acknow = Template(name='BI_ACKNOW_WITH_EXT_SIGN_3P',
+                                          input_ports={'XG01': [InputPort(page=2,
+                                                                          cell_num=7,
+                                                                          kks='_0CWB60CH101K',
+                                                                          part='XG02',
+                                                                          unrel_ref_cell_num=None)],
+                                                       'XG02': [InputPort(page=2,
+                                                                          cell_num=7,
+                                                                          kks='_0CWB60CH100K',
+                                                                          part='XG02',
+                                                                          unrel_ref_cell_num=None)],
+                                                       },
+                                          output_ports={'XG01': [], 'XG02': []})
+
+        # --------------------------------------------------------------------------------------------------------------
+        ts_odu_panel1: TSODUPanel = TSODUPanel(name='10CWG10',
+                                               abonent=321,
+                                               display_test_kks='10CWG09CH010K',
+                                               display_test_part='XG01',
+                                               display_test_port='Port1',
+                                               confirm_kks=None,
+                                               confirm_part=None,
+                                               acknowledgment_kks='10CWG10CH101',
+                                               acknowledgment_part='XG01',
+                                               acknowledgment_flash_kks='10CWG10CH100',
+                                               acknowledgment_flash_part='XG01')
+        ts_odu_panel2: TSODUPanel = TSODUPanel(name='10CWB60',
+                                               confirm_part=None,
+                                               confirm_kks=None,
+                                               abonent=321,
+                                               acknowledgment_kks='10CWB60CH101K',
+                                               acknowledgment_part='XG01',
+                                               acknowledgment_flash_kks='10CWB60CH100K',
+                                               acknowledgment_flash_part='XG01',
+                                               lamp_test_kks='10CWB60CH011K',
+                                               lamp_test_part='XG01',
+                                               lamp_test_port='Port1',
+                                               display_test_kks='10CWB60CH010K',
+                                               display_test_part='XG01',
+                                               display_test_port='Port1', )
+
+        display: TSODUTemplate = TSODUTemplate(name='BO_TS_ODU_DISPL_WITH_FLASH_AKNOW%',
+                                               acknolegment_page='1',
+                                               acknolegment_cell='5',
+                                               acknolegment_flash_page='1',
+                                               acknolegment_flash_cell='4',
+                                               display_test_page='1',
+                                               display_test_cell='3',
+                                               input_ports=[],
+                                               output_ports=[])
+
+        lamp: TSODUTemplate = TSODUTemplate(name='BO_TS_ODU_LAMP%',
+                                            lamp_test_page='1',
+                                            lamp_test_cell='4',
+                                            input_ports=[],
+                                            output_ports=[])
+
+        ts_odu_description: TSODUDescription = TSODUDescription(panels=[ts_odu_panel1, ts_odu_panel2],
+                                                                alarm_sound_kks='10CWG10GH001',
+                                                                alarm_sound_part='XN04',
+                                                                alarm_sound_check_kks='10CWG10CH020V',
+                                                                alarm_sound_check_part='XG01',
+                                                                alarm_sound_check_port='Port1',
+                                                                alarm_sound_check_page='1',
+                                                                alarm_sound_check_cell='8',
+                                                                warning_sound_kks='10CWG10GH001',
+                                                                warning_sound_part='XN05',
+                                                                warn_sound_check_kks='10CWG10CH020W',
+                                                                warn_sound_check_part='XG01',
+                                                                warn_sound_check_port='Port1',
+                                                                warn_sound_check_page='1',
+                                                                warn_sound_check_cell='8',
+                                                                cabinet='10BYA01'
+                                                                )
+
         fill_ref2_options: FillRef2Options = FillRef2Options(control_schemas_table='VIRTUAL SCHEMAS',
                                                              predifend_control_schemas_table='PREDEFINED SCHEMAS',
                                                              ref_table='REF',
                                                              sim_table='Сигналы и механизмы',
                                                              iec_table='МЭК 61850',
                                                              fake_signals_table='FAKE_SIGNALS',
-                                                             templates=[template_dsw1, template_dsw2, template_dsw3,
-                                                                        template_davr2, template_dltc3,
-                                                                        wired_template_dsw1,
-                                                                        wired_template_dsw2, wired_template_avr,
+                                                             templates=[wired_template_dsw1, wired_template_dsw2,
+
+                                                                        sc_nku_04_1_sign, sc_kru_10_6_sign,
+                                                                        sc_kru_10_8_sign, ats_without_bpu,
+                                                                        sc_kru_10_6_sign_without_contr,
+                                                                        ats_vk, ltc, atsw_without_bpu,
                                                                         diag1, diag1_first, diag2, diag2_first,
                                                                         diag_bya03, diag_bya04, diag_bya10, diag_bya21,
                                                                         template_xq_s],
@@ -1107,11 +1256,11 @@ class Options:
                                                              wired_signal_output_flicker_default_cell=11,
                                                              ts_odu_algorithm='Логика ТС ОДУ',
                                                              ts_odu_table='Сигналы и механизмы ТС ОДУ',
-                                                             ts_odu_info=None,
+                                                             ts_odu_info=ts_odu_description,
                                                              abonent_table='TPTS',
                                                              wired_signal_default_input_port='Port1',
-                                                             ts_odu_templates=[],
-                                                             custom_templates_ts_odu=[],
+                                                             ts_odu_templates=[display, lamp],
+                                                             custom_templates_ts_odu=[custom_template_acknow],
                                                              read_english_description=False)
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->

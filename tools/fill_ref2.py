@@ -82,6 +82,8 @@ class TSODUPanel:
     display_test_kks: str | None = None
     display_test_part: str | None = None
     display_test_port: str | None = 'Port1'
+    acknowledgment_flash_kks: str | None = None
+    acknowledgment_flash_part: str | None = None
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -133,6 +135,8 @@ class TSODUTemplate:
     display_test_cell: str | None = None
     acknolegment_page: str | None = None
     acknolegment_cell: str | None = None
+    acknolegment_flash_page: str | None = None
+    acknolegment_flash_cell: str | None = None
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -241,6 +245,13 @@ class FillRef2:
             key_operator.append('=')
         values: list[dict[str, str]] = self._connection.retrieve_data(
             table_name=self._options.sim_table,
+            fields=['KKS', 'KKSp', 'CABINET'],
+            key_names=key_names,
+            key_values=key_values,
+            key_operator=key_operator)
+        # Заодно загружается из таблицы СиМ ТС ОДУ
+        values += self._connection.retrieve_data(
+            table_name=self._options.ts_odu_table,
             fields=['KKS', 'KKSp', 'CABINET'],
             key_names=key_names,
             key_values=key_values,
@@ -1017,6 +1028,21 @@ class FillRef2:
                                                               target_page=template.acknolegment_page,
                                                               target_cell=template.acknolegment_cell)
                     refs.append(ref)
+
+                acknowledgment_flash_signal: Signal = Signal(kks=ts_odu_panel.acknowledgment_flash_kks,
+                                                             part=ts_odu_panel.acknowledgment_flash_part,
+                                                             cabinet=self._options.ts_odu_info.cabinet,
+                                                             type=SignalType.TS_ODU)
+                if template.acknolegment_flash_cell is not None and template.acknolegment_flash_page is not None:
+                    ref: SignalRef = self._get_ref_for_signal(source_signal=acknowledgment_flash_signal,
+                                                              target_abonent=self._abonent_map[
+                                                                  acknowledgment_flash_signal.cabinet],
+                                                              target_kks=kks,
+                                                              target_part=part,
+                                                              target_page=template.acknolegment_flash_page,
+                                                              target_cell=template.acknolegment_flash_cell)
+                    refs.append(ref)
+
                 if template.warning_port is not None:
                     self._warn_sound_container[Signal(kks=kks,
                                                       part=part,
