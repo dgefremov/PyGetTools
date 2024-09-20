@@ -24,6 +24,7 @@ class SignalModification:
 
 @dataclass(init=True, repr=False, eq=True, order=False, frozen=True)
 class SWTemplateVariant:
+    schema_part: str
     schema: list[str]
     parts: list[str]
 
@@ -33,7 +34,6 @@ class SWTemplate:
     """
     Класс для хранения шаблонов для проводных сигналов управления
     """
-    name: str
     connection: str
     signals: set[str]
     variants: list[SWTemplateVariant]
@@ -432,7 +432,6 @@ class GenerateTables:
             parts_set: set[str] = sw_template.signals
             if parts_set == parts_in_container:
                 sw_signal: Signal = signal.clone()
-                sw_signal.part = sw_template.name
                 if any([signal.name_rus is None for signal in sw_signals]):
                     sw_signal.name_rus = None
                 else:
@@ -453,11 +452,10 @@ class GenerateTables:
                 else:
                     sw_signal.full_name_eng = self._get_common_prefix(list(map(lambda item: item.full_name_eng,
                                                                                sw_signals)))
-                sw_signal.template = self._get_sw_template(kks=sw_signal.kks,
-                                                           part=sw_signal.part,
-                                                           kksp=sw_signal.kksp,
-                                                           cabinet=sw_signal.cabinet,
-                                                           sw_template=sw_template)
+                sw_signal.template, sw_signal.part = self._get_sw_template(kks=sw_signal.kks,
+                                                                           kksp=sw_signal.kksp,
+                                                                           cabinet=sw_signal.cabinet,
+                                                                           sw_template=sw_template)
                 if self._options.signal_modifications is not None:
                     sw_signal = self._modificate_signal(signal=sw_signal)
 
@@ -467,7 +465,7 @@ class GenerateTables:
                 logging.error('Неверный набор сигналов в группе SW')
                 raise Exception('SignalGroupError')
 
-    def _get_sw_template(self, kks: str, part: str, kksp: str, cabinet: str, sw_template: SWTemplate) -> str:
+    def _get_sw_template(self, kks: str, kksp: str, cabinet: str, sw_template: SWTemplate) -> tuple[str, str]:
         values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.aep_table_name,
                                                                       fields=['PART'],
                                                                       key_names=['KKSp', 'CABINET'],
@@ -478,12 +476,13 @@ class GenerateTables:
                 values: list[dict[str, str]] = self._connection.retrieve_data(table_name=self._options.ps_table_name,
                                                                               fields=['SCHEMA'],
                                                                               key_names=['KKS', 'PART', 'CABINET'],
-                                                                              key_values=[kks, part, cabinet])
+                                                                              key_values=[kks, sw_template.schema_part,
+                                                                                          cabinet])
                 if len(values) != 1:
                     raise Exception('Ошибка получения схемы для SW')
                 if values[0][self.get_column_name('SCHEMA')] not in sw_template.schema:
                     raise Exception('Ошибка получения схемы для SW')
-                return values[0][self.get_column_name('SCHEMA')]
+                return values[0][self.get_column_name('SCHEMA')], sw_template.schema_part
         logging.error('Не найдена схема подключения для управления')
         raise Exception('SWTemplateNotFound')
 

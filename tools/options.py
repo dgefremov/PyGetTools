@@ -37,24 +37,27 @@ class Options:
         signal7: DoublePointSignal = DoublePointSignal(single_part=None,
                                                        on_part='XA01',
                                                        off_part='XA02')
-        sw_template1: SWTemplate = SWTemplate(name='XA00',
+        sw_template1: SWTemplate = SWTemplate(
                                               connection='NTSW0113',
                                               signals={'XB01', 'XB02', 'XL01', 'XL02', 'XB07', 'XB08'},
                                               variants=[SWTemplateVariant(schema=['SCW_NKU_04_0_SIGN',
                                                                                   'SCW_NKU_04_0_SIGN_WITHOUT_BPU'],
-                                                                          parts=[]),
+                                                                          parts=[],
+                                                                          schema_part='XA00'),
                                                         SWTemplateVariant(schema=['SCW_NKU_04_3_SIGN',
                                                                                   'SCW_NKU_04_3_SIGN_WITHOUT_BPU'],
-                                                                          parts=['XK17', 'XF06']),
+                                                                          parts=['XK17', 'XF06'],
+                                                                          schema_part='XA00'),
                                                         SWTemplateVariant(schema=['SCW_NKU_04_4_SIGN',
                                                                                   'SCW_NKU_04_4_SIGN_WITHOUT_BPU'],
-                                                                          parts=['XK52', 'XK00', 'XK39', 'XB07'])])
-        sw_template2: SWTemplate = SWTemplate(name='XA10',
-                                              connection='NTSW0114',
+                                                                          parts=['XK52', 'XK00', 'XK39', 'XB07'],
+                                                                          schema_part='XA00')])
+        sw_template2: SWTemplate = SWTemplate(connection='NTSW0114',
                                               signals={'XB21', 'XB22', 'XL21', 'XL22'},
                                               variants=[SWTemplateVariant(schema=['ATSW_1623',
                                                                                   'ATSW_1623_WITHOUT_BPU'],
-                                                                          parts=[])])
+                                                                          parts=[],
+                                                                          schema_part='XA10')])
         signal_modification1 = SignalModification(signal_kks=r'^[1-2]0BBG0[13]GS001$',  # 10BBG01GS001, 10BBG03GS001
                                                   signal_part='^XB17$',
                                                   new_template='BI_1623_INV',
@@ -814,18 +817,19 @@ class Options:
         signal6: DoublePointSignal = DoublePointSignal(single_part='XA10',
                                                        on_part='XA11',
                                                        off_part='XA12')
-        sw_template1: SWTemplate = SWTemplate(name='XA10',
-                                              connection='NTSW0113',
+        sw_template1: SWTemplate = SWTemplate(connection='NTSW0113',
                                               signals={'XB01', 'XB02', 'XA01', 'XA02', 'XB07', 'XB08'},
-                                              variants=[SWTemplateVariant(schema=['SW_1623_1'],
-                                                                          parts=['XK52']),
-                                                        SWTemplateVariant(schema=['SW_1623_2'],
-                                                                          parts=['XF06', 'XF07'])])
-        sw_template2: SWTemplate = SWTemplate(name='XA10',
-                                              connection='NTSW0114',
+                                              variants=[SWTemplateVariant(schema=['SCW_NKU_04_1_SIGN_WITHOUT_ME'],
+                                                                          parts=['XF27'],
+                                                                          schema_part='XA20'),
+                                                        SWTemplateVariant(schema=['SCW_NKU_04_1_SIGN_WITHOUT_ME'],
+                                                                          parts=['XB07'],
+                                                                          schema_part='XA10')])
+        sw_template2: SWTemplate = SWTemplate(connection='NTSW0114',
                                               signals={'XB21', 'XB22', 'XA21', 'XA22'},
                                               variants=[SWTemplateVariant(schema=['ATSW_1623_WITHOUT_BPU'],
-                                                                          parts=[])])
+                                                                          parts=[],
+                                                                          schema_part='XA10')])
 
         generate_option: GenerateTableOptions = GenerateTableOptions(network_data_table_name='Network Data',
                                                                      controller_data_table_name='TPTS',
@@ -982,8 +986,10 @@ class Options:
                       unrel_ref_cell_num=24),
             InputPort(page=3, cell_num=11, kks=None, part='XK02',
                       unrel_ref_cell_num=25),
-            InputPort(page=3, cell_num=12, kks=None, part='XB07',
-                      unrel_ref_cell_num=26)]
+            InputPort(page=3, cell_num=12, kks=None, part='XK20',
+                      unrel_ref_cell_num=26),
+            InputPort(page=3, cell_num=13, kks=None, part='XB07',
+                      unrel_ref_cell_num=27)]
         sc_kru_10_8_sign: Template = Template(name='SC_KRU_10_8_SIGN_WITHOUT_ME',
                                               input_ports={'XA00': sc_kru_10_8_sign_input},
                                               output_ports={'XA00': cb_output},
@@ -1028,7 +1034,7 @@ class Options:
         ltc_ts_data: TSODUData = TSODUData(input_ports=ltc_ts_input,
                                            output_ports=[])
 
-        ltc: Template = Template(name='LTC',
+        ltc: Template = Template(name='LTC_WITHOUT_CONF',
                                  input_ports={'XA20': ltc_input},
                                  output_ports={'XA20': ltc_output},
                                  ts_odu_data=ltc_ts_data,
@@ -1156,7 +1162,7 @@ class Options:
                                         alarm_sound_signal_port=None)
 
         # --------------------------------------------------------------------------------------------------------------
-        custom_template_acknow = Template(name='BI_ACKNOW_WITH_EXT_SIGN_3P',
+        custom_template_acknow = Template(name='BI_ACKNOW_WITH_EXT_SIGN_5P_1671',
                                           input_ports={'XG01': [InputPort(page=2,
                                                                           cell_num=7,
                                                                           kks='_0CWB60CH101K',
