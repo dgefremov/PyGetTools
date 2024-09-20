@@ -781,7 +781,8 @@ class Options:
                                                              ts_odu_info=ts_odu_description,
                                                              abonent_table='TPTS',
                                                              wired_signal_default_input_port='Port1',
-                                                             ts_odu_templates=[display, lamp],
+                                                             ts_odu_templates_displ=display,
+                                                             ts_odu_templates_lamp=lamp,
                                                              custom_templates_ts_odu=[custom_template_f_meas,
                                                                                       custom_template_sum],
                                                              read_english_description=True)
@@ -813,7 +814,7 @@ class Options:
         signal6: DoublePointSignal = DoublePointSignal(single_part='XA10',
                                                        on_part='XA11',
                                                        off_part='XA12')
-        sw_template1: SWTemplate = SWTemplate(name='XA99',
+        sw_template1: SWTemplate = SWTemplate(name='XA10',
                                               connection='NTSW0113',
                                               signals={'XB01', 'XB02', 'XA01', 'XA02', 'XB07', 'XB08'},
                                               variants=[SWTemplateVariant(schema=['SW_1623_1'],
@@ -890,26 +891,23 @@ class Options:
 
         # <-------------------------------fill_ref2_address_options---------------------------------------------------->
 
-        wired_template_dsw1_input_ports: list[InputPort] = [InputPort(page=2, cell_num=11, kks='_0BF%EK201',
-                                                                      part='XK52', unrel_ref_cell_num=None),
-                                                            InputPort(page=2, cell_num=12, kks='_0BF%EK205',
-                                                                      part='XK52', unrel_ref_cell_num=None)]
+        scw_nku_04_1_sign_without_me_input_ports_var_1: list[InputPort] = [
+            InputPort(page=3, cell_num=5, kks='_0_____EK204',
+                      part='XB07', unrel_ref_cell_num=None)]
 
-        wired_template_dsw1_output_ports: list[OutputPort] = []
-        wired_template_dsw1: Template = Template(name='SW_1623_1',
-                                                 input_ports={'XA99': wired_template_dsw1_input_ports},
-                                                 output_ports={'XA99': wired_template_dsw1_output_ports})
+        scw_nku_04_1_sign_without_me_input_ports_var_2: list[InputPort] = [
+            InputPort(page=3, cell_num=5, kks=None,
+                      part='XF27', unrel_ref_cell_num=None)]
 
-        wired_template_dsw2_input_ports: list[InputPort] = [InputPort(page=2, cell_num=11, kks=None,
-                                                                      part='XF06', unrel_ref_cell_num=None),
-                                                            InputPort(page=2, cell_num=12, kks=None,
-                                                                      part='XF07', unrel_ref_cell_num=None)]
-        wired_template_dsw2_output_ports: list[OutputPort] = []
-        wired_template_dsw2: Template = Template(name='SW_1623_2',
-                                                 input_ports={'XA99': wired_template_dsw2_input_ports},
-                                                 output_ports={'XA99': wired_template_dsw2_output_ports})
+        scw_nku_04_1_sign_without_me_output_ports: list[OutputPort] = []
+        scw_nku_04_1_sign_without_me: Template = Template(name='SCW_NKU_04_1_SIGN_WITHOUT_ME',
+                                                          input_ports={
+                                                              'XA10': scw_nku_04_1_sign_without_me_input_ports_var_1,
+                                                              'XA20': scw_nku_04_1_sign_without_me_input_ports_var_2},
+                                                          output_ports={
+                                                              'XA10': scw_nku_04_1_sign_without_me_output_ports,
+                                                              'XA20': scw_nku_04_1_sign_without_me_output_ports})
 
-        # --------------------------------------------------------------------------------------------------------------
         sc_nku_04_1_sign_input: list[InputPort] = [InputPort(page=3, cell_num=3, kks=None, part='XB02',
                                                              unrel_ref_cell_num=18),
                                                    InputPort(page=3, cell_num=4, kks=None, part='XB01',
@@ -1175,7 +1173,7 @@ class Options:
         # --------------------------------------------------------------------------------------------------------------
         ts_odu_panel1: TSODUPanel = TSODUPanel(name='10CWG10',
                                                abonent=321,
-                                               display_test_kks='10CWG09CH010K',
+                                               display_test_kks='10CWG10CH010K',
                                                display_test_part='XG01',
                                                display_test_port='Port1',
                                                confirm_kks=None,
@@ -1183,7 +1181,7 @@ class Options:
                                                acknowledgment_kks='10CWG10CH101',
                                                acknowledgment_part='XG01',
                                                acknowledgment_flash_kks='10CWG10CH100',
-                                               acknowledgment_flash_part='XG01')
+                                               acknowledgment_flash_part='XG02')
         ts_odu_panel2: TSODUPanel = TSODUPanel(name='10CWB60',
                                                confirm_part=None,
                                                confirm_kks=None,
@@ -1239,7 +1237,7 @@ class Options:
                                                              sim_table='Сигналы и механизмы',
                                                              iec_table='МЭК 61850',
                                                              fake_signals_table='FAKE_SIGNALS',
-                                                             templates=[wired_template_dsw1, wired_template_dsw2,
+                                                             templates=[scw_nku_04_1_sign_without_me,
 
                                                                         sc_nku_04_1_sign, sc_kru_10_6_sign,
                                                                         sc_kru_10_8_sign, ats_without_bpu,
@@ -1259,7 +1257,8 @@ class Options:
                                                              ts_odu_info=ts_odu_description,
                                                              abonent_table='TPTS',
                                                              wired_signal_default_input_port='Port1',
-                                                             ts_odu_templates=[display, lamp],
+                                                             ts_odu_templates_displ=display,
+                                                             ts_odu_templates_lamp=lamp,
                                                              custom_templates_ts_odu=[custom_template_acknow],
                                                              read_english_description=False)
 

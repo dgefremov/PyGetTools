@@ -161,7 +161,8 @@ class FillRef2Options:
     abonent_table: str
     templates: list[Template]
     custom_templates_ts_odu: list[Template]
-    ts_odu_templates: list[TSODUTemplate]
+    ts_odu_templates_lamp: TSODUTemplate
+    ts_odu_templates_displ: TSODUTemplate
     wired_signal_output_default_page: int
     wired_signal_output_default_cell: int
     wired_signal_output_blink_default_page: int
@@ -1006,7 +1007,7 @@ class FillRef2:
                 template: TSODUTemplate | None = None
                 if template_name is None:
                     continue
-                for templ in self._options.ts_odu_templates:
+                for templ in [self._options.ts_odu_templates_lamp, self._options.ts_odu_templates_displ]:
                     if (templ.name.endswith('%') and template_name.startswith(templ.name[:-1])) \
                             or template_name == templ.name:
                         template = templ
@@ -1394,9 +1395,10 @@ class FillRef2:
 
         updated_schema_name: str
         if template.type.startswith('LAMP'):
-            updated_schema_name = f'BO_TS_ODU_LAMP_{len(source_signals_by_cabinet)}'
+
+            updated_schema_name = f'{self._options.ts_odu_templates_lamp.name[:-1]}_{len(source_signals_by_cabinet)}'
         elif template.type.startswith('DISPLAY'):
-            updated_schema_name = f'BO_TS_ODU_DISPL_{len(source_signals_by_cabinet)}'
+            updated_schema_name = f'{self._options.ts_odu_templates_displ.name[:-1]}_{len(source_signals_by_cabinet)}'
         else:
             logging.error(f'Не удалось определить тип: {template.type}')
             raise Exception('Ошибка')
