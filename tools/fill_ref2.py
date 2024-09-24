@@ -1330,33 +1330,18 @@ class FillRef2:
                                                  target_cell=self._options.wired_signal_output_default_cell))
             return [virtual_schema], refs, None
         # Если стоек несколько - для каждой формируем схему OR и общую схему OR в панели ТС ОДУ
-        refs_on_page: int = self._options.or_schema_end_cell - self._options.or_schema_start_cell + 1
         index: int = 0
         cabinet_index: int = 0
         virtual_schemas: list[VirtualSchema] = []
         source_cabinet_or_signals: list[Signal] = []
         refs: list[SignalRef] = []
-        target_or_schema_signal: Signal = Signal(
-            kks=target_signal.kks,
-            part=target_signal.part,
-            cabinet=target_signal.cabinet,
-            type=SignalType.TS_ODU,
-            descr_rus=target_signal.descr_rus,
-            descr_eng=target_signal.descr_eng)
         for cabinet in source_signals_by_cabinet.keys():
             cabinet_index += 1
-            cell_num: int = index % (refs_on_page - 1) + self._options.or_schema_start_cell
-            page_num: int = index // (refs_on_page - 1) + 2
             if len(source_signals_by_cabinet[cabinet]) == 1:
-                # Если сигнал в стойке один - сразу создаем ссылку без создания OR схемы
+                # Если сигнал в стойке один, обходимся без формирования схемы OR,
+                # источником будет сам сигнал
                 source_signal: Signal = source_signals_by_cabinet[cabinet][0]
-                refs.append(self._get_ref_for_signal(source_signal=source_signal,
-                                                     target_abonent=target_ts_odu_panel.abonent,
-                                                     target_kks=target_or_schema_signal.kks,
-                                                     target_part=target_or_schema_signal.part,
-                                                     target_page=page_num,
-                                                     target_cell=cell_num))
-                # source_cabinet_or_signals.append(source_signal)
+                source_cabinet_or_signals.append(source_signal)
             else:
                 # Если сигналов несколько, предварительно создаем OR схему в шкафу
                 kks = self._get_free_name(kks_prefix=target_signal.kks[0:7] + self._options.or_schema_code,
