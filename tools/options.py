@@ -819,8 +819,11 @@ class Options:
                                                        off_part='XA12')
         sw_template1: SWTemplate = SWTemplate(connection='NTSW0113',
                                               signals={'XB01', 'XB02', 'XA01', 'XA02', 'XB07', 'XB08'},
-                                              variants=[SWTemplateVariant(schema=['SCW_NKU_04_1_SIGN_WITHOUT_ME'],
-                                                                          parts=['XF27'],
+                                              variants=[SWTemplateVariant(schema=['SCW_NKU_04_2_SIGN_WITHOUT_ME'],
+                                                                          parts=['XF27', 'XK17'],
+                                                                          schema_part='XA30'),
+                                                        SWTemplateVariant(schema=['SCW_NKU_04_2_SIGN_WITHOUT_ME'],
+                                                                          parts=['XF27', 'XK77'],
                                                                           schema_part='XA20'),
                                                         SWTemplateVariant(schema=['SCW_NKU_04_1_SIGN_WITHOUT_ME'],
                                                                           parts=['XB07'],
@@ -899,18 +902,37 @@ class Options:
             InputPort(page=3, cell_num=5, kks='_0_____EK204',
                       part='XB07', unrel_ref_cell_num=None)]
 
-        scw_nku_04_1_sign_without_me_input_ports_var_2: list[InputPort] = [
-            InputPort(page=3, cell_num=5, kks=None,
-                      part='XF27', unrel_ref_cell_num=None)]
-
         scw_nku_04_1_sign_without_me_output_ports: list[OutputPort] = []
         scw_nku_04_1_sign_without_me: Template = Template(name='SCW_NKU_04_1_SIGN_WITHOUT_ME',
                                                           input_ports={
-                                                              'XA10': scw_nku_04_1_sign_without_me_input_ports_var_1,
-                                                              'XA20': scw_nku_04_1_sign_without_me_input_ports_var_2},
+                                                              'XA10': scw_nku_04_1_sign_without_me_input_ports_var_1},
                                                           output_ports={
-                                                              'XA10': scw_nku_04_1_sign_without_me_output_ports,
-                                                              'XA20': scw_nku_04_1_sign_without_me_output_ports},
+                                                              'XA10': scw_nku_04_1_sign_without_me_output_ports},
+                                                          alarm_sound_signal_port='Port1',
+                                                          warn_sound_signal_port='Port2')
+
+        scw_nku_04_1_sign_without_me_input_ports_var_1: list[InputPort] = [
+            InputPort(page=3, cell_num=5, kks=None,
+                      part='XF27', unrel_ref_cell_num=None),
+            InputPort(page=3, cell_num=6, kks=None,
+                      part='XK77', unrel_ref_cell_num=None),
+        ]
+
+        scw_nku_04_1_sign_without_me_input_ports_var_2: list[InputPort] = [
+            InputPort(page=3, cell_num=5, kks=None,
+                      part='XF27', unrel_ref_cell_num=None),
+            InputPort(page=3, cell_num=6, kks=None,
+                      part='XK17', unrel_ref_cell_num=None),
+        ]
+
+        scw_nku_04_2_sign_without_me: Template = Template(name='SCW_NKU_04_2_SIGN_WITHOUT_ME',
+                                                          input_ports={
+                                                              'XA20': scw_nku_04_1_sign_without_me_input_ports_var_1,
+                                                              'XA30': scw_nku_04_1_sign_without_me_input_ports_var_2
+                                                          },
+                                                          output_ports={
+                                                              'XA20': scw_nku_04_1_sign_without_me_output_ports,
+                                                              'XA30': scw_nku_04_1_sign_without_me_output_ports},
                                                           alarm_sound_signal_port='Port1',
                                                           warn_sound_signal_port='Port2')
 
@@ -1050,11 +1072,11 @@ class Options:
         atsw_without_bpu: Template = Template(name='ATSW_1623_WITHOUT_BPU',
                                               input_ports={'XA10': []},
                                               output_ports={'XA10': atsw_output})
-        signal_set_xh54_input = [InputPort(page=1, cell_num=8, kks=None, part='XM84',
+        signal_set_xh52_input = [InputPort(page=1, cell_num=8, kks=None, part='XM84',
                                            unrel_ref_cell_num=None)]
-        signal_set_xh54: Template = Template(name='ANALOG_SIGNAL_SET',
-                                             input_ports={'XH54': signal_set_xh54_input},
-                                             output_ports={'XH54': []})
+        signal_set_xh52: Template = Template(name='ANALOG_SIGNAL_SET',
+                                             input_ports={'XH52': signal_set_xh52_input},
+                                             output_ports={'XH52': []})
 
         # --------------------------------------------------------------------------------------------------------------
         diag_standalone_output_ports: list[OutputPort] = [OutputPort(name='Port1', kks='_0BYA__EG801', part='XW01',
@@ -1251,7 +1273,8 @@ class Options:
                                                              iec_table='МЭК 61850',
                                                              fake_signals_table='FAKE_SIGNALS',
                                                              templates=[scw_nku_04_1_sign_without_me,
-                                                                        signal_set_xh54,
+                                                                        signal_set_xh52,
+                                                                        scw_nku_04_2_sign_without_me,
                                                                         sc_nku_04_1_sign, sc_kru_10_6_sign,
                                                                         sc_kru_10_8_sign, ats_without_bpu,
                                                                         sc_kru_10_6_sign_without_contr,
