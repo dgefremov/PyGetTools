@@ -27,11 +27,11 @@ def run_scripts():
 
     # Генерация таблиц из таблицы [Сигналы и механизмы АЭП]
     # Закомментировать если не используется
-    # GenerateTables.run(options=options.generate_table_options, connection=connection)
+    GenerateTables.run(options=options.generate_table_options, connection=connection)
 
     # Расстановка MMS адресов для сигналов
     # Закомментировать если не используется
-    # FillMMSAdress.run(options=options.fill_mms_address_options, connection=connection)
+    FillMMSAdress.run(options=options.fill_mms_address_options, connection=connection)
 
     # Расстановка ссылок
     # Закомментировать если не используется
